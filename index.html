@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev; style-src * 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src * https://fonts.gstatic.com; img-src * 'self' data: blob: https://packzenblr.in; connect-src * 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com; frame-src * https://checkout.razorpay.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com; frame-src https://checkout.razorpay.com;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <title>Packers & Movers in Bangalore | House Shifting | PackZen</title>
@@ -177,7 +177,7 @@
   <div class="app-bar-inner">
     <div class="app-bar-left">
       <a href="index.html" class="app-logo" aria-label="PackZen Home">
-<img src="assets/logo/packzen-logo.png" width="44" height="44" alt="PackZen" fetchpriority="high">
+        <img src="assets/logo/packzen-logo.png" width="36" height="36" alt="PackZen" fetchpriority="high">
         <span class="app-logo-text dark-text">PackZen</span>
       </a>
     </div>
@@ -235,7 +235,7 @@
 
    <div class="hero-premium-section">
      <div class="hero-premium-content">
-       <div class="hero-badge">⭐ Bangalore's Most Trusted and Affordable Packers & Movers</div>
+       <div class="hero-badge">⭐ Bangalore's Most Trusted Packers & Movers</div>
        <h1 class="hero-premium-title">Move Smarter.<br><span class="purple-gradient">Move Safer.</span></h1>
        <p class="hero-premium-desc">Instant Pricing • Live GPS Tracking • Insured Transport • Verified Professionals</p>
        <div class="hero-premium-actions">
@@ -611,7 +611,10 @@
     <footer class="app-footer">
       <div class="app-footer-inner-desktop">
         <div class="app-footer-col">
-          <div class="app-footer-logo"> Pack<span>Zen</span></div>
+     <div class="app-footer-logo-wrap">
+  <img src="assets/logo/packzen-logo.png" width="44" height="44" alt="PackZen" class="app-footer-logo-img" loading="lazy">
+  <div class="app-footer-logo"> Pack<span>Zen</span></div>
+</div>
           <p>Professional packers & movers in Bangalore. Transparent pricing, live tracking, and stress-free relocation.</p>
         </div>
 
@@ -1758,6 +1761,25 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(function() {});
   });
 }
+</script>
+
+<!-- Offline banner — additive, does not touch existing booking/payment logic.
+     handleBookingAction() in script.js independently blocks the actual
+     submit; this banner just makes the state visible the whole time. -->
+<div id="pzOfflineBanner" role="status" aria-live="polite" style="display:none;position:fixed;left:0;right:0;top:0;z-index:99999;background:#7c2d12;color:#fff;font:600 13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));">
+  📡 You're offline — booking and payment are paused until you reconnect.
+</div>
+<script>
+(function(){
+  var banner = document.getElementById('pzOfflineBanner');
+  function syncOnlineState(){
+    if (!banner) return;
+    banner.style.display = navigator.onLine ? 'none' : 'block';
+  }
+  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('offline', syncOnlineState);
+  syncOnlineState();
+})();
 </script>
 <link rel="stylesheet" href="pzchatbot.css">
 <script src="pzchatbot.js" defer></script>
