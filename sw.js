@@ -3,7 +3,7 @@
    Offline support + smart caching strategy
    ============================================ */
 
-const CACHE_VERSION = 'packzen-v3';
+const CACHE_VERSION = 'packzen-v4';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -14,14 +14,27 @@ const STATIC_ASSETS = [
   '/Offline.html',
   '/style.css',
   '/mobile-fixes.css',
+  '/desktop.css',
   '/script.js',
   '/chatbot.js',
+  '/pzchatbot.js',
+  '/pzchatbot.css',
   '/manifest.json',
   '/driver.html',
   '/driver-manifest.json',
   '/assets/logo/packzen-logo.png',
   '/assets/logo/packzen-og.png',
+  '/assets/logo/newllogo1.png',
+  '/assets/logo/newllogo.png',
+  '/assets/logo/icon-192.png',
+  '/assets/logo/icon-512-maskable.png',
 ];
+// NOTE: firebase-config.js and env-config.js are deliberately NOT
+// precached here. firebase.json already serves env-config.js with
+// no-cache headers, and firebase-config.js reads window.ENV at parse
+// time — precaching either risks the SW serving stale config after a
+// key rotation. They're still fetched fine via the default
+// stale-while-revalidate path below on every load.
 const OFFLINE_PAGE = '/Offline.html';
 
 // ── Install: cache static shell ──────────────────
