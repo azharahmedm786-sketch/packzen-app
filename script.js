@@ -1520,6 +1520,14 @@ function selectPayment(type) {
 }
 
 function handleBookingAction() {
+  // Offline guard — never let a booking or payment attempt fire while
+  // the device has no connectivity. Without this, a tap here would
+  // just hang or silently fail deep inside startPayment()/Firestore,
+  // which can look like "it worked" to the user.
+  if (typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine) {
+    showToast("📡 You're offline. Please reconnect to book or pay.");
+    return;
+  }
   if (selectedPayment === "advance" || selectedPayment === "full") {
     startPayment();
   } else {
