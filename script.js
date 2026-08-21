@@ -2785,17 +2785,7 @@ async function _handleOAuthUser(user, db, providerName) {
   // the user against their existing account, and use linkWithCredential
   // so the new provider joins the EXISTING uid instead of creating one.
   // So by the time we get here, this uid should never collide with an
-  // email already used by a different uid. If it somehow still does
-  // (e.g. a legacy account created before this fix, or a project-level
-  // "multiple accounts per email" setting — see audit note on that),
-  // we deliberately do NOT auto-merge or auto-delete anything: we bail
-  // out and ask the person to contact support so a human resolves which
-  // account is authoritative.
-  const emailSnap = await db.collection("users").where("email", "==", user.email).limit(1).get();
-  if (!emailSnap.empty && emailSnap.docs[0].id !== user.uid) {
-    console.error("OAuth uid/email collision — refusing to auto-merge Firestore profiles.", { newUid: user.uid, existingDocId: emailSnap.docs[0].id, email: user.email });
-    return "__conflict__";
-  }
+  // email already used by a different uid.
   const refCode = user.uid.slice(0, 8).toUpperCase();
   await userRef.set({
     name: user.displayName || user.email.split('@')[0], email: user.email || "", phone: user.phoneNumber || "", role: "customer",
