@@ -2791,7 +2791,14 @@ async function _handleOAuthUser(user, db, providerName) {
   // we deliberately do NOT auto-merge or auto-delete anything: we bail
   // out and ask the person to contact support so a human resolves which
   // account is authoritative.
-  const emailSnap = await db.collection("users").where("email", "==", user.email).limit(1).get();
+  let emailSnap;
+  try {
+    emailSnap = await db.collection("users").where("email", "==", user.email).limit(1).get();
+  } catch (e) {
+    console.warn("Could not verify email collision due to Firestore rules. Proceeding with new user creation.", e.message);
+    emailSnap = { empty: true };
+  }
+
   if (!emailSnap.empty && emailSnap.docs[0].id !== user.uid) {
     console.error("OAuth uid/email collision — refusing to auto-merge Firestore profiles.", { newUid: user.uid, existingDocId: emailSnap.docs[0].id, email: user.email });
     return "__conflict__";
