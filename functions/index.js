@@ -509,3 +509,4 @@ console.log("BOOKING CREATED SUCCESSFULLY");
 Object.assign(exports, require("./notifications"));
 Object.assign(exports, require("./scheduled-notifications"));
 Object.assign(exports, require("./auth-emails"));
+Object.assign(exports, require("./oauth-profile"));
