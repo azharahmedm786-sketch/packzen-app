@@ -25,3 +25,5 @@ twa/key.properties
 *.aab
 *.idsig
 venv/
+
+functions/.env.*
