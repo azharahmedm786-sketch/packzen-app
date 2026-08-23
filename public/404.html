@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found – PackZen Packers & Movers</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="assets/logo/packzen-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #050d1a;
+      color: #f0f4ff;
+      font-family: 'Manrope', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* Animated background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      pointer-events: none;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 420px; height: 420px; background: #3b82f6; top: -100px; left: -100px; animation-delay: 0s; }
+    .blob-2 { width: 300px; height: 300px; background: #8b5cf6; bottom: -80px; right: -80px; animation-delay: -4s; }
+    .blob-3 { width: 200px; height: 200px; background: #06b6d4; top: 50%; left: 50%; animation-delay: -8s; }
+    @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.08); } }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      backdrop-filter: blur(12px);
+    }
+
+    .truck-anim {
+      font-size: 4rem;
+      display: block;
+      margin-bottom: 8px;
+      animation: truckBounce 2s ease-in-out infinite;
+    }
+    @keyframes truckBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .error-code {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 6rem;
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #f0f4ff;
+    }
+
+    p {
+      color: #94a3b8;
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-home {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-home:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.4); }
+
+    .btn-quote {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      background: transparent;
+      color: #94a3b8;
+      font-family: 'Manrope', sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .15s;
+    }
+    .btn-quote:hover { background: rgba(255,255,255,0.06); color: #f0f4ff; border-color: rgba(255,255,255,0.25); }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 28px;
+      text-decoration: none;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #f0f4ff;
+    }
+    .logo-text span { color: #3b82f6; }
+
+    .help-text {
+      margin-top: 24px;
+      font-size: .85rem;
+      color: #64748b;
+    }
+    .help-text a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .help-text a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .card { padding: 36px 24px; }
+      .error-code { font-size: 4.5rem; }
+    }
+  </style>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="card">
+
+    <a href="/moving-quote/" class="logo-wrap" aria-label="PackZen Home">
+      <img src="assets/logo/packzen-logo.png" alt="PackZen Logo" width="32" height="32" style="border-radius:6px">
+      <span class="logo-text">Pack<span>Zen</span></span>
+    </a>
+
+    <span class="truck-anim" role="img" aria-label="Moving truck"><i data-lucide="truck"></i></span>
+    <div class="error-code" aria-label="Error 404">404</div>
+    <h1>This page moved without us!</h1>
+    <p>Looks like the page you're looking for has been relocated or doesn't exist. Let us help you find your way back.</p>
+
+    <div class="actions">
+      <a href="/" class="btn-home">
+        <i data-lucide="home"></i> Back to Home
+      </a>
+      <a href="/#quote" class="btn-quote">
+        <i data-lucide="package"></i> Get a Moving Quote
+      </a>
+    </div>
+
+    <p class="help-text">
+      Need help? Call us at <a href="tel:9945095453">9945095453</a> or
+      <a href="https://wa.me/919945095453" target="_blank" rel="noopener">WhatsApp us</a>
+    </p>
+
+  </div>
+
+
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+
+        // Debounced observer to prevent infinite loops and performance issues
+        let timeout;
+        const observer = new MutationObserver((mutations) => {
+            let shouldUpdate = false;
+            for (let m of mutations) {
+                if (m.addedNodes.length > 0) {
+                    shouldUpdate = true;
+                    break;
+                }
+            }
+            if (shouldUpdate) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => lucide.createIcons(), 50);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
+</script>
+
+  <script src="icon-init.js"></script>
+</body>
+</html>
