@@ -13,7 +13,6 @@ let paymentReceiptId = "";
 let confirmationResult = null;
 let pendingSignupData = null;
 let currentUser = null;
-let pendingLinkCredential = null; // holds the Google/Apple credential while we re-auth the existing account for linking
 let promoDiscount = 0; 
 let selectedPayment = "at_drop";
 let isProcessingPayment = false;
@@ -1521,6 +1520,14 @@ function selectPayment(type) {
 }
 
 function handleBookingAction() {
+  // Offline guard — never let a booking or payment attempt fire while
+  // the device has no connectivity. Without this, a tap here would
+  // just hang or silently fail deep inside startPayment()/Firestore,
+  // which can look like "it worked" to the user.
+  if (typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine) {
+    showToast("📡 You're offline. Please reconnect to book or pay.");
+    return;
+  }
   if (selectedPayment === "advance" || selectedPayment === "full") {
     startPayment();
   } else {
@@ -2773,142 +2780,26 @@ async function _handleOAuthUser(user, db, providerName) {
     await userRef.update({ lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(), loginMethod: providerName });
     return role;
   }
-  // 🔒 REDESIGNED (see PRIORITY 2/3 fix): this used to fall back to a
-  // Firestore query by email and, if a doc existed under a *different*
-  // uid, silently rewrite it onto this uid and delete the old one —
-  // merging Firestore profiles without ever confirming the two Auth
-  // accounts belonged to the same person, and leaving the original
-  // Firebase Auth account (password or otherwise) orphaned with no
-  // profile. That path is now handled upstream: signInWithGoogle/
-  // signInWithApple catch `auth/account-exists-with-different-credential`
-  // *before* a second uid can ever reach this function, re-authenticate
-  // the user against their existing account, and use linkWithCredential
-  // so the new provider joins the EXISTING uid instead of creating one.
-  // So by the time we get here, this uid should never collide with an
-  // email already used by a different uid.
-  const refCode = user.uid.slice(0, 8).toUpperCase();
-  await userRef.set({
-    name: user.displayName || user.email.split('@')[0], email: user.email || "", phone: user.phoneNumber || "", role: "customer",
-    loginMethod: providerName, phoneVerified: false, emailVerified: user.emailVerified, prefEmail: true, prefSMS: true,
-    referralCode: refCode, referralCount: 0, referralCredits: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  return "customer";
-}
-
-/* ═══════════════════════════════════════════════
-GOOGLE/APPLE ↔ EXISTING-PASSWORD-ACCOUNT LINKING
-(PRIORITY 2/3 fix — replaces the old silent Firestore-merge path)
-
-Flow when Firebase reports auth/account-exists-with-different-credential:
-  1. Pull the pending OAuth credential + email off the error.
-  2. Ask the existing, already-built checkAuthProvider function how this
-     email is actually registered (fetchSignInMethodsForEmail is not
-     used here — the repo's own comments note it's unreliable with
-     Email Enumeration Protection on, which is why checkAuthProvider
-     exists).
-  3. If a password provider exists, prompt for that password right in
-     the modal, re-authenticate against the EXISTING uid via
-     signInWithEmailAndPassword, then call linkWithCredential() on that
-     signed-in user with the pending Google/Apple credential. Google
-     now joins the original uid — no second uid, no Firestore merge.
-  4. If the existing provider is Google/Apple (not password), we can't
-     silently link either — that requires signing in with the OTHER
-     OAuth provider first. We tell the person which provider to use.
-═══════════════════════════════════════════════ */
-function openLinkAccountModal(email, providerLabel) {
-  const modal = document.getElementById("linkAccountModal");
-  if (!modal) return;
-  document.getElementById("linkAccountEmail").textContent = email;
-  document.getElementById("linkAccountProviderLabel").textContent = providerLabel;
-  document.getElementById("linkAccountPassword").value = "";
-  document.getElementById("linkAccountError").textContent = "";
-  modal.style.display = "flex";
-}
-function closeLinkAccountModal() {
-  const modal = document.getElementById("linkAccountModal");
-  if (modal) modal.style.display = "none";
-  pendingLinkCredential = null;
-}
-
-async function confirmLinkAccount() {
-  if (!pendingLinkCredential) { closeLinkAccountModal(); return; }
-  const { email, credential, providerLabel } = pendingLinkCredential;
-  const password = document.getElementById("linkAccountPassword").value;
-  if (!password) { showError("linkAccountError", "⚠️ Enter your existing password."); return; }
-
-  const btn = document.getElementById("btnConfirmLinkAccount");
-  if (btn) { btn.disabled = true; btn.textContent = "Linking..."; }
-
-  waitForFirebase(async () => {
-    const { auth, db } = window._firebase;
-    try {
-      // Step 1 — re-authenticate as the EXISTING account. This is the
-      // "authenticate existing Firebase UID" requirement: we never link
-      // anything without the person proving they control that account.
-      const existingUserCred = await auth.signInWithEmailAndPassword(email, password);
-      // Step 2 — link the pending Google/Apple credential onto that
-      // SAME uid. No new uid is created; no Firestore doc is touched
-      // by uid-merge logic.
-      await existingUserCred.user.linkWithCredential(credential);
-      const role = await _handleOAuthUser(existingUserCred.user, db, providerLabel.toLowerCase());
-      if (role !== "customer" && role !== "__conflict__") {
-        await auth.signOut();
-        closeLinkAccountModal();
-        showError("loginError", roleRedirectMessage(role));
-        return;
-      }
-      closeLinkAccountModal();
-      closeAuthModal();
-      showToast(`✅ ${providerLabel} linked! You can now sign in with either method.`);
-    } catch (err) {
-      console.error("Account linking error:", err);
-      const invalidCredCodes = ["auth/wrong-password", "auth/invalid-credential", "auth/invalid-login-credentials", "auth/user-not-found"];
-      if (invalidCredCodes.includes(err.code)) showError("linkAccountError", "⚠️ Incorrect password for the existing account.");
-      else if (err.code === "auth/credential-already-in-use" || err.code === "auth/provider-already-linked") showError("linkAccountError", "⚠️ This provider is already linked to an account.");
-      else showError("linkAccountError", "⚠️ " + (err.message || "Linking failed. Please try again."));
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Sign In & Link →"; }
-    }
-  });
-}
-
-// Shared conflict handler for both Google and Apple sign-in.
-async function _handleProviderConflict(err, attemptedProviderLabel) {
-  const { functions } = window._firebase;
-  const email = err.email || err.customData?.email || "";
-  // The compat SDK puts the pending credential directly on the error
-  // (err.credential) — the classic v8 shape. credentialFromError() is
-  // the newer modular-API equivalent; we try it as a fallback in case
-  // a future SDK upgrade drops the compat shape.
-  const credential = err.credential
-    || (attemptedProviderLabel === "Google"
-        ? firebase.auth.GoogleAuthProvider.credentialFromError?.(err)
-        : firebase.auth.OAuthProvider.credentialFromError?.(err));
-
-  if (!email || !credential) {
-    showError("loginError", "⚠️ This email is already registered with a different sign-in method.");
-    return;
-  }
-  try {
-    const check = await functions.httpsCallable("checkAuthProvider")({ email });
-    const { hasPassword, hasGoogle, hasApple } = check.data || {};
-    if (hasPassword) {
-      pendingLinkCredential = { email, credential, providerLabel: attemptedProviderLabel };
-      closeAuthModal();
-      openLinkAccountModal(email, attemptedProviderLabel);
-    } else if (hasGoogle && attemptedProviderLabel !== "Google") {
-      showError("loginError", "⚠️ This email is linked to a Google account. Please use \"Continue with Google\" instead.");
-    } else if (hasApple && attemptedProviderLabel !== "Apple") {
-      showError("loginError", "⚠️ This email is linked to an Apple account. Please use \"Continue with Apple\" instead.");
-    } else {
-      showError("loginError", "⚠️ This email is already registered with a different sign-in method. Please contact support.");
-    }
-  } catch (checkErr) {
-    showError("loginError", "⚠️ This email is already registered with a different sign-in method.");
+  const emailSnap = await db.collection("users").where("email", "==", user.email).limit(1).get();
+  if (!emailSnap.empty) {
+    const existingData = emailSnap.docs[0].data();
+    const role = existingData.role || "customer";
+    if (role !== "customer") return role; // block — do NOT migrate/delete a driver, admin, advisor, or partner doc
+    const oldDocId = emailSnap.docs[0].id;
+    await userRef.set({ ...existingData, loginMethod: providerName, [providerName + 'Linked']: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    if (oldDocId !== user.uid) await db.collection("users").doc(oldDocId).delete().catch(() => {});
+    return role;
+  } else {
+    const refCode = user.uid.slice(0, 8).toUpperCase();
+    await userRef.set({
+      name: user.displayName || user.email.split('@')[0], email: user.email || "", phone: user.phoneNumber || "", role: "customer",
+      loginMethod: providerName, phoneVerified: false, emailVerified: user.emailVerified, prefEmail: true, prefSMS: true,
+      referralCode: refCode, referralCount: 0, referralCredits: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return "customer";
   }
 }
-
 window.signInWithGoogle = async function () {
   waitForFirebase(async () => {
     const { auth, db } = window._firebase;
@@ -2917,11 +2808,6 @@ window.signInWithGoogle = async function () {
     try {
  const result = await auth.signInWithPopup(provider);
       const role = await _handleOAuthUser(result.user, db, 'google');
-      if (role === "__conflict__") {
-        await auth.signOut();
-        showError("loginError", "⚠️ We couldn't safely sign you in — this email may already have another account. Please contact support.");
-        return;
-      }
       if (role !== "customer") {
         await auth.signOut();
         showError("loginError", roleRedirectMessage(role));
@@ -2931,16 +2817,9 @@ window.signInWithGoogle = async function () {
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
       showToast(`👋 Welcome, ${name}!`);
     } catch (err) {
-      if (err.code === "auth/account-exists-with-different-credential") { await _handleProviderConflict(err, "Google"); return; }
-      // Full diagnostic to console (never shown to the user) so the
-      // real cause is visible next time this fires — err.message often
-      // carries more detail than the code alone, and customData can
-      // include the raw server response.
-      console.error("Google sign-in error:", { code: err.code, message: err.message, customData: err.customData, credential: err.credential });
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
       else if (err.code === "auth/unauthorized-domain") showError("loginError", "⚠️ Domain not authorized. Add it in Firebase Console → Authentication → Authorized Domains.");
-      else if (err.code === "auth/internal-error") showError("loginError", "⚠️ Something went wrong signing in with Google. Please try again in a moment, or use your email and password.");
       else showError("loginError", getAuthErrorMessage(err.code));
     }
   });
@@ -2955,11 +2834,6 @@ window.signInWithApple = async function () {
     try {
 const result = await auth.signInWithPopup(provider);
       const role = await _handleOAuthUser(result.user, db, 'apple');
-      if (role === "__conflict__") {
-        await auth.signOut();
-        showError("loginError", "⚠️ We couldn't safely sign you in — this email may already have another account. Please contact support.");
-        return;
-      }
       if (role !== "customer") {
         await auth.signOut();
         showError("loginError", roleRedirectMessage(role));
@@ -2969,12 +2843,9 @@ const result = await auth.signInWithPopup(provider);
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
       showToast(`👋 Welcome, ${name}!`);
     } catch (err) {
-      if (err.code === "auth/account-exists-with-different-credential") { await _handleProviderConflict(err, "Apple"); return; }
-      console.error("Apple sign-in error:", { code: err.code, message: err.message, customData: err.customData, credential: err.credential });
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
       else if (err.code === "auth/unauthorized-domain") showError("loginError", "⚠️ Domain not authorized.");
-      else if (err.code === "auth/internal-error") showError("loginError", "⚠️ Something went wrong signing in with Apple. Please try again in a moment, or use your email and password.");
       else showError("loginError", getAuthErrorMessage(err.code));
     }
   });
