@@ -2771,43 +2771,26 @@ async function signOutUser() {
   });
 }
 
-async function _handleOAuthUser(user, db, providerName) {
-  const userRef = db.collection("users").doc(user.uid);
-  const existingDoc = await userRef.get();
-  if (existingDoc.exists) {
-    const role = existingDoc.data().role || "customer";
-    if (role !== "customer") return role; // block — never touch a non-customer doc further
-    await userRef.update({ lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(), loginMethod: providerName });
-    return role;
-  }
-  const emailSnap = await db.collection("users").where("email", "==", user.email).limit(1).get();
-  if (!emailSnap.empty) {
-    const existingData = emailSnap.docs[0].data();
-    const role = existingData.role || "customer";
-    if (role !== "customer") return role; // block — do NOT migrate/delete a driver, admin, advisor, or partner doc
-    const oldDocId = emailSnap.docs[0].id;
-    await userRef.set({ ...existingData, loginMethod: providerName, [providerName + 'Linked']: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    if (oldDocId !== user.uid) await db.collection("users").doc(oldDocId).delete().catch(() => {});
-    return role;
-  } else {
-    const refCode = user.uid.slice(0, 8).toUpperCase();
-    await userRef.set({
-      name: user.displayName || user.email.split('@')[0], email: user.email || "", phone: user.phoneNumber || "", role: "customer",
-      loginMethod: providerName, phoneVerified: false, emailVerified: user.emailVerified, prefEmail: true, prefSMS: true,
-      referralCode: refCode, referralCount: 0, referralCredits: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    return "customer";
-  }
+async function _handleOAuthUser(functionsRef) {
+  // Profile creation/merge happens server-side (syncOAuthUserProfile) via
+  // the Admin SDK — provider identity is read from the verified ID token,
+  // not passed by the client. This replaces the old client-side
+  // `emailSnap` Firestore query, which Firestore Security Rules correctly
+  // rejected (a signed-in user can only read/write their own /users doc,
+  // not query the whole collection by email) and which also attempted to
+  // delete a *different* user's document from the client — both are
+  // privileged operations that belong on the server, not in the browser.
+  const result = await functionsRef.httpsCallable("syncOAuthUserProfile")();
+  return result?.data?.role || "customer";
 }
 window.signInWithGoogle = async function () {
   waitForFirebase(async () => {
-    const { auth, db } = window._firebase;
+    const { auth, functions } = window._firebase;
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
  const result = await auth.signInWithPopup(provider);
-      const role = await _handleOAuthUser(result.user, db, 'google');
+      const role = await _handleOAuthUser(functions);
       if (role !== "customer") {
         await auth.signOut();
         showError("loginError", roleRedirectMessage(role));
@@ -2827,13 +2810,13 @@ window.signInWithGoogle = async function () {
 
 window.signInWithApple = async function () {
   waitForFirebase(async () => {
-    const { auth, db } = window._firebase;
+    const { auth, functions } = window._firebase;
     const provider = new firebase.auth.OAuthProvider('apple.com');
     provider.addScope('email');
     provider.addScope('name');
     try {
 const result = await auth.signInWithPopup(provider);
-      const role = await _handleOAuthUser(result.user, db, 'apple');
+      const role = await _handleOAuthUser(functions);
       if (role !== "customer") {
         await auth.signOut();
         showError("loginError", roleRedirectMessage(role));
