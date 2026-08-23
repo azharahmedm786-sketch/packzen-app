@@ -1,0 +1,303 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // ✅ FIXED: Uses auth token email directly — no get() call that can crash
+    function isAdmin() {
+      return isAuth() && (
+        request.auth.token.email in [
+          'admin@packzen.com',
+          'support@packzenblr.in',
+          'azharahmedm786@gmail.com',
+          'moveeasyblr@gmail.com',
+          'azharahmednaz@gmail.com'
+        ]
+      );
+    }
+
+    function isDriver() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+    }
+
+    function isAssignedDriver(booking) {
+      return isAuth() && booking.driverUid == request.auth.uid;
+    }
+
+    // ✅ ADDED: mirrors the ADVISOR_ROLES check already used client-side
+    // in advisor.html's isAdvisor() gate — admin/advisor/manager roles
+    // on the user's own /users doc. Without this, anyone who got into
+    // the advisor dashboard via role (not the hardcoded admin email
+    // list) had every Firestore read/write silently rejected.
+    function isAdvisor() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'advisor', 'manager'];
+    }
+
+    function onlyFields(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // 🔒 ADDED: the inverse of onlyFields — true if NONE of the given
+    // fields changed in this write. Used to lock privileged fields
+    // (role, verificationStatus, wallet balances) out of otherwise-open
+    // owner self-writes, without having to enumerate every field an
+    // owner IS allowed to touch.
+    function noneOfFields(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // USERS
+    match /users/{uid} {
+      // ✅ ADDED isAdvisor() so the advisor dashboard's customers/drivers
+      // tables (db.collection("users").where("role","==",...)) can
+      // actually return results for advisors outside the admin email list.
+      allow read: if isOwner(uid) || isAdmin() || isAdvisor();
+
+      // 🔒 FIXED: isOwner(uid) create previously had no field restriction,
+      // so any signed-up customer could create/overwrite their own doc
+      // with role:"admin" directly from the client and self-promote.
+      // Self-created docs are now forced to role:"customer"; anything
+      // else (driver/advisor/admin/partner) must be admin-created.
+      allow create: if isAdmin()
+        || (isOwner(uid) && (!('role' in request.resource.data) || request.resource.data.role == 'customer'));
+
+      // 🔒 FIXED: isOwner(uid) update previously had no field restriction
+      // either, so an existing customer could later run
+      // update({role:"admin"}) from devtools. Owners can still update
+      // every other field on their own doc (name, phone, prefs, etc.) —
+      // just not role.
+      allow update: if isAdmin()
+        || (isOwner(uid) && noneOfFields(['role']))
+        || (isAdvisor() && onlyFields(['currentBooking']));
+
+      allow delete: if false;
+    }
+
+    // PARTNERS (Fixes partner registration failing)
+    match /partners/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      // 🔒 FIXED: previously isOwner(uid) create had no field restriction,
+      // so an applicant could create their own partners/{uid} doc with
+      // verificationStatus:"approved" and a nonzero walletBalance,
+      // skipping KYC review and crediting themselves money outright.
+      // Self-created docs must start pending with a zero wallet.
+      allow create: if isAdmin()
+        || (isOwner(uid)
+            && request.resource.data.verificationStatus == 'pending'
+            && request.resource.data.walletBalance == 0
+            && request.resource.data.pendingEarnings == 0
+            && request.resource.data.totalEarnings == 0);
+
+      // 🔒 FIXED: previously isOwner(uid) update had no field restriction,
+      // so an existing (still-pending) partner could self-approve and/or
+      // rewrite their own wallet/earnings/rating fields directly. Owners
+      // can still update everything else about their own doc (online
+      // status, notification prefs, business details, etc.).
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && noneOfFields(['verificationStatus', 'walletBalance', 'pendingEarnings', 'totalEarnings', 'averageRating', 'totalRatings']));
+
+      allow delete: if isAdmin();
+    }
+
+    // 🔒 ADDED: partner-register.html writes an application record here
+    // (db.collection("partnerApplications").doc(uid).set(...)) right
+    // after creating the partners/{uid} doc, in the same try block. With
+    // no rule for this collection it fell through to the catch-all
+    // deny-all below, so that write always failed with permission-denied
+    // — the applicant saw a generic error even though their partner doc
+    // had already saved, and no application record existed for admin
+    // review.
+    match /partnerApplications/{uid} {
+      allow create: if isOwner(uid) && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // BOOKINGS — ✅ FIXED create rule
+    match /bookings/{bookingId} {
+      // ✅ ADDED isAdvisor() so the advisor dashboard's unfiltered
+      // bookings listener (orderBy("createdAt")) can return results.
+      allow read: if isAuth() && (
+        resource.data.customerUid == request.auth.uid
+        || isAdmin()
+        || isAdvisor()
+        || isAssignedDriver(resource.data)
+      );
+
+      // ✅ ADDED isAdvisor() — advisor-created walk-in bookings have no
+      // customerUid matching request.auth.uid (there's no logged-in
+      // customer), so the New Booking module in
+      // advisor-dashboard-patch.js needs its own create path.
+      allow create: if isAuth()
+        && (request.resource.data.customerUid == request.auth.uid || isAdvisor() || isAdmin());
+
+     allow update: if isAuth()
+        && resource.data.customerUid == request.auth.uid
+        && (
+          (onlyFields(['status','cancelReason','cancelledAt','cancelledBy'])
+            && request.resource.data.status == 'cancelled')
+          || (onlyFields(['date','time','rescheduledAt','rescheduledBy','status'])
+            && request.resource.data.status == 'confirmed')
+          || onlyFields(['driverRating','driverFeedback','ratedAt'])
+          || onlyFields(['damageClaimed','damageClaimId','damageClaimedAt'])
+        );
+
+      allow update: if isDriver() && isAssignedDriver(resource.data);
+      // ✅ ADDED: advisors manage bookings on customers' behalf
+      // (status changes, driver assignment via confirmAssign()) —
+      // same update scope admins already have, no delete.
+      allow update: if isAdvisor();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // CHATS
+    match /chats/{bookingId} {
+      allow read: if isAuth() && (
+        isAdmin()
+        || get(/databases/$(database)/documents/bookings/$(bookingId)).data.customerUid == request.auth.uid
+        || get(/databases/$(database)/documents/bookings/$(bookingId)).data.driverUid == request.auth.uid
+      );
+      allow write: if false;
+      match /messages/{msgId} {
+        allow read, write: if isAuth() && (
+          isAdmin()
+          || get(/databases/$(database)/documents/bookings/$(bookingId)).data.customerUid == request.auth.uid
+          || get(/databases/$(database)/documents/bookings/$(bookingId)).data.driverUid == request.auth.uid
+        );
+      }
+    }
+
+    // QUOTES
+    match /quotes/{quoteId} {
+      allow create: if isAuth() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAuth() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // REVIEWS
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuth()
+        && request.resource.data.keys().hasAll(['name','text','rating'])
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      allow update, delete: if isAdmin();
+    }
+
+    // DRIVER RATINGS
+    match /driverRatings/{ratingId} {
+      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
+      allow read: if isAdmin() || (isDriver() && resource.data.driverUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // PROMOS
+    match /promos/{code} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // SMS QUEUE
+    match /smsQueue/{docId} {
+      allow create: if isAuth();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // WHATSAPP QUEUE
+    match /whatsappQueue/{docId} {
+      allow create: if isAuth();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // CANCEL REQUESTS
+    match /cancelRequests/{requestId} {
+      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
+      allow read: if isAuth() && resource.data.customerUid == request.auth.uid;
+      allow read, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ACCOUNT DELETION REQUESTS
+    match /accountDeletionRequests/{requestId} {
+      allow create: if request.resource.data.keys().hasAll(['requestId', 'firstName', 'lastName', 'email', 'phone', 'status', 'createdAt']) &&
+                       request.resource.data.firstName is string && request.resource.data.firstName.size() <= 50 &&
+                       request.resource.data.lastName is string && request.resource.data.lastName.size() <= 50 &&
+                       request.resource.data.email is string && request.resource.data.email.size() <= 100 &&
+                       request.resource.data.phone is string && request.resource.data.phone.size() <= 20 &&
+                       (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() <= 1000)) &&
+                       request.resource.data.status == 'Pending';
+      allow read, update, delete: if isAdmin();
+    }
+
+    // BROADCASTS
+    match /broadcasts/{broadcastId} {
+      allow write: if isAdmin();
+      allow read: if isAuth();
+    }
+
+    // DRIVERS
+    match /drivers/{driverUid} {
+      allow read: if isAuth();
+      allow write: if isAdmin() || (isDriver() && request.auth.uid == driverUid);
+    }
+
+    // DAMAGE CLAIMS
+    match /damageClaims/{claimId} {
+      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
+      allow read: if isAuth() && resource.data.customerUid == request.auth.uid;
+      allow read, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // LEADS
+    match /leads/{leadId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // PARCEL DELIVERY SYSTEM
+    match /parcelBookings/{bookingId} {
+      allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isDriver() || isAdmin());
+      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
+      allow update: if isAuth() && (resource.data.customerUid == request.auth.uid || isDriver() || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /parcelTracking/{docId} {
+      allow read: if isAuth();
+      allow write: if isDriver() || isAdmin();
+    }
+
+    match /parcelPricing/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /parcelRiders/{riderId} {
+      allow read: if isAuth();
+      allow write: if isDriver() && request.auth.uid == riderId || isAdmin();
+    }
+
+    match /parcelTransactions/{txId} {
+      allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isAdmin());
+      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
