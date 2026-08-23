@@ -3,24 +3,38 @@
    Offline support + smart caching strategy
    ============================================ */
 
-const CACHE_VERSION = 'packzen-v4';
+// 🔒 PERMANENT FIX: bumped v4 -> v5 so every previously-installed
+// service worker evicts its old cache on next activate (see the
+// 'activate' handler below, which deletes any cache whose name
+// doesn't match the CURRENT STATIC_CACHE/DYNAMIC_CACHE). Without this
+// bump, browsers that already cached a broken index.html/script.js
+// under v4 would keep serving that stale copy forever, regardless of
+// what gets deployed — which is almost certainly why the same auth
+// bug kept reappearing through multiple rounds of fixes.
+const CACHE_VERSION = 'packzen-v5';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
-// Core assets cached on install (app shell)
+// Core assets cached on install (app shell).
+// 🔒 PERMANENT FIX: '/index.html' and '/script.js' (and the other
+// frequently-updated app files) were REMOVED from this list. They used
+// to get cache-first treatment via the STATIC_ASSETS check in the
+// fetch handler below, which runs BEFORE the "network first" HTML
+// branch — meaning navigations to '/' and '/index.html' were being
+// served from a permanently pinned cache, never re-fetched from
+// network, no matter how many times the live site was updated. Only
+// assets that are genuinely safe to pin forever (logos, manifest
+// files, the offline fallback page) belong in this list now.
+// index.html now falls through to the networkFirstHTML() branch
+// further down (always fetches fresh, only falls back to cache if
+// offline). script.js/style.css/etc. now fall through to
+// staleWhileRevalidate() at the bottom (serves cache instantly if
+// present, but ALWAYS also fetches network in the background and
+// updates the cache for next time — self-healing instead of
+// permanently stuck).
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/Offline.html',
-  '/style.css',
-  '/mobile-fixes.css',
-  '/desktop.css',
-  '/script.js',
-  '/chatbot.js',
-  '/pzchatbot.js',
-  '/pzchatbot.css',
   '/manifest.json',
-  '/driver.html',
   '/driver-manifest.json',
   '/assets/logo/packzen-logo.png',
   '/assets/logo/packzen-og.png',
