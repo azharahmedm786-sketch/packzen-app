@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://apis.google.com https://accounts.google.com; frame-src https://checkout.razorpay.com https://accounts.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com; frame-src https://checkout.razorpay.com;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <title>Packers & Movers in Bangalore | House Shifting | PackZen</title>
@@ -1618,23 +1618,6 @@
     <div id="signupOtpError" class="auth-error"></div>
     <button class="btn-auth" id="btnVerifySignupOtp" onclick="verifySignupOtp()" style="margin-top:16px;">Verify & Create Account</button>
     <p class="auth-link" onclick="resendSignupOtp()">Didn't get the code? Resend</p>
-  </div>
-</div>
-
-<!-- LINK ACCOUNT MODAL — shown when Google/Apple sign-in hits
-     auth/account-exists-with-different-credential (see PRIORITY 2/3
-     fix in script.js: _handleProviderConflict / confirmLinkAccount) -->
-<div id="linkAccountModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:99999;">
-  <div class="auth-panel" style="display:flex; flex-direction:column; position:relative; max-width:400px; width:90%; background:var(--panel-bg, #fff);">
-    <button class="modal-x" onclick="closeLinkAccountModal()">✕</button>
-    <div class="auth-logo"><i data-lucide="link"></i></div>
-    <h2 class="auth-title">Link Your Account</h2>
-    <p class="auth-sub">An account already exists for <strong id="linkAccountEmail"></strong> with a password. Sign in with that password to link <strong id="linkAccountProviderLabel"></strong> to it.</p>
-    <label>Existing Password</label>
-    <input id="linkAccountPassword" type="password" placeholder="Enter your existing password" class="field-input" onkeydown="if(event.key==='Enter')confirmLinkAccount()">
-    <div id="linkAccountError" class="auth-error"></div>
-    <button class="btn-auth" id="btnConfirmLinkAccount" onclick="confirmLinkAccount()" style="margin-top:16px;">Sign In & Link →</button>
-    <p class="auth-link" onclick="closeLinkAccountModal()">Cancel</p>
   </div>
 </div>
 
