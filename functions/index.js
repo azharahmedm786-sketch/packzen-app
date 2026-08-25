@@ -367,7 +367,19 @@ exports.createRazorpayOrder = functions
 
     return cors(req, res, async () => {
 
+      if (req.method === "OPTIONS") return res.status(204).send("");
+
       try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+          return res.status(401).json({ error: "Unauthorized" });
+        }
+        const token = authHeader.split("Bearer ")[1];
+        try {
+          await admin.auth().verifyIdToken(token);
+        } catch (e) {
+          return res.status(401).json({ error: "Invalid or expired token" });
+        }
 
         const razorpay = new Razorpay({
           key_id: RAZORPAY_KEY_ID.value(),

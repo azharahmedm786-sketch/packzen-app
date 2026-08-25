@@ -1610,8 +1610,9 @@ async function startPayment() {
   if (!window._lastQuoteRawInput) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
   try {
+    const token = await currentUser.getIdToken();
     const orderResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/createRazorpayOrder", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
       body: JSON.stringify({
         quoteInput: window._lastQuoteRawInput,
         paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
