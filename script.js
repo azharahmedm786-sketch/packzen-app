@@ -1610,8 +1610,9 @@ async function startPayment() {
   if (!window._lastQuoteRawInput) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
   try {
+    const token = await currentUser.getIdToken();
     const orderResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/createRazorpayOrder", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
       body: JSON.stringify({
         quoteInput: window._lastQuoteRawInput,
         paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
@@ -1766,7 +1767,12 @@ window.PackZenShared.createBooking = async function(payload, onComplete, onError
     return;
   }
   try {
-    const docRef = await window._firebase.db.collection("bookings").add(payload);
+    if (!window._firebase.functions) {
+        throw new Error("Cloud Functions not initialized.");
+    }
+    const createBookingCallable = window._firebase.functions.httpsCallable("createBooking");
+    const result = await createBookingCallable({ quoteInput: window._lastQuoteRawInput, bookingDetails: payload });
+    const docId = result.data.docId;
 
     // Attempt notifications in background
     try {
@@ -1786,11 +1792,11 @@ window.PackZenShared.createBooking = async function(payload, onComplete, onError
         payload.date || "TBD",
         payload.total,
         payload.paymentType,
-        payload.source || "online" // Fallback to online if missing
+        payload.source || "online"
       );
     } catch(e) {}
 
-    if (onComplete) onComplete(docRef.id);
+    if (onComplete) onComplete(docId);
   } catch(err) {
     if (onError) onError(err);
   }
