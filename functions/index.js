@@ -15,6 +15,7 @@ const { BREVO_SECRETS } = require("./brevo-client");
 
 const { defineSecret } = require("firebase-functions/params");
 const MSG91_AUTHKEY       = defineSecret("MSG91_AUTHKEY");
+const GOOGLE_MAPS_KEY     = defineSecret("GOOGLE_MAPS_KEY");
 const RAZORPAY_KEY_ID     = defineSecret("RAZORPAY_KEY_ID");
 const RAZORPAY_KEY_SECRET = defineSecret("RAZORPAY_KEY_SECRET");
 /* ============================================================
@@ -235,6 +236,65 @@ const cors = require("cors")({
 // rule can't drift between client and server. This is the ONLY function
 // allowed to decide what gets charged; nothing else should read a total
 // off the request body.
+async function getGoogleMapsDistance(pickup, drop) {
+  if (!pickup || !drop) return 0;
+  try {
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(pickup)}&destinations=${encodeURIComponent(drop)}&key=${GOOGLE_MAPS_KEY.value()}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status === "OK" && data.rows[0].elements[0].status === "OK") {
+      return data.rows[0].elements[0].distance.value / 1000;
+    }
+  } catch (err) {
+    console.error("Google Maps Distance API error:", err);
+  }
+  return 0;
+}
+
+async function calculateServerQuote(quoteInput, pickup, drop) {
+  const computedKm = await getGoogleMapsDistance(pickup, drop);
+  if (computedKm > 0) {
+    quoteInput.km = computedKm;
+  } else if (quoteInput.km) {
+    if (computedKm === 0) {
+      throw new Error("Could not calculate distance server-side.");
+    }
+  }
+  // Strict sanitization of quantities
+  if (quoteInput.furniture) {
+    for (const [key, qty] of Object.entries(quoteInput.furniture)) {
+      const parsedQty = parseInt(qty, 10) || 0;
+      if (parsedQty < 0) throw new Error("Invalid item quantity.");
+      quoteInput.furniture[key] = parsedQty;
+    }
+  }
+
+  quoteInput.cartonQty = parseInt(quoteInput.cartonQty, 10) || 0;
+  if (quoteInput.cartonQty < 0) throw new Error("Invalid item quantity.");
+
+  quoteInput.pickupFloor = parseInt(quoteInput.pickupFloor, 10) || 0;
+  if (quoteInput.pickupFloor < 0) throw new Error("Invalid floor count.");
+
+  quoteInput.dropFloor = parseInt(quoteInput.dropFloor, 10) || 0;
+  if (quoteInput.dropFloor < 0) throw new Error("Invalid floor count.");
+
+  // Check if vehicle exists
+  if (quoteInput.vehicleId && !PackZenPricing.vehicles[quoteInput.vehicleId]) {
+     throw new Error("Unknown vehicle ID.");
+  }
+
+  const validation = PackZenPricing.validateInput(quoteInput);
+  if (!validation.valid) {
+    throw new Error("Validation error: " + validation.errors.join(", "));
+  }
+
+  const quote = PackZenPricing.calculateQuote(quoteInput);
+  if (!quote.valid) {
+    throw new Error("Pricing error: " + quote.errors.join(", "));
+  }
+  return quote;
+}
+
 function computePayAmount(quote, paymentType) {
   if (!quote || !quote.valid || !quote.paymentOptions) return null;
   const opts = quote.paymentOptions;
@@ -244,9 +304,65 @@ function computePayAmount(quote, paymentType) {
   return null;
 }
 
+exports.createBooking = functions
+  .region("asia-south1")
+  .runWith({ secrets: [GOOGLE_MAPS_KEY] })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Must be logged in to create a booking.");
+    }
+
+    const { quoteInput, bookingDetails } = data;
+    if (!quoteInput || !bookingDetails || !bookingDetails.pickup || !bookingDetails.drop) {
+      throw new functions.https.HttpsError("invalid-argument", "Missing required booking input.");
+    }
+
+    if (bookingDetails.bookingRef) {
+      const existingSnap = await admin.firestore().collection("bookings")
+        .where("bookingRef", "==", bookingDetails.bookingRef)
+        .where("customerUid", "==", context.auth.uid)
+        .limit(1).get();
+      if (!existingSnap.empty) {
+        return { docId: existingSnap.docs[0].id, duplicate: true };
+      }
+    }
+
+    let quote;
+    try {
+      quote = await calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop);
+    } catch (e) {
+      throw new functions.https.HttpsError("invalid-argument", e.message);
+    }
+
+    const safeFields = [
+      "bookingRef", "customerName", "phone", "altPhone", "email", "pickup", "drop",
+      "date", "shiftTime", "shiftTimeLabel", "moveType", "house", "vehicle", "furniture",
+      "pickupFloor", "dropFloor", "liftAvailable", "packingService", "unpackingService",
+      "dismantling", "assembly", "storageNeeded", "storageDays", "fragileItems",
+      "specialItems", "remarks", "paymentType", "source", "isIntercity", "deliveryOtp",
+      "photos"
+    ];
+
+    const finalPayload = {};
+    for (const key of safeFields) {
+      if (bookingDetails[key] !== undefined) finalPayload[key] = bookingDetails[key];
+    }
+
+    finalPayload.customerUid = context.auth.uid;
+    finalPayload.total = quote.finalTotal;
+    finalPayload.distance = quote.km;
+    finalPayload.originalTotal = quote.finalTotal;
+    finalPayload.quoteBreakdown = quote.breakdown;
+    finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
+    finalPayload.status = "confirmed"; // Enforce safe initial status
+
+    const docRef = await admin.firestore().collection("bookings").add(finalPayload);
+    return { docId: docRef.id };
+  });
+
 exports.createRazorpayOrder = functions
   .region("asia-south1")
-  .runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, GOOGLE_MAPS_KEY] })
   .https.onRequest((req, res) => {
 
     return cors(req, res, async () => {
@@ -278,12 +394,12 @@ exports.createRazorpayOrder = functions
         // furniture, floors, etc.) using the same pricing engine, and
         // that is the number that gets charged. A manipulated
         // `amount`/`total` sent by the client is never used.
-        const quote = PackZenPricing.calculateQuote(quoteInput);
-        if (!quote.valid) {
-          return res.status(400).json({
-            error: "Could not price this booking",
-            details: quote.errors
-          });
+
+        let quote;
+        try {
+          quote = await calculateServerQuote(quoteInput, pickup, drop);
+        } catch (e) {
+          return res.status(400).json({ error: e.message });
         }
 
         const safeAmount = computePayAmount(quote, paymentType);

@@ -141,7 +141,7 @@ service cloud.firestore {
       // customer), so the New Booking module in
       // advisor-dashboard-patch.js needs its own create path.
       allow create: if isAuth()
-        && (request.resource.data.customerUid == request.auth.uid || isAdvisor() || isAdmin());
+        && (isAdvisor() || isAdmin());
 
      allow update: if isAuth()
         && resource.data.customerUid == request.auth.uid
