@@ -11,7 +11,7 @@
    setup. All are wrapped so a notification failure NEVER throws
    past the trigger boundary — booking flow is never blocked.
    ============================================================ */
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 // admin.initializeApp() is already called in your existing index.js.
 // Do not call it again here — Firebase will throw "app already exists".
