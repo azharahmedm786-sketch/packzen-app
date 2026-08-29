@@ -6,7 +6,7 @@
    verifySignupOtpBrevo succeeds — see that function below for
    the full server-side signup flow.
    ============================================================ */
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin     = require("firebase-admin");
 const { defineString } = require("firebase-functions/params");
 const { sendBrevoEmail, BREVO_SECRETS } = require("./brevo-client");
