@@ -6,14 +6,14 @@ Pricing Engine: v4.2.0 (pricing-engine-v2.js) — exposed as window.PackZenPrici
 
 // ─── GLOBAL STATE ───────────────────────────────────
 let pickupPlace = null, dropPlace = null;
-let map = null, directionsService = null, directionsRenderer = null; 
+let map = null, directionsService = null, directionsRenderer = null;
 let pickupMarker = null, dropMarker = null;
 let lastCalculatedTotal = 0;
 let paymentReceiptId = "";
 let confirmationResult = null;
 let pendingSignupData = null;
 let currentUser = null;
-let promoDiscount = 0; 
+let promoDiscount = 0;
 let selectedPayment = "at_drop";
 let isProcessingPayment = false;
 let currentRating = 0;
@@ -363,7 +363,7 @@ function renderSizeCards(type) {
     const card = document.createElement("div");
     card.className = "select-card";
     card.dataset.value = s.value;
-card.innerHTML = `<div class="sc-label">${s.label}</div><div class="sc-sub">${s.sub}</div>`;    
+card.innerHTML = `<div class="sc-label">${s.label}</div><div class="sc-sub">${s.sub}</div>`;
     card.addEventListener("click", () => {
       container.querySelectorAll(".select-card").forEach(c => c.classList.remove("selected"));
       card.classList.add("selected");
@@ -520,7 +520,7 @@ VEHICLE CARD SELECTION
 function selectCard(el, type, value) {
   const select = document.getElementById(type);
   if (select) select.value = value;
-  const parent = el.closest(type === "house" ? ".select-cards" : ".vehicle-cards"); 
+  const parent = el.closest(type === "house" ? ".select-cards" : ".vehicle-cards");
   if (parent) {
     const selector = type === "house" ? ".select-card" : ".vehicle-card";
     parent.querySelectorAll(selector).forEach(c => c.classList.remove("selected"));
@@ -1610,9 +1610,8 @@ async function startPayment() {
   if (!window._lastQuoteRawInput) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
   try {
-    const token = await currentUser.getIdToken();
     const orderResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/createRazorpayOrder", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         quoteInput: window._lastQuoteRawInput,
         paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
@@ -1767,12 +1766,7 @@ window.PackZenShared.createBooking = async function(payload, onComplete, onError
     return;
   }
   try {
-    if (!window._firebase.functions) {
-        throw new Error("Cloud Functions not initialized.");
-    }
-    const createBookingCallable = window._firebase.functions.httpsCallable("createBooking");
-    const result = await createBookingCallable({ quoteInput: window._lastQuoteRawInput, bookingDetails: payload });
-    const docId = result.data.docId;
+    const docRef = await window._firebase.db.collection("bookings").add(payload);
 
     // Attempt notifications in background
     try {
@@ -1792,11 +1786,11 @@ window.PackZenShared.createBooking = async function(payload, onComplete, onError
         payload.date || "TBD",
         payload.total,
         payload.paymentType,
-        payload.source || "online"
+        payload.source || "online" // Fallback to online if missing
       );
     } catch(e) {}
 
-    if (onComplete) onComplete(docId);
+    if (onComplete) onComplete(docRef.id);
   } catch(err) {
     if (onError) onError(err);
   }
@@ -2092,7 +2086,7 @@ function updateTrackBanner(b) {
   if (b.status === "delivered" && banner) {
     banner.style.background = "linear-gradient(135deg,#15803d,#16a34a)";
 
-    
+
     const title = banner.querySelector(".tob-title");
     if (title) title.textContent = "🎉 Your Move is Complete!";
   }
@@ -2580,7 +2574,7 @@ function roleRedirectMessage(role) {
   return map[role] || "⚠️ This account cannot sign in here. Please use the correct portal.";
 }
 
-function getAuthErrorMessage(code) { 
+function getAuthErrorMessage(code) {
   const map = {
     "auth/user-not-found": "⚠️ No account found. Please sign up first.",
     "auth/wrong-password": "⚠️ Incorrect password. Please try again.",
@@ -2777,6 +2771,47 @@ async function signOutUser() {
   });
 }
 
+function showCompletePhoneModal() {
+  const m = document.getElementById("completePhoneModal");
+  if (m) m.style.display = "flex";
+}
+window.closeCompletePhoneModal = function () {
+  const m = document.getElementById("completePhoneModal");
+  if (m) m.style.display = "none";
+};
+window.saveCompletePhone = async function () {
+  const input = document.getElementById("completePhoneInput");
+  const errEl = document.getElementById("completePhoneError");
+  const phone = (input?.value || "").trim();
+  if (!/^\d{10}$/.test(phone)) {
+    if (errEl) errEl.textContent = "Enter a valid 10-digit phone number.";
+    return;
+  }
+  try {
+    const { auth, db } = window._firebase;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    await db.collection("users").doc(uid).update({ phone });
+    closeCompletePhoneModal();
+    showToast("📱 Phone number saved!");
+  } catch (e) {
+    if (errEl) errEl.textContent = "Could not save right now — please try again.";
+  }
+};
+// After OAuth sign-in, Google/Apple never supply a phone number, so the
+// user's own /users doc may have phone empty. Check once and prompt —
+// this only ever reads/writes the signed-in user's own doc, which
+// Firestore rules already allow (isOwner(uid) update, no role change).
+async function checkAndPromptPhone() {
+  try {
+    const { auth, db } = window._firebase;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const snap = await db.collection("users").doc(uid).get();
+    const phone = snap.data()?.phone;
+    if (!phone) showCompletePhoneModal();
+  } catch (e) { /* non-blocking — never let this break sign-in */ }
+}
 async function _handleOAuthUser(functionsRef) {
   // Profile creation/merge happens server-side (syncOAuthUserProfile) via
   // the Admin SDK — provider identity is read from the verified ID token,
@@ -2805,6 +2840,7 @@ window.signInWithGoogle = async function () {
       closeAuthModal();
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
       showToast(`👋 Welcome, ${name}!`);
+      checkAndPromptPhone();
     } catch (err) {
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
@@ -2830,7 +2866,8 @@ const result = await auth.signInWithPopup(provider);
       }
       closeAuthModal();
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
-      showToast(`👋 Welcome, ${name}!`);
+          showToast(`👋 Welcome, ${name}!`);
+      checkAndPromptPhone();
     } catch (err) {
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
@@ -3123,7 +3160,7 @@ ${canClaim?`<button class="bk-btn claim" data-action="claim" data-id="${id}" dat
 <button class="bk-btn invoice" onclick="downloadInvoice('${id}')" style="background:#0ea5e9;color:white;border:none;">📄 Invoice</button>
 <button class="bk-btn email" onclick="emailInvoice('${id}')" style="background:#0284c7;color:white;border:none;">✉️ Email</button>
 
-`:""} 
+`:""}
 </div>`;
       }).join("");
       attachBookingButtonListeners();
@@ -3936,7 +3973,7 @@ async function submitNewPassword() {
   const urlParams = new URLSearchParams(window.location.search);
   const oobCode = urlParams.get('oobCode');
   const newPassword = document.getElementById('newPasswordInput').value;
-  const confirmPassword = document.getElementById('newPasswordConfirmInput').value; 
+  const confirmPassword = document.getElementById('newPasswordConfirmInput').value;
   const btn = document.getElementById('btnSubmitNewPassword');
 
   if (!newPassword || newPassword.length < 6) {
