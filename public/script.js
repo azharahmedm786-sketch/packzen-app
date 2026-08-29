@@ -2771,6 +2771,47 @@ async function signOutUser() {
   });
 }
 
+function showCompletePhoneModal() {
+  const m = document.getElementById("completePhoneModal");
+  if (m) m.style.display = "flex";
+}
+window.closeCompletePhoneModal = function () {
+  const m = document.getElementById("completePhoneModal");
+  if (m) m.style.display = "none";
+};
+window.saveCompletePhone = async function () {
+  const input = document.getElementById("completePhoneInput");
+  const errEl = document.getElementById("completePhoneError");
+  const phone = (input?.value || "").trim();
+  if (!/^\d{10}$/.test(phone)) {
+    if (errEl) errEl.textContent = "Enter a valid 10-digit phone number.";
+    return;
+  }
+  try {
+    const { auth, db } = window._firebase;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    await db.collection("users").doc(uid).update({ phone });
+    closeCompletePhoneModal();
+    showToast("📱 Phone number saved!");
+  } catch (e) {
+    if (errEl) errEl.textContent = "Could not save right now — please try again.";
+  }
+};
+// After OAuth sign-in, Google/Apple never supply a phone number, so the
+// user's own /users doc may have phone empty. Check once and prompt —
+// this only ever reads/writes the signed-in user's own doc, which
+// Firestore rules already allow (isOwner(uid) update, no role change).
+async function checkAndPromptPhone() {
+  try {
+    const { auth, db } = window._firebase;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const snap = await db.collection("users").doc(uid).get();
+    const phone = snap.data()?.phone;
+    if (!phone) showCompletePhoneModal();
+  } catch (e) { /* non-blocking — never let this break sign-in */ }
+}
 async function _handleOAuthUser(functionsRef) {
   // Profile creation/merge happens server-side (syncOAuthUserProfile) via
   // the Admin SDK — provider identity is read from the verified ID token,
@@ -2799,6 +2840,7 @@ window.signInWithGoogle = async function () {
       closeAuthModal();
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
       showToast(`👋 Welcome, ${name}!`);
+      checkAndPromptPhone();
     } catch (err) {
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
@@ -2824,7 +2866,8 @@ const result = await auth.signInWithPopup(provider);
       }
       closeAuthModal();
       const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
-      showToast(`👋 Welcome, ${name}!`);
+          showToast(`👋 Welcome, ${name}!`);
+      checkAndPromptPhone();
     } catch (err) {
       if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
       else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
