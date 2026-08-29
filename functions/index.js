@@ -348,16 +348,17 @@ exports.createBooking = functions
       if (bookingDetails[key] !== undefined) finalPayload[key] = bookingDetails[key];
     }
 
-    finalPayload.customerUid = context.auth.uid;
+      finalPayload.customerUid = context.auth.uid;
     finalPayload.total = quote.finalTotal;
     finalPayload.distance = quote.km;
     finalPayload.originalTotal = quote.finalTotal;
     finalPayload.quoteBreakdown = quote.breakdown;
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
     finalPayload.status = "confirmed"; // Enforce safe initial status
+    finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
 
     const docRef = await admin.firestore().collection("bookings").add(finalPayload);
-    return { docId: docRef.id };
+    return { docId: docRef.id, total: quote.finalTotal };
   });
 
 exports.createRazorpayOrder = functions
