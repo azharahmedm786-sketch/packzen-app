@@ -12,7 +12,7 @@
    schedule) — no extra npm packages needed beyond what you
    already have in package.json.
    ============================================================ */
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const { sendCustomerEmail } = require("./notification-service");
 const { BREVO_SECRETS } = require("./brevo-client");
