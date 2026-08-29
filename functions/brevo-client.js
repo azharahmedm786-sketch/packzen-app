@@ -6,7 +6,7 @@
    Set the key with:
    firebase functions:config:set brevo.apikey="YOUR_BREVO_API_KEY" brevo.senderemail="no-reply@packzenblr.in" brevo.sendername="PackZen Packers & Movers"
    ============================================================ */
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const https = require("https");
 const { defineSecret } = require("firebase-functions/params");
 
