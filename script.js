@@ -1690,111 +1690,16 @@ async function startPayment() {
   }
 }
 
-function onPaymentSuccess(response, name, phone, email, paid, total) {
-  const pickup = document.getElementById("pickup");
-  const drop = document.getElementById("drop");
-  const shiftDate = document.getElementById("shiftDate");
-  const houseEl = document.getElementById("house");
-  const vehicleEl = document.getElementById("vehicle");
-  const bookingRef = "PKZ-" + Date.now().toString(36).toUpperCase();
-  showConfirmationCard({
-    bookingRef, name, phone, pickup: pickup?.value || "—", drop: drop?.value || "—", date: shiftDate?.value || "TBD",
-    house: houseEl?.options[houseEl?.selectedIndex]?.text || "—", vehicle: vehicleEl?.options[vehicleEl?.selectedIndex]?.text || "—",
-    total, paymentLabel: selectedPayment === "full" ? `Paid Full — ₹${paid.toLocaleString("en-IN")}` : `Advance ₹${paid.toLocaleString("en-IN")} paid`,
-    paymentNote: `Payment ID: ${response.razorpay_payment_id}`, source: "payment", showInvoice: true
-  });
- if (window._firebase) {
-    const activeUser = currentUser || window._firebase?.auth?.currentUser;
-    const discountedTotal = _getDiscountedTotal();
-    const payload = {
-      bookingRef, customerUid: activeUser?.uid, customerName: name,
-      phone,
-      altPhone: document.getElementById("custAltPhone")?.value.trim() || "",
-      email,
-      pickup: pickup?.value || "", drop: drop?.value || "", moveType: selectedMoveType,
-      house: houseEl?.options[houseEl?.selectedIndex]?.text || "",
-      vehicle: vehicleEl?.options[vehicleEl?.selectedIndex]?.text || "",
-      furniture: getFurnitureSummary(),
-      pickupFloor: document.getElementById("pickupFloor")?.options[document.getElementById("pickupFloor")?.selectedIndex]?.text || "",
-      dropFloor: document.getElementById("dropFloor")?.options[document.getElementById("dropFloor")?.selectedIndex]?.text || "",
-      liftAvailable: !!document.getElementById("liftAvailable")?.checked,
-      packingService: !!document.getElementById("packingService")?.checked,
-      unpackingService: !!document.getElementById("unpackingService")?.checked,
-      dismantling: !!document.getElementById("dismantlingService")?.checked,
-      assembly: !!document.getElementById("assemblyService")?.checked,
-storageNeeded: !!document.getElementById("storageService")?.checked,
-    storageDays: parseInt(document.getElementById("storageDays")?.value || 0, 10),
-      fragileItems: document.getElementById("custFragileItems")?.value.trim() || "",
-      specialItems: document.getElementById("custSpecialItems")?.value.trim() || "",
-      remarks: document.getElementById("custRemarks")?.value.trim() || "",
-      total: discountedTotal,
-      originalTotal: lastCalculatedTotal,
-      paid,
-      paymentType: selectedPayment,
-      promoDiscount,
-      date: shiftDate?.value || "",
-      shiftTime: document.getElementById("shiftTime")?.value || "",
-      shiftTimeLabel: document.getElementById("shiftTimeLabel")?.value || "",
-      status: "confirmed",
-      source: "payment",
-      isIntercity: isIntercityMove,
-      distance: window._lastCalculatedKm || 0,
-      quoteBreakdown: window._lastQuoteResult?.breakdown || null,
-      paymentId: response.razorpay_payment_id,
-     photos: uploadedPhotos.slice(0, 3),
-      deliveryOtp: generateDeliveryOtp(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    window.PackZenShared.createBooking(payload, (docId) => {
-      currentBookingId = docId;
-      localStorage.setItem("packzen_active_booking", docId);
-      requestPushPermission();
-      subscribeToBookingNotifications(docId);
-    }, (err) => {
-      console.error("BOOKING SAVE FAILED:", err);
-      showToast("❌ Booking save failed: " + err.message);
-    });
-  }
-}
-
-/* ============================================
-SHARED BOOKING CREATION LOGIC
-============================================ */
-window.PackZenShared.createBooking = async function(payload, onComplete, onError) {
-  if (!window._firebase) {
-    if (onError) onError(new Error("Firebase not ready."));
-    return;
-  }
-  try {
-    const docRef = await window._firebase.db.collection("bookings").add(payload);
-
-    // Attempt notifications in background
-    try {
-      queueSMS(payload.phone, "booking_confirmed", {
-        name: payload.customerName,
-        bookingRef: payload.bookingRef,
-        date: payload.date || "TBD",
-        pickup: payload.pickup || "",
-        total: payload.total
-      });
-      notifyOwner(
-        payload.bookingRef,
-        payload.customerName,
-        payload.phone,
-        payload.pickup || "—",
-        payload.drop || "—",
-        payload.date || "TBD",
-        payload.total,
-        payload.paymentType,
-        payload.source || "online" // Fallback to online if missing
-      );
-    } catch(e) {}
-
-    if (onComplete) onComplete(docRef.id);
-  } catch(err) {
-    if (onError) onError(err);
-  }
-};
+// NOTE: the old onPaymentSuccess()/PackZenShared.createBooking() pair that
+// used to live here has been removed — it wrote a client-computed `total`
+// straight to Firestore with no server-side re-pricing, and was a dead
+// code path (never actually called from the live payment flow, which
+// goes through startPayment() -> createRazorpayOrder/verifyRazorpayPayment
+// instead). Removed rather than left in place so it can't accidentally
+// get wired back up later. notifyOwner() below is kept — currently unused
+// since its only caller was in the removed block, but it's a real,
+// working n8n owner-notification feature that's worth wiring back into
+// the live booking paths if wanted, not something to delete.
 
 /* ============================================
 NOTIFY OWNER
@@ -1841,14 +1746,22 @@ function bookWithoutPayment() {
   const btn = document.querySelector(".btn-pay");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Saving..."; }
 
-  const houseEl = document.getElementById("house");
+   const houseEl = document.getElementById("house");
   const vehicleEl = document.getElementById("vehicle");
-  // Use v2 engine total as the canonical total
-  const discountedTotal = _getDiscountedTotal();
 
- const payload = {
+  if (!window._lastQuoteRawInput) {
+    showToast("⚠️ Price not calculated yet.");
+    if (btn) { btn.disabled = false; btn.textContent = "📋 Confirm Booking · Pay on Delivery"; }
+    return;
+  }
+
+  // Price is NOT taken from the client here. quoteInput is the same raw
+  // engine input already used for the paid flow (createRazorpayOrder) —
+  // the server re-runs the pricing engine on it and that recomputed total
+  // is what actually gets stored, so nothing in bookingDetails below can
+  // change what the booking is worth.
+  const bookingDetails = {
     bookingRef,
-    customerUid: activeUser.uid,
     customerName: name,
     phone,
     altPhone: document.getElementById("custAltPhone")?.value.trim() || "",
@@ -1874,28 +1787,30 @@ function bookWithoutPayment() {
     fragileItems: document.getElementById("custFragileItems")?.value.trim() || "",
     specialItems: document.getElementById("custSpecialItems")?.value.trim() || "",
     remarks: document.getElementById("custRemarks")?.value.trim() || "",
-    total: discountedTotal,
-    originalTotal: lastCalculatedTotal,
-    paid: 0,
     paymentType: "pay_later",
-    status: "confirmed",
     source: "direct",
-    promoDiscount,
-    distance: window._lastCalculatedKm || 0,
-    quoteBreakdown: window._lastQuoteResult?.breakdown || null,
-   photos: uploadedPhotos.slice(0, 3),
+    isIntercity: !!isIntercityMove,
     deliveryOtp: generateDeliveryOtp(),
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    photos: uploadedPhotos.slice(0, 3)
   };
 
-  window.PackZenShared.createBooking(payload, (docId) => {
+  window._firebase.functions.httpsCallable("createBooking")({
+    quoteInput: window._lastQuoteRawInput,
+    bookingDetails
+  }).then((result) => {
+    const docId = result?.data?.docId;
     currentBookingId = docId;
-    localStorage.setItem("packzen_active_booking", docId);
+    if (docId) localStorage.setItem("packzen_active_booking", docId);
 
     if (btn) {
       btn.disabled = false;
       btn.textContent = "📋 Confirm Booking · Pay on Delivery";
     }
+
+    // Server-computed total (from the same pricing engine + Distance
+    // Matrix call the server just ran) — this is what's actually stored,
+    // so it's what we show back to the customer, not the client guess.
+    const serverTotal = result?.data?.total ?? _getDiscountedTotal();
 
     showConfirmationCard({
       bookingRef,
@@ -1906,7 +1821,7 @@ function bookWithoutPayment() {
       date,
       house: houseEl?.options[houseEl?.selectedIndex]?.text || "—",
       vehicle: vehicleEl?.options[vehicleEl?.selectedIndex]?.text || "—",
-      total: discountedTotal,
+      total: serverTotal,
       paymentLabel: "Cash on moving day",
       paymentNote: "Pay full amount to driver on moving day",
       source: "direct",
@@ -1921,7 +1836,7 @@ function bookWithoutPayment() {
       btn.disabled = false;
       btn.textContent = "📋 Confirm Booking · Pay on Delivery";
     }
-    showToast("❌ Booking failed: " + err.message);
+    showToast("❌ Booking failed: " + (err.message || "Please try again."));
   });
 }
 
