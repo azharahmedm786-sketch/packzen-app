@@ -13,7 +13,7 @@
    requires: provider detection must come from Firebase Auth, not
    from data the client hands us.
    ============================================================ */
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin     = require("firebase-admin");
 
 const PROVIDER_MAP = { "google.com": "google", "apple.com": "apple" };
