@@ -1173,6 +1173,19 @@
 </div>
 
 <!-- AUTH MODAL -->
+<!-- COMPLETE PROFILE (PHONE) MODAL -->
+<div id="completePhoneModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <h2 class="modal-title"><i data-lucide="phone"></i> One quick thing</h2>
+    <p class="modal-sub">Google doesn't share a phone number with us — add yours so we can reach you about your move.</p>
+    <input id="completePhoneInput" class="field-input" type="tel" placeholder="10-digit phone number" style="margin-bottom:10px;" maxlength="10">
+    <div id="completePhoneError" style="color:#b91c1c;font-size:0.82rem;min-height:18px;margin-bottom:6px;"></div>
+    <button class="btn-auth" onclick="saveCompletePhone()">Save</button>
+    <button type="button" onclick="closeCompletePhoneModal()" style="width:100%;background:none;border:none;color:var(--text-secondary);font-size:0.85rem;margin-top:10px;cursor:pointer;">Skip for now</button>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
 <div id="authModal" class="modal-overlay" role="dialog" aria-modal="true" style="display:none;">
   <div class="modal-box auth-modal-box">
     <div class="auth-panel" id="panelLogin">
