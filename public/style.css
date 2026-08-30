@@ -1820,7 +1820,10 @@ select.field-input {
 .ti-row.muted { opacity: 0.65; font-size: 0.72rem; padding: 0.35rem 0; }
 .ti-row.muted .ti-val { font-weight: 600; }
 .ti-sub { display: block; color: var(--text-muted); font-size: 0.68rem; font-weight: 600; margin-top: 2px; }
-.ti-row.route .ti-val { display: flex; align-items: center; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.ti-row.route .ti-val { display: flex; align-items: flex-end; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.route-val { display: flex !important; flex-direction: column; align-items: flex-end; gap: 2px; max-width: 220px; }
+.route-val span:first-child { position: relative; }
+.route-val span:first-child::after { content: '↓'; display: block; text-align: right; color: var(--text-muted); font-weight: 400; }
 .btn-open-chat { width: 100%; margin-top: 1rem; padding: 0.875rem; background: #2F9E5C; color: #fff; border: none; border-radius: var(--radius-pill); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; box-shadow: var(--gold-glow); }
 
 /* Chat */
