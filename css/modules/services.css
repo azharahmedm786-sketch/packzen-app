@@ -1,0 +1,151 @@
+/* ================================================
+   services.css — PackZen Service & Locality Pages
+   Additive-only stylesheet. Reuses brand variables
+   defined in style.css. Does not modify or override
+   any existing app/dashboard/booking styles.
+   ================================================ */
+
+/* Breadcrumb navigation */
+.svc-breadcrumb {
+  max-width: 1100px;
+  margin: 0.75rem auto 0;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.svc-breadcrumb a { color: var(--green-600); text-decoration: none; }
+.svc-breadcrumb a:hover { text-decoration: underline; }
+.svc-breadcrumb span[aria-hidden="true"] { color: var(--text-muted); }
+.svc-breadcrumb .current { color: var(--text-secondary); font-weight: 600; }
+
+/* Shared content section wrapper (mirrors .home-section spacing on a static page) */
+.svc-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.75rem 1rem;
+}
+.svc-section h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+.svc-section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--green-600);
+  margin: 1.25rem 0 0.5rem;
+}
+.svc-section p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 0.9rem;
+  font-size: 0.96rem;
+}
+.svc-section ul { padding-left: 1.25rem; margin-bottom: 0.9rem; }
+.svc-section li { color: var(--text-secondary); line-height: 1.7; margin-bottom: 0.4rem; font-size: 0.96rem; }
+
+/* Feature / process grid */
+.svc-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem;
+  margin: 1rem 0 1.5rem;
+}
+.svc-feature-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  box-shadow: var(--shadow-xs);
+}
+.svc-feature-card i { color: var(--green-600); margin-bottom: 0.4rem; }
+.svc-feature-card h4 { font-size: 0.92rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem; }
+.svc-feature-card p { font-size: 0.85rem; margin-bottom: 0; }
+
+/* Numbered process steps */
+.svc-steps { counter-reset: svc-step; margin: 1rem 0 1.5rem; }
+.svc-step { position: relative; padding-left: 2.5rem; margin-bottom: 1.1rem; }
+.svc-step::before {
+  counter-increment: svc-step;
+  content: counter(svc-step);
+  position: absolute; left: 0; top: 0;
+  width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  background: var(--green-600); color: #fff;
+  font-weight: 700; font-size: 0.85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.svc-step h4 { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.2rem; }
+.svc-step p { font-size: 0.88rem; margin-bottom: 0; }
+
+/* Related services grid */
+.svc-related-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.svc-related-card {
+  display: block;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem;
+  text-decoration: none;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.svc-related-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.svc-related-card .svc-related-title { font-size: 0.88rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.2rem; }
+.svc-related-card .svc-related-sub { font-size: 0.78rem; color: var(--text-muted); }
+
+/* Final CTA banner */
+.svc-cta-banner {
+  max-width: 1100px;
+  margin: 1.5rem auto 2rem;
+  padding: 1.75rem 1.25rem;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--navy-800), var(--navy-900));
+  color: #fff;
+  text-align: center;
+}
+.svc-cta-banner h2 { color: #fff; }
+.svc-cta-banner p { color: #cbd5e1; }
+.svc-cta-actions { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+
+/* Sticky mobile CTA bar (replaces app bottom-nav on lightweight content pages) */
+.svc-sticky-cta {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
+  box-shadow: 0 -4px 16px rgba(6,14,36,0.08);
+  z-index: 500;
+}
+.svc-sticky-cta a {
+  flex: 1;
+  text-align: center;
+  padding: 0.7rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+}
+.svc-sticky-cta .svc-cta-call { background: var(--bg-secondary); color: var(--text-primary); }
+.svc-sticky-cta .svc-cta-quote { background: var(--green-600); color: #fff; }
+body { padding-bottom: 4.5rem; }
+
+@media (min-width: 1024px) {
+  .svc-sticky-cta { display: none; }
+  body { padding-bottom: 0; }
+  .svc-feature-grid { grid-template-columns: repeat(4, 1fr); }
+  .svc-related-grid { grid-template-columns: repeat(3, 1fr); }
+  .svc-cta-actions { flex-direction: row; justify-content: center; }
+}

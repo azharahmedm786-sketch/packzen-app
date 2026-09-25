@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>PackZen — Advisor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow,noarchive"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0a0c0f;
+      --surface:  #111418; 
+      --surface2: #181c22;
+      --border:   #232830;
+      --border2:  #2e3540;
+      --gold:     #f5a623;
+      --gold2:    #ffd166;
+      --blue:     #3d9cf5;
+      --green:    #00d17a;
+      --red:      #ff4f5e;
+      --purple:   #9b72f5;
+      --text:     #e8ecf0;
+      --muted:    #6b7686;
+      --muted2:   #4a5260;
+      --mono:     'Space Grotesk', monospace;
+      --sans:     'Manrope', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── GRID NOISE TEXTURE ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle at 20% 30%, rgba(245,166,35,.04) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(61,156,245,.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LOGIN ─── */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+    }
+    .login-logo {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      color: var(--gold);
+      letter-spacing: -.02em;
+      margin-bottom: 4px;
+    }
+    .login-tagline {
+      font-size: .78rem;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .field-label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+      margin-top: 18px;
+    }
+    .field-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: .9rem;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field-input:focus { border-color: var(--gold); }
+    .btn-login {
+      width: 100%;
+      margin-top: 24px;
+      padding: 13px;
+      background: var(--gold);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--sans);
+      font-size: .9rem;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: .02em;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn-login:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .login-err {
+      font-size: .8rem;
+      color: var(--red);
+      min-height: 18px;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    .login-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245,166,35,.08);
+      border: 1px solid rgba(245,166,35,.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: .72rem;
+      color: var(--gold);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    /* ─── SHELL ─── */
+    .shell {
+      display: none;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+    .shell.active { display: flex; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      overflow-y: auto;
+    }
+    .sb-logo {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sb-logo-text {
+      font-family: var(--mono);
+      font-size: 1rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .sb-logo-sub {
+      font-size: .68rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+    .sb-section {
+      font-size: .66rem;
+      font-weight: 800;
+      color: var(--muted2);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 18px 20px 7px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 20px;
+      font-size: .83rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+      border-left: 3px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(245,166,35,.06); }
+    .nav-icon { font-size: 1rem; width: 18px; text-align: center; }
+    .sb-bottom {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .advisor-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .advisor-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #e67e00);
+      color: #000;
+      font-weight: 800;
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .advisor-name {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .advisor-role {
+      font-size: .68rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    .btn-signout {
+      width: 100%;
+      margin-top: 12px;
+      padding: 8px;
+      background: rgba(255,79,94,.08);
+      border: 1px solid rgba(255,79,94,.2);
+      color: var(--red);
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-signout:hover { background: rgba(255,79,94,.15); }
+
+    /* ─── MAIN ─── */
+    .main {
+      margin-left: 220px;
+      flex: 1;
+      padding: 28px 28px 48px;
+      min-height: 100vh;
+    }
+
+    /* ─── TOPBAR ─── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .topbar-left h1 {
+      font-family: var(--mono);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.03em;
+    }
+    .topbar-left p {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,209,122,.08);
+      border: 1px solid rgba(0,209,122,.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: .05em;
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ─── SECTIONS ─── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ─── STATS GRID ─── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: var(--border2); }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      opacity: .06;
+      transform: translate(30%, 30%);
+    }
+    .stat-card.gold::after  { background: var(--gold); }
+    .stat-card.blue::after  { background: var(--blue); }
+    .stat-card.green::after { background: var(--green); }
+    .stat-card.purple::after{ background: var(--purple); }
+    .stat-card.red::after   { background: var(--red); }
+    .stat-icon { font-size: 1.4rem; margin-bottom: 10px; }
+    .stat-label {
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.03em;
+      line-height: 1;
+    }
+    .stat-card.gold  .stat-value { color: var(--gold); }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-sub {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* ─── CHART ROW ─── */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .chart-title {
+      font-family: var(--mono);
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.01em;
+      margin-bottom: 4px;
+    }
+    .chart-sub {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .donut-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .donut-legend {
+      width: 100%;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .78rem;
+    }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .legend-left { display: flex; align-items: center; color: var(--muted); }
+    .legend-val { font-weight: 700; color: var(--text); font-family: var(--mono); }
+
+    /* ─── TABLE CARD ─── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .table-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .table-title {
+      font-family: var(--mono);
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .table-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .search-input {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: var(--sans);
+      font-size: .78rem;
+      color: var(--text);
+      outline: none;
+      width: 160px;
+      transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--gold); }
+    .filter-sel {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-family: var(--sans);
+      font-size: .78rem;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: .68rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      font-size: .82rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.015); }
+    .empty-td { text-align: center; color: var(--muted); padding: 40px !important; font-size: .82rem; }
+
+    /* ─── BADGES ─── */
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+    }
+    .badge-pending   { background: rgba(245,166,35,.12); color: var(--gold); }
+    .badge-confirmed { background: rgba(61,156,245,.12); color: var(--blue); }
+    .badge-assigned  { background: rgba(155,114,245,.12); color: var(--purple); }
+    .badge-packing   { background: rgba(61,156,245,.1); color: #7dd3fc; }
+    .badge-transit   { background: rgba(245,166,35,.15); color: #fbbf24; }
+    .badge-delivered { background: rgba(0,209,122,.12); color: var(--green); }
+    .badge-cancelled { background: rgba(255,79,94,.1); color: var(--red); }
+
+    /* ─── AMOUNT ─── */
+    .amount { font-family: var(--mono); font-weight: 700; }
+
+    /* ─── BOOKING REF ─── */
+    .booking-ref {
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--gold);
+      background: rgba(245,166,35,.08);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    /* ─── CUSTOMER AVATAR ─── */
+    .cust-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff;
+      font-weight: 800;
+      font-size: .78rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .cust-cell { display: flex; align-items: center; }
+
+    /* ─── ROUTE ─── */
+    .route-cell { font-size: .78rem; color: var(--muted); max-width: 180px; }
+    .route-from { color: var(--text); font-weight: 600; }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: .82rem;
+      font-weight: 600;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ─── KPI ROW ─── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .kpi-icon-wrap {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .kpi-icon-wrap.gold   { background: rgba(245,166,35,.12); }
+    .kpi-icon-wrap.green  { background: rgba(0,209,122,.10); }
+    .kpi-icon-wrap.blue   { background: rgba(61,156,245,.10); }
+    .kpi-label { font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .kpi-value { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; color: var(--text); }
+
+    /* ─── REVENUE TABLE ─── */
+    .rev-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rev-bar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--bg);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .rev-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      transition: width .6s ease;
+    }
+
+    /* ─── SCROLL TABLE ─── */
+    .table-scroll { overflow-x: auto; }
+
+    /* ─── PHONE LINK ─── */
+    a.phone-link {
+      color: var(--blue);
+      text-decoration: none;
+      font-family: var(--mono);
+      font-size: .78rem;
+    }
+    a.phone-link:hover { text-decoration: underline; }
+
+    /* ─── REFRESH BTN ─── */
+    .btn-refresh {
+      background: rgba(61,156,245,.08);
+      border: 1px solid rgba(61,156,245,.2);
+      color: var(--blue);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: var(--sans);
+      font-size: .75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-refresh:hover { background: rgba(61,156,245,.15); }
+
+    /* ─── EXPORT BTN ─── */
+    .btn-export {
+      background: rgba(0,209,122,.08);
+      border: 1px solid rgba(0,209,122,.2);
+      color: var(--green);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: var(--sans);
+      font-size: .75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-export:hover { background: rgba(0,209,122,.15); }
+
+    /* ─── LOADING SPINNER ─── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── SUMMARY STRIP ─── */
+    .summary-strip {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .ss-item { display: flex; flex-direction: column; }
+    .ss-label { font-size: .65rem; color: var(--muted); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .ss-value { font-family: var(--mono); font-size: .95rem; font-weight: 700; color: var(--text); margin-top: 2px; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 900px) {
+      .sidebar { width: 200px; }
+      .main    { margin-left: 200px; }
+      .chart-row { grid-template-columns: 1fr; }
+      .kpi-row   { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 650px) {
+      .sidebar { display: none; }
+      .main    { margin-left: 0; padding: 16px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .kpi-row { grid-template-columns: 1fr; }
+    }
+
+    /* ════════════════════════════════════════════
+       NEW BOOKING MODULE (scoped nb- prefix)
+       ════════════════════════════════════════════ */
+    .nb-draft-banner {
+      background: rgba(61,156,245,.08); border: 1px solid rgba(61,156,245,.25);
+      color: var(--blue); border-radius: 10px; padding: 10px 16px; font-size: .8rem;
+      margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .nb-draft-banner button { border: none; border-radius: 6px; padding: 6px 12px; font-size: .72rem; font-weight: 700; cursor: pointer; color: #fff; }
+    .nb-draft-banner .nb-restore { background: var(--blue); }
+    .nb-draft-banner .nb-discard { background: var(--red); }
+    .nb-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+    .nb-form-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .nb-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+    .nb-card h3 { font-family: var(--mono); font-size: .8rem; color: var(--gold); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .05em; }
+    .nb-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; margin-bottom: 12px; }
+    .nb-row:last-child { margin-bottom: 0; }
+    .nb-field label { display: block; font-size: .68rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .nb-field input, .nb-field select, .nb-field textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+      padding: 9px 12px; color: var(--text); font-family: var(--sans); font-size: .85rem; outline: none; transition: border-color .2s;
+    }
+    .nb-field input:focus, .nb-field select:focus, .nb-field textarea:focus { border-color: var(--gold); }
+    .nb-type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .nb-type-card { border: 1.5px solid var(--border2); border-radius: 10px; padding: 14px 10px; text-align: center; cursor: pointer; transition: .15s; font-size: .82rem; font-weight: 600; }
+    .nb-type-card:hover { border-color: var(--gold); }
+    .nb-type-card.selected { border-color: var(--gold); background: rgba(245,166,35,.08); color: var(--gold); }
+    .nb-size-grid, .nb-vehicle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 10px; }
+    .nb-select-card { border: 1.5px solid var(--border2); border-radius: 10px; padding: 10px 8px; text-align: center; cursor: pointer; font-size: .78rem; font-weight: 600; transition: .15s; }
+    .nb-select-card:hover { border-color: var(--gold); }
+    .nb-select-card.selected { border-color: var(--gold); background: rgba(245,166,35,.08); color: var(--gold); }
+    .nb-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: .82rem; }
+    .nb-toggle-row:last-child { border-bottom: none; }
+    .nb-switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .nb-switch input { opacity: 0; width: 0; height: 0; }
+    .nb-switch .sldr { position: absolute; inset: 0; background: var(--border2); border-radius: 22px; cursor: pointer; transition: .2s; }
+    .nb-switch .sldr::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    .nb-switch input:checked + .sldr { background: var(--gold); }
+    .nb-switch input:checked + .sldr::before { transform: translateX(16px); }
+    .nb-map { width: 100%; height: 200px; border-radius: 10px; margin-top: 10px; background: var(--bg); border: 1px solid var(--border2); display: none; }
+    .nb-distance-badge { font-size: .78rem; color: var(--gold); margin-top: 8px; font-weight: 600; }
+    .nb-furniture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px,1fr)); gap: 8px; }
+    .nb-furn-card { border: 1.5px solid var(--border2); border-radius: 8px; padding: 8px; text-align: center; font-size: .72rem; transition: .15s; }
+    .nb-furn-card.active { border-color: var(--gold); background: rgba(245,166,35,.06); }
+    .nb-qty-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; }
+    .nb-qty-btn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border2); background: var(--bg); color: var(--text); cursor: pointer; font-weight: 700; font-size: .85rem; line-height: 1; }
+    .nb-qty-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .nb-summary { position: sticky; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .nb-summary-line { display: flex; justify-content: space-between; font-size: .8rem; padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--muted); gap: 10px; }
+    .nb-summary-line strong { color: var(--text); font-family: var(--mono); }
+    .nb-summary-total { font-family: var(--mono); font-size: 1.6rem; color: var(--gold); font-weight: 700; margin: 12px 0; }
+    .nb-pay-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .nb-pay-opt { border: 1.5px solid var(--border2); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: .7rem; font-weight: 600; cursor: pointer; }
+    .nb-pay-opt.selected { border-color: var(--gold); background: rgba(245,166,35,.08); color: var(--gold); font-weight: 700; }
+    .nb-btn-save { width: 100%; padding: 13px; background: var(--gold); color: #000; border: none; border-radius: 10px; font-weight: 800; font-size: .9rem; cursor: pointer; margin-top: 14px; transition: opacity .2s; }
+    .nb-btn-save:hover { opacity: .9; }
+    .nb-btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .nb-err { color: var(--red); font-size: .76rem; margin-top: 8px; min-height: 16px; font-weight: 600; }
+    @media (max-width: 900px) { .nb-grid { grid-template-columns: 1fr; } .nb-summary { position: static; } }
+  </style>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-badge">🔐 Restricted Access</div>
+    <div class="login-logo"><i data-lucide="package"></i> PackZen</div>
+    <div class="login-tagline">Advisor Dashboard</div>
+    <label class="field-label">Email Address</label>
+    <input id="adEmail" type="email" class="field-input" placeholder="your@packzenblr.in" autocomplete="off"
+           onkeydown="if(event.key==='Enter')document.getElementById('adPass').focus()">
+    <label class="field-label">Password</label>
+    <input id="adPass" type="password" class="field-input" placeholder="••••••••"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="loginErr" class="login-err"></div>
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">Access Dashboard →</button>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div class="admin-shell" id="shell">
+  <!-- SIDEBAR injected by JS after auth -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK (same versions as your site) -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+<!-- Load your existing Firebase config — same file, same project -->
+<script src="../../env-config.js"></script>
+<script src="../../js/config/firebase-config.js"></script>
+
+<!-- Same pricing engine your customer booking flow uses. Not duplicated — loaded as-is. -->
+<script src="../../js/core/pricing-engine-v2.js"></script>
+
+<script>
+/* ════════════════════════════════════════════
+   CONFIG — who can log into the Advisor panel
+   ════════════════════════════════════════════ */
+const ADVISOR_ROLES = ["admin", "advisor", "manager"];
+const ADMIN_EMAILS  = [
+  "admin@packzen.com",
+  "support@packzenblr.in",
+  "azharahmedm786@gmail.com",
+  "moveeasyblr@gmail.com"
+];
+
+/* ════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════ */
+let db, auth;
+let advisorUser = null;
+let allBookings = [], allCustomers = [], allDrivers = [];
+let bookingsChart = null, statusChart = null;
+let activeSection = "overview";
+let unsubBookings, unsubCustomers, unsubDrivers;
+
+/* ════════════════════════════════════════════
+   FIREBASE INIT — wait for firebase-config.js
+   ════════════════════════════════════════════ */
+function waitFB(cb, n = 0) {
+  if (window._firebase) { db = window._firebase.db; auth = window._firebase.auth; cb(); return; }
+  if (n > 40) { document.getElementById("loginErr").textContent = "⚠️ Firebase config not loaded. Check firebase-config.js"; return; }
+  setTimeout(() => waitFB(cb, n + 1), 200);
+}
+
+/* ════════════════════════════════════════════
+   AUTO LOGIN CHECK
+   ════════════════════════════════════════════ */
+document.addEventListener("DOMContentLoaded", () => {
+  waitFB(() => {
+    auth.onAuthStateChanged(async user => {
+      if (!user) return;
+      const ok = await isAdvisor(user);
+      if (ok) { advisorUser = user; buildShell(); }
+    });
+  });
+});
+
+/* ════════════════════════════════════════════
+   LOGIN
+   ════════════════════════════════════════════ */
+async function doLogin() {
+  const email = document.getElementById("adEmail").value.trim().toLowerCase();
+  const pass  = document.getElementById("adPass").value;
+  const err   = document.getElementById("loginErr");
+  const btn   = document.getElementById("loginBtn");
+  err.textContent = "";
+  if (!email || !pass) { err.textContent = "⚠️ Please enter email and password."; return; }
+  btn.disabled = true; btn.textContent = "Signing in...";
+  waitFB(async () => {
+    try {
+      const cred = await auth.signInWithEmailAndPassword(email, pass);
+      const ok   = await isAdvisor(cred.user);
+      if (!ok) {
+        await auth.signOut();
+        err.textContent = "⚠️ Access denied. Your account does not have advisor permissions.";
+        btn.disabled = false; btn.textContent = "Access Dashboard →";
+        return;
+      }
+      advisorUser = cred.user;
+      buildShell();
+    } catch (e) {
+      console.error('Advisor Auth Error:', e.code, e.message);
+      const msgs = {
+        "auth/wrong-password":            "⚠️ Incorrect password.",
+        "auth/invalid-credential":        "⚠️ Incorrect email or password.",
+        "auth/user-not-found":            "⚠️ No account found for this email.",
+        "auth/invalid-email":             "⚠️ Invalid email address.",
+        "auth/too-many-requests":         "⚠️ Too many attempts. Please wait.",
+      };
+      err.textContent = msgs[e.code] || ("⚠️ " + e.message);
+      btn.disabled = false; btn.textContent = "Access Dashboard →";
+    }
+  });
+}
+
+async function isAdvisor(user) {
+  if (ADMIN_EMAILS.includes((user.email || "").toLowerCase())) return true;
+  try {
+    const doc = await db.collection("users").doc(user.uid).get();
+    const role = doc.exists ? (doc.data() || {}).role : null;
+    return ADVISOR_ROLES.includes(role);
+  } catch (e) { return false; }
+}
+
+/* ════════════════════════════════════════════
+   BUILD SHELL (only after auth)
+   ════════════════════════════════════════════ */
+function buildShell() {
+  document.getElementById("loginWrap").style.display = "none";
+  const name   = advisorUser.displayName || advisorUser.email?.split("@")[0] || "Advisor";
+  const initLetter = name.charAt(0).toUpperCase();
+  const shell  = document.getElementById("shell");
+
+  shell.innerHTML = `
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-text">📦 PackZen</div>
+      <div class="sb-logo-sub">Advisor Console</div>
+    </div>
+    <div class="sb-section">Analytics</div>
+    <div class="nav-item active" onclick="showSection('overview',this)"><span class="nav-icon">📊</span> Overview</div>
+    <div class="nav-item" onclick="showSection('revenue',this)"><span class="nav-icon">💰</span> Revenue</div>
+    <div class="sb-section">Operations</div>
+    <div class="nav-item" onclick="showSection('newbooking',this)"><span class="nav-icon">➕</span> New Booking</div>
+    <div class="nav-item" onclick="showSection('bookings',this)"><span class="nav-icon">📦</span> All Bookings</div>
+    <div class="nav-item" onclick="showSection('customers',this)"><span class="nav-icon">👥</span> Customers</div>
+    <div class="nav-item" onclick="showSection('drivers',this)"><span class="nav-icon">🚚</span> Drivers</div>
+    <div class="nav-item" onclick="showSection('advisors',this)"><span class="nav-icon">🧑‍💼</span> Advisor Stats</div>
+    <div class="sb-bottom">
+      <div class="advisor-chip">
+        <div class="advisor-avatar">${initLetter}</div>
+        <div>
+          <div class="advisor-name">${name.split(" ")[0]}</div>
+          <div class="advisor-role">Advisor Access</div>
+        </div>
+      </div>
+      <button class="btn-signout" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 id="sectionTitle">Overview</h1>
+        <p id="sectionSub">Real-time data from packzenblr.in</p>
+      </div>
+      <div class="live-dot">Live Data</div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="section active" id="secOverview">
+      <div class="stats-grid">
+        <div class="stat-card gold">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">Total Bookings</div>
+          <div class="stat-value" id="stTotal">—</div>
+          <div class="stat-sub">All time</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">💰</div>
+          <div class="stat-label">Total Revenue</div>
+          <div class="stat-value" id="stRevenue" style="font-size:1.2rem">—</div>
+          <div class="stat-sub">Sum of all bookings</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">Delivered</div>
+          <div class="stat-value" id="stDelivered">—</div>
+          <div class="stat-sub">Completed moves</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="stActive">—</div>
+          <div class="stat-sub">Ongoing moves</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-label">Customers</div>
+          <div class="stat-value" id="stCustomers">—</div>
+          <div class="stat-sub">Registered users</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🚚</div>
+          <div class="stat-label">Drivers</div>
+          <div class="stat-value" id="stDrivers">—</div>
+          <div class="stat-sub">Active fleet</div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-title">Monthly Bookings & Revenue</div>
+          <div class="chart-sub">2026 — live from Firestore</div>
+          <canvas id="overviewChart" height="160"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Booking Status</div>
+          <div class="chart-sub">Current distribution</div>
+          <div class="donut-wrap">
+            <canvas id="statusChart" width="180" height="180"></canvas>
+            <div class="donut-legend" id="statusLegend"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">Recent Bookings</div>
+          <button class="btn-refresh" onclick="loadAll()">↻ Refresh</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ref</th><th>Customer</th><th>Route</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="recentTable"><tr><td class="empty-td" colspan="6"><span class="spinner"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENUE -->
+    <div class="section" id="secRevenue">
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-icon-wrap gold">💰</div>
+          <div><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kpiRevTotal">—</div></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrap green">✅</div>
+          <div><div class="kpi-label">Avg. Booking Value</div><div class="kpi-value" id="kpiAvg">—</div></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-wrap blue">📅</div>
+          <div><div class="kpi-label">This Month</div><div class="kpi-value" id="kpiThisMonth">—</div></div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-bottom:20px">
+        <div class="chart-title">Revenue by Move Type</div>
+        <div class="chart-sub">Breakdown across home / office / single item</div>
+        <canvas id="revenueTypeChart" height="160"></canvas>
+      </div>
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">Monthly Breakdown</div>
+          <button class="btn-export" onclick="exportRevenueCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Month</th><th>Bookings</th><th>Revenue</th><th>Avg. Value</th><th>% of Total</th></tr></thead>
+            <tbody id="revTable"><tr><td class="empty-td" colspan="5"><span class="spinner"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW BOOKING -->
+    <div class="section" id="secNewbooking">
+      <div class="nb-draft-banner" id="nbDraftBanner" style="display:none">
+        <span>📝 You have an unsaved draft booking from earlier.</span>
+        <div style="display:flex;gap:8px">
+          <button class="nb-restore" onclick="nbRestoreDraft()">Restore</button>
+          <button class="nb-discard" onclick="nbDiscardDraft()">Discard</button>
+        </div>
+      </div>
+
+      <div class="nb-grid">
+        <div class="nb-form-col">
+
+          <div class="nb-card">
+            <h3>👤 Customer Details</h3>
+            <div class="nb-row">
+              <div class="nb-field"><label>Full Name *</label><input id="nbName" placeholder="Customer name" oninput="nbSaveDraft()"></div>
+              <div class="nb-field"><label>Phone *</label><input id="nbPhone" type="tel" maxlength="10" placeholder="10-digit mobile" oninput="nbSaveDraft()"></div>
+              <div class="nb-field"><label>Alternate Phone</label><input id="nbAltPhone" type="tel" maxlength="10" placeholder="Optional" oninput="nbSaveDraft()"></div>
+              <div class="nb-field"><label>Email</label><input id="nbEmail" type="email" placeholder="Optional" oninput="nbSaveDraft()"></div>
+              <div class="nb-field"><label>Lead Source</label>
+                <select id="nbLeadSource" onchange="nbSaveDraft()">
+                  <option value="walk_in">Walk-in / Call</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="referral">Referral</option>
+                  <option value="website">Website</option>
+                  <option value="google">Google</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="nb-card">
+            <h3>📦 Move Type</h3>
+            <div class="nb-type-grid" id="nbTypeGrid">
+              <div class="nb-type-card" data-type="home" onclick="nbSelectMoveType('home')">🏠<br>Home</div>
+              <div class="nb-type-card" data-type="office" onclick="nbSelectMoveType('office')">🏢<br>Office</div>
+              <div class="nb-type-card" data-type="single" onclick="nbSelectMoveType('single')">📦<br>Single Item</div>
+            </div>
+            <div style="margin-top:16px">
+              <label style="display:block;font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px" id="nbSizeLabel">House Type</label>
+              <div class="nb-size-grid" id="nbSizeGrid"><span style="font-size:.78rem;color:var(--muted2)">Select a move type first</span></div>
+            </div>
+          </div>
+
+          <div class="nb-card">
+            <h3>📍 Pickup &amp; Drop</h3>
+            <div class="nb-field" style="margin-bottom:12px"><label>Pickup Address *</label><input id="nbPickup" placeholder="Enter pickup address" autocomplete="off"></div>
+            <div class="nb-field"><label>Drop Address *</label><input id="nbDrop" placeholder="Enter drop address" autocomplete="off"></div>
+            <div id="nbMap" class="nb-map"></div>
+            <div id="nbDistanceInfo" class="nb-distance-badge"></div>
+          </div>
+
+          <div class="nb-card">
+            <h3>🗓️ Schedule</h3>
+            <div class="nb-row">
+              <div class="nb-field"><label>Moving Date *</label><input id="nbDate" type="date" onchange="nbSaveDraft();nbCalc();"></div>
+              <div class="nb-field"><label>Preferred Time *</label>
+                <select id="nbTime" onchange="nbSaveDraft();nbCalc();">
+                  <option value="">Select slot</option>
+                  <option value="07:00">7–9 AM</option>
+                  <option value="09:00">9–11 AM</option>
+                  <option value="11:00">11–1 PM</option>
+                  <option value="13:00">1–3 PM</option>
+                  <option value="15:00">3–5 PM</option>
+                  <option value="17:00">5–7 PM</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="nb-card" id="nbVehicleCard">
+            <h3>🚚 Vehicle</h3>
+            <div class="nb-vehicle-grid" id="nbVehicleGrid"><span style="font-size:.78rem;color:var(--muted2)">Select a move type first</span></div>
+          </div>
+
+          <div class="nb-card">
+            <h3>🏗️ Floors, Access &amp; Add-on Services</h3>
+            <div class="nb-row">
+              <div class="nb-field"><label>Pickup Floor</label>
+                <select id="nbPickupFloor" onchange="nbCalc()">
+                  <option value="0">Ground/1st (free)</option><option value="2">2nd–4th</option><option value="5">5th–8th</option><option value="9">9th+</option>
+                </select>
+              </div>
+              <div class="nb-field"><label>Drop Floor</label>
+                <select id="nbDropFloor" onchange="nbCalc()">
+                  <option value="0">Ground/1st (free)</option><option value="2">2nd–4th</option><option value="5">5th–8th</option><option value="9">9th+</option>
+                </select>
+              </div>
+            </div>
+            <div class="nb-toggle-row"><span>🛗 Lift available (50% off floor charge)</span><label class="nb-switch"><input type="checkbox" id="nbLift" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-toggle-row"><span>📦 Packing service</span><label class="nb-switch"><input type="checkbox" id="nbPacking" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-toggle-row"><span>📤 Unpacking service</span><label class="nb-switch"><input type="checkbox" id="nbUnpacking" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-toggle-row"><span>🔧 Dismantling</span><label class="nb-switch"><input type="checkbox" id="nbDismantle" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-toggle-row"><span>🔩 Assembly</span><label class="nb-switch"><input type="checkbox" id="nbAssembly" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-toggle-row"><span>🏬 Storage needed</span><label class="nb-switch"><input type="checkbox" id="nbStorage" onchange="nbCalc()"><span class="sldr"></span></label></div>
+<div class="nb-field" style="margin-top:8px"><label>Storage Duration (days)</label><input id="nbStorageDays" type="number" min="0" max="90" value="0" onchange="nbCalc()"></div>
+<div class="nb-toggle-row"><span>🛡️ Insurance (included on every move)</span><label class="nb-switch"><input type="checkbox" id="nbInsurance" checked disabled><span class="sldr"></span></label></div>
+          </div>
+
+          <div class="nb-card">
+            <h3>🛋️ Items &amp; Cartons</h3>
+            <div class="nb-furniture-grid" id="nbFurnitureGrid"></div>
+            <div class="nb-row" style="margin-top:14px">
+              <div class="nb-field"><label>Carton Boxes</label>
+                <div class="nb-qty-row" style="justify-content:flex-start">
+                  <button class="nb-qty-btn" onclick="nbCartonQty(-1)">−</button>
+                  <input id="nbCartonQty" value="0" style="width:44px;text-align:center;background:transparent;border:none;color:var(--text)" readonly>
+                  <button class="nb-qty-btn" onclick="nbCartonQty(1)">+</button>
+                </div>
+              </div>
+              <div class="nb-field"><label>Fragile Items</label><input id="nbFragile" placeholder="e.g. TV, glassware"></div>
+              <div class="nb-field"><label>Special Items</label><input id="nbSpecial" placeholder="e.g. Piano, safe"></div>
+            </div>
+            <div class="nb-field" style="margin-top:10px"><label>Remarks</label><textarea id="nbRemarks" rows="2" placeholder="Any additional notes for the crew"></textarea></div>
+          </div>
+
+          <div class="nb-card">
+            <h3>⚙️ Booking Operations</h3>
+     <div class="nb-row">
+  <div class="nb-field"><label>Booking Status</label>
+    <select id="nbStatus">
+      <option value="confirmed" selected>Confirmed</option>
+      <option value="pending">Pending</option>
+    </select>
+  </div>
+</div>
+          </div>
+        </div>
+
+        <div class="nb-form-col">
+          <div class="nb-summary">
+            <h3 style="font-family:var(--mono);color:var(--gold);font-size:.8rem;text-transform:uppercase;margin-bottom:12px;letter-spacing:.05em">💰 Live Quote</h3>
+            <div id="nbSummaryLines"><div class="nb-summary-line"><span>Enter move details to see price</span></div></div>
+            <div class="nb-summary-total" id="nbTotalDisplay">₹0</div>
+
+            <div class="nb-field" style="margin-top:6px">
+              <label>Coupon Code</label>
+              <div style="display:flex;gap:6px">
+                <input id="nbCoupon" placeholder="CODE" style="text-transform:uppercase">
+                <button onclick="nbApplyCoupon()" style="background:var(--gold);border:none;border-radius:8px;padding:0 14px;font-weight:700;cursor:pointer;flex-shrink:0">Apply</button>
+              </div>
+              <div class="nb-err" id="nbCouponMsg" style="min-height:14px"></div>
+            </div>
+
+            <div style="margin-top:10px">
+              <label style="display:block;font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Payment Method</label>
+              <div class="nb-pay-grid">
+                <div class="nb-pay-opt selected" data-pay="pay_later" onclick="nbSelectPayment('pay_later')">Pay Later</div>
+                <div class="nb-pay-opt" data-pay="advance" onclick="nbSelectPayment('advance')">Advance</div>
+                <div class="nb-pay-opt" data-pay="full" onclick="nbSelectPayment('full')">Full Paid</div>
+              </div>
+            </div>
+
+            <div class="nb-toggle-row" style="margin-top:6px">
+              <span>💵 Payment already collected?</span>
+              <label class="nb-switch"><input type="checkbox" id="nbPaidToggle"><span class="sldr"></span></label>
+            </div>
+
+            <div class="nb-err" id="nbFormErr"></div>
+            <button class="nb-btn-save" id="nbSaveBtn" onclick="nbSaveBooking()">✅ Create Booking</button>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:8px;text-align:center">Draft auto-saves as you type</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOOKINGS -->
+    <div class="section" id="secBookings">
+      <div class="summary-strip" id="bookingSummary"></div>
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">All Bookings</div>
+          <div class="table-actions">
+            <input class="search-input" placeholder="Search name / ref…" oninput="filterBookings(this.value)" id="bookingSearch">
+            <select class="filter-sel" onchange="filterBookingsByStatus(this.value)" id="statusFilter">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="assigned">Assigned</option>
+              <option value="packing">Packing</option>
+              <option value="transit">In Transit</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <button class="btn-export" onclick="exportBookingsCSV()">⬇ CSV</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Ref</th><th>Customer</th><th>Phone</th><th>Route</th><th>Date</th><th>Amount</th><th>Payment</th><th>Status</th><th>Driver</th></tr></thead>
+            <tbody id="bookingsTable"><tr><td class="empty-td" colspan="9"><span class="spinner"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMERS -->
+    <div class="section" id="secCustomers">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">Registered Customers</div>
+          <div class="table-actions">
+            <input class="search-input" placeholder="Search name / email…" oninput="filterCustomers(this.value)" id="custSearch">
+            <button class="btn-export" onclick="exportCustomersCSV()">⬇ CSV</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>Bookings</th><th>Total Spent</th><th>Joined</th></tr></thead>
+            <tbody id="customersTable"><tr><td class="empty-td" colspan="6"><span class="spinner"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRIVERS -->
+    <div class="section" id="secDrivers">
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="stat-card">
+          <div class="stat-icon">🚚</div>
+          <div class="stat-label">Total Drivers</div>
+          <div class="stat-value" id="drvTotal">—</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">🟢</div>
+          <div class="stat-label">Online Now</div>
+          <div class="stat-value" id="drvOnline">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">On a Job</div>
+          <div class="stat-value" id="drvOnJob">—</div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">Driver Fleet</div>
+          <button class="btn-refresh" onclick="renderDrivers()">↻ Refresh</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Driver</th><th>Email</th><th>Phone</th><th>Vehicle</th><th>Status</th><th>Current Job</th><th>Rating</th><th>Total Moves</th></tr></thead>
+            <tbody id="driversTable"><tr><td class="empty-td" colspan="8"><span class="spinner"></span></td></tr></tbody>
+          </table>
+       </div>
+      </div>
+    </div>
+
+    <!-- ADVISOR STATS -->
+    <div class="section" id="secAdvisors">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title">Advisor Performance</div>
+          <button class="btn-refresh" onclick="renderAdvisorStats()">↻ Refresh</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Advisor</th><th>Bookings Created</th><th>Revenue</th><th>Avg. Value</th><th>Delivered</th><th>Cancelled</th></tr></thead>
+            <tbody id="advisorStatsTable"><tr><td class="empty-td" colspan="6"><span class="spinner"></span></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>`;
+
+  shell.classList.add("active");
+  document.getElementById("shell").style.display = "flex";
+  loadAll();
+}
+
+/* ════════════════════════════════════════════
+   LOAD ALL DATA (real-time Firestore listeners)
+   ════════════════════════════════════════════ */
+function loadAll() {
+  // Clean up existing listeners
+  if (unsubBookings)  unsubBookings();
+  if (unsubCustomers) unsubCustomers();
+  if (unsubDrivers)   unsubDrivers();
+
+  // Live bookings
+  unsubBookings = db.collection("bookings").orderBy("createdAt","desc")
+    .onSnapshot(snap => {
+      allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateStats();
+      renderRecentTable();
+      renderBookingsTable(allBookings);
+   renderCharts();
+      renderRevenue();
+      renderAdvisorStats();
+    }, err => toast("⚠️ Bookings: " + err.message));
+
+  // Customers
+  unsubCustomers = db.collection("users").where("role","==","customer")
+    .onSnapshot(snap => {
+      allCustomers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById("stCustomers").textContent = allCustomers.length;
+      renderCustomers(allCustomers);
+    }, () => {});
+
+  // Drivers
+  unsubDrivers = db.collection("users").where("role","==","driver")
+    .onSnapshot(snap => {
+      allDrivers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById("stDrivers").textContent = allDrivers.length;
+      renderDrivers();
+    }, () => {});
+}
+
+/* ════════════════════════════════════════════
+   STATS
+   ════════════════════════════════════════════ */
+function updateStats() {
+  const total     = allBookings.length;
+  const delivered = allBookings.filter(b => b.status === "delivered").length;
+  const active    = allBookings.filter(b => ["assigned","packing","transit"].includes(b.status)).length;
+  const revenue   = allBookings.reduce((s, b) => s + (b.total || 0), 0);
+
+  setText("stTotal",     total);
+  setText("stDelivered", delivered);
+  setText("stActive",    active);
+  setText("stRevenue",   fmt(revenue));
+}
+
+/* ════════════════════════════════════════════
+   RECENT TABLE
+   ════════════════════════════════════════════ */
+function renderRecentTable() {
+  const tbody = document.getElementById("recentTable");
+  if (!tbody) return;
+  const recent = allBookings.slice(0, 10);
+  if (!recent.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="6">No bookings yet</td></tr>'; return; }
+  tbody.innerHTML = recent.map(b => `
+    <tr>
+      <td><span class="booking-ref">${b.bookingRef || b.id.slice(-6).toUpperCase()}</span></td>
+      <td>${b.customerName || "—"}</td>
+      <td>
+        <div class="route-cell">
+          <div class="route-from">${shortAddr(b.pickup)}</div>
+          <div>→ ${shortAddr(b.drop)}</div>
+        </div>
+      </td>
+      <td>${b.date || "—"}</td>
+      <td class="amount">₹${(b.total||0).toLocaleString("en-IN")}</td>
+      <td><span class="badge badge-${b.status||"pending"}">${cap(b.status||"pending")}</span></td>
+    </tr>`).join("");
+}
+
+/* ════════════════════════════════════════════
+   BOOKINGS TABLE
+   ════════════════════════════════════════════ */
+let filteredBookings = null;
+
+function renderBookingsTable(list) {
+  const tbody = document.getElementById("bookingsTable");
+  if (!tbody) return;
+  if (!list.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="9">No bookings found</td></tr>'; return; }
+
+  // Build summary strip
+  const total   = list.reduce((s,b) => s+(b.total||0), 0);
+  const strip   = document.getElementById("bookingSummary");
+  if (strip) {
+    strip.innerHTML = `
+      <div class="ss-item"><div class="ss-label">Showing</div><div class="ss-value">${list.length} bookings</div></div>
+      <div class="ss-item"><div class="ss-label">Revenue</div><div class="ss-value">₹${total.toLocaleString("en-IN")}</div></div>
+      <div class="ss-item"><div class="ss-label">Delivered</div><div class="ss-value">${list.filter(b=>b.status==="delivered").length}</div></div>
+      <div class="ss-item"><div class="ss-label">Pending</div><div class="ss-value">${list.filter(b=>!b.driverUid&&b.status!=="delivered"&&b.status!=="cancelled").length}</div></div>
+      <div class="ss-item"><div class="ss-label">Cancelled</div><div class="ss-value">${list.filter(b=>b.status==="cancelled").length}</div></div>`;
+  }
+
+  tbody.innerHTML = list.map(b => `
+    <tr>
+      <td><span class="booking-ref">${b.bookingRef||b.id.slice(-6).toUpperCase()}</span></td>
+      <td>
+        <div class="cust-cell">
+          <div class="cust-avatar">${(b.customerName||"?").charAt(0).toUpperCase()}</div>
+          ${b.customerName||"—"}
+        </div>
+      </td>
+      <td><a href="tel:${b.phone}" class="phone-link">${b.phone||"—"}</a></td>
+      <td>
+        <div class="route-cell">
+          <div class="route-from">${shortAddr(b.pickup)}</div>
+          <div>→ ${shortAddr(b.drop)}</div>
+        </div>
+      </td>
+      <td>${b.date||"—"}</td>
+      <td class="amount">₹${(b.total||0).toLocaleString("en-IN")}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${payLabel(b)}</td>
+      <td><span class="badge badge-${b.status||"pending"}">${cap(b.status||"pending")}</span></td>
+      <td style="font-size:.78rem">${b.driverName||'<span style="color:var(--muted2)">Unassigned</span>'}</td>
+    </tr>`).join("");
+}
+
+function filterBookings(q) {
+  const stat = document.getElementById("statusFilter")?.value || "";
+  let list = allBookings.filter(b =>
+    (b.customerName||"").toLowerCase().includes(q.toLowerCase()) ||
+    (b.id||"").toLowerCase().includes(q.toLowerCase()) ||
+    (b.bookingRef||"").toLowerCase().includes(q.toLowerCase()) ||
+    (b.phone||"").includes(q)
+  );
+  if (stat) list = list.filter(b => b.status === stat);
+  filteredBookings = list;
+  renderBookingsTable(list);
+}
+
+function filterBookingsByStatus(stat) {
+  const q = document.getElementById("bookingSearch")?.value || "";
+  let list = q ? allBookings.filter(b =>
+    (b.customerName||"").toLowerCase().includes(q.toLowerCase()) ||
+    (b.id||"").toLowerCase().includes(q.toLowerCase()) ||
+    (b.bookingRef||"").toLowerCase().includes(q.toLowerCase())
+  ) : [...allBookings];
+  if (stat) list = list.filter(b => b.status === stat);
+  filteredBookings = list;
+  renderBookingsTable(list);
+}
+
+/* ════════════════════════════════════════════
+   CUSTOMERS TABLE
+   ════════════════════════════════════════════ */
+function renderCustomers(list) {
+  const tbody = document.getElementById("customersTable");
+  if (!tbody) return;
+  if (!list.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="6">No customers yet</td></tr>'; return; }
+  tbody.innerHTML = list.map(c => {
+    const bookings = allBookings.filter(b => b.customerUid === c.id);
+    const spent    = bookings.reduce((s, b) => s + (b.total || 0), 0);
+    const joined   = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString("en-IN") : "—";
+    return `<tr>
+      <td>
+        <div class="cust-cell">
+          <div class="cust-avatar">${(c.name||"?").charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-weight:600">${c.name||"—"}</div>
+            <div style="font-size:.72rem;color:var(--muted)">${c.referralCode||""}</div>
+          </div>
+        </div>
+      </td>
+      <td><a href="tel:${c.phone}" class="phone-link">${c.phone||"—"}</a></td>
+      <td style="font-size:.78rem;color:var(--muted)">${c.email||"—"}</td>
+      <td class="amount">${bookings.length}</td>
+      <td class="amount" style="color:var(--green)">₹${spent.toLocaleString("en-IN")}</td>
+      <td style="font-size:.78rem;color:var(--muted)">${joined}</td>
+    </tr>`;
+  }).join("");
+}
+
+function filterCustomers(q) {
+  const list = allCustomers.filter(c =>
+    (c.name||"").toLowerCase().includes(q.toLowerCase()) ||
+    (c.email||"").toLowerCase().includes(q.toLowerCase()) ||
+    (c.phone||"").includes(q)
+  );
+  renderCustomers(list);
+}
+
+/* ════════════════════════════════════════════
+   DRIVERS TABLE
+   ════════════════════════════════════════════ */
+function renderDrivers() {
+  const tbody = document.getElementById("driversTable");
+  if (!tbody) return;
+  const online = allDrivers.filter(d => d.isOnline).length;
+  const onJob  = allDrivers.filter(d => d.currentBooking).length;
+  setText("drvTotal",  allDrivers.length);
+  setText("drvOnline", online);
+  setText("drvOnJob",  onJob);
+  if (!allDrivers.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="8">No drivers registered</td></tr>'; return; }
+  tbody.innerHTML = allDrivers.map(d => `
+    <tr>
+      <td>
+        <div class="cust-cell">
+          <div class="cust-avatar" style="background:linear-gradient(135deg,#f5a623,#e67e00)">${(d.name||"D").charAt(0)}</div>
+          <span style="font-weight:600">${d.name||"—"}</span>
+        </div>
+      </td>
+      <td style="font-size:.78rem;color:var(--muted)">${d.email||"—"}</td>
+      <td><a href="tel:${d.phone}" class="phone-link">${d.phone||"—"}</a></td>
+      <td style="font-size:.8rem">${d.vehicle||"—"}</td>
+      <td><span class="badge ${d.isOnline?"badge-delivered":"badge-cancelled"}">${d.isOnline?"🟢 Online":"⚫ Offline"}</span></td>
+      <td style="font-size:.78rem">${d.currentBooking ? `<span class="booking-ref">${d.currentBooking.slice(-6).toUpperCase()}</span>` : '<span style="color:var(--muted2)">Free</span>'}</td>
+      <td>${d.rating ? `<span style="color:#fbbf24;font-weight:700">★ ${d.rating}</span>` : "—"}</td>
+      <td class="amount">${d.totalMoves || 0}</td>
+    </tr>`).join("");
+}
+  /* ════════════════════════════════════════════
+   ADVISOR STATS
+   ════════════════════════════════════════════ */
+function renderAdvisorStats() {
+  const tbody = document.getElementById("advisorStatsTable");
+  if (!tbody) return;
+
+  const advisorBookings = allBookings.filter(b => b.source === "advisor");
+  if (!advisorBookings.length) {
+    tbody.innerHTML = '<tr><td class="empty-td" colspan="6">No advisor-created bookings yet</td></tr>';
+    return;
+  }
+
+  const stats = {};
+  advisorBookings.forEach(b => {
+ const key = b.createdByAdvisor || "unknown";
+if (!stats[key]) {
+  stats[key] = {
+    name: b.createdByAdvisorName
+      || b.createdByAdvisorEmail
+      || (b.createdByAdvisor ? "Advisor #" + b.createdByAdvisor.slice(-6).toUpperCase() : "Legacy Booking (no advisor recorded)"),
+    count: 0, revenue: 0, delivered: 0, cancelled: 0
+  };
+}
+    stats[key].count++;
+    stats[key].revenue += b.total || 0;
+    if (b.status === "delivered") stats[key].delivered++;
+    if (b.status === "cancelled") stats[key].cancelled++;
+  });
+
+  const rows = Object.values(stats).sort((a, b) => b.revenue - a.revenue);
+  tbody.innerHTML = rows.map(s => `
+    <tr>
+      <td>
+        <div class="cust-cell">
+          <div class="cust-avatar">${s.name.charAt(0).toUpperCase()}</div>
+          ${s.name}
+        </div>
+      </td>
+      <td class="amount">${s.count}</td>
+      <td class="amount">₹${s.revenue.toLocaleString("en-IN")}</td>
+      <td class="amount">₹${s.count ? Math.round(s.revenue / s.count).toLocaleString("en-IN") : 0}</td>
+      <td class="amount" style="color:var(--green)">${s.delivered}</td>
+      <td class="amount" style="color:var(--red)">${s.cancelled}</td>
+    </tr>`).join("");
+}
+
+/* ════════════════════════════════════════════
+   CHARTS
+   ════════════════════════════════════════════ */
+function renderCharts() {
+  // Monthly bookings + revenue (overview)
+  const months      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const booksPerMo  = new Array(12).fill(0);
+  const revPerMo    = new Array(12).fill(0);
+  allBookings.forEach(b => {
+    const d = b.createdAt?.toDate?.();
+    if (!d) return;
+    booksPerMo[d.getMonth()]++;
+    revPerMo[d.getMonth()] += b.total || 0;
+  });
+
+  const gColor = alpha => `rgba(245,166,35,${alpha})`;
+  const bColor = alpha => `rgba(61,156,245,${alpha})`;
+
+  const ctx1 = document.getElementById("overviewChart");
+  if (ctx1) {
+    if (bookingsChart) bookingsChart.destroy();
+    bookingsChart = new Chart(ctx1, {
+      type: "bar",
+      data: {
+        labels: months,
+        datasets: [
+          { label: "Bookings", data: booksPerMo, backgroundColor: bColor(.4), borderColor: bColor(1), borderWidth: 2, borderRadius: 5, yAxisID: "y" },
+          { label: "Revenue (₹)", data: revPerMo, type: "line", borderColor: gColor(1), backgroundColor: gColor(.1), borderWidth: 2, tension: .4, pointBackgroundColor: gColor(1), pointRadius: 3, yAxisID: "y1" }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { labels: { color: "#6b7686", font: { family: "'Manrope',sans-serif", size: 11 } } } },
+        scales: {
+          x:  { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "#6b7686", font: { size: 10 } } },
+          y:  { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "#6b7686", font: { size: 10 } }, position: "left" },
+          y1: { grid: { display: false }, ticks: { color: "#f5a623", font: { size: 10 }, callback: v => "₹" + (v >= 1000 ? (v/1000).toFixed(1)+"k" : v) }, position: "right" }
+        }
+      }
+    });
+  }
+
+  // Status donut
+  const statusMap = {};
+  allBookings.forEach(b => { statusMap[b.status||"pending"] = (statusMap[b.status||"pending"]||0) + 1; });
+  const statusColors = {
+    confirmed: "#3d9cf5", assigned: "#9b72f5", packing: "#7dd3fc",
+    transit: "#fbbf24", delivered: "#00d17a", cancelled: "#ff4f5e", pending: "#f5a623"
+  };
+  const labels = Object.keys(statusMap), values = Object.values(statusMap);
+  const ctx2 = document.getElementById("statusChart");
+  if (ctx2) {
+    if (statusChart) statusChart.destroy();
+    statusChart = new Chart(ctx2, {
+      type: "doughnut",
+      data: { labels, datasets: [{ data: values, backgroundColor: labels.map(l => statusColors[l]||"#555"), borderColor: "var(--surface)", borderWidth: 3, hoverOffset: 6 }] },
+      options: { responsive: false, cutout: "68%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } } } }
+    });
+    const legend = document.getElementById("statusLegend");
+    if (legend) {
+      legend.innerHTML = labels.map((l, i) => `
+        <div class="legend-item">
+          <div class="legend-left"><div class="legend-dot" style="background:${statusColors[l]||"#555"}"></div>${cap(l)}</div>
+          <div class="legend-val">${values[i]}</div>
+        </div>`).join("");
+    }
+  }
+}
+
+/* ════════════════════════════════════════════
+   REVENUE SECTION
+   ════════════════════════════════════════════ */
+let revenueTypeChart = null;
+
+function renderRevenue() {
+  const total    = allBookings.reduce((s,b)=>s+(b.total||0),0);
+  const avg      = allBookings.length ? Math.round(total/allBookings.length) : 0;
+  const thisM    = allBookings.filter(b => {
+    const d = b.createdAt?.toDate?.();
+    return d && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
+  }).reduce((s,b)=>s+(b.total||0),0);
+
+  setText("kpiRevTotal",   fmt(total));
+  setText("kpiAvg",        "₹"+avg.toLocaleString("en-IN"));
+  setText("kpiThisMonth",  fmt(thisM));
+
+  // Monthly breakdown table
+  const months      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const booksPerMo  = new Array(12).fill(0);
+  const revPerMo    = new Array(12).fill(0);
+  allBookings.forEach(b => {
+    const d = b.createdAt?.toDate?.();
+    if (!d) return;
+    booksPerMo[d.getMonth()]++;
+    revPerMo[d.getMonth()] += b.total || 0;
+  });
+  const maxRev = Math.max(...revPerMo, 1);
+  const tbody  = document.getElementById("revTable");
+  if (tbody) {
+    tbody.innerHTML = months.map((m, i) => {
+      if (!booksPerMo[i] && !revPerMo[i]) return "";
+      const pct = ((revPerMo[i] / total) * 100).toFixed(1);
+      return `<tr>
+        <td style="font-weight:600">${m} 2026</td>
+        <td class="amount">${booksPerMo[i]}</td>
+        <td>
+          <div class="rev-bar">
+            <div class="rev-bar-track"><div class="rev-bar-fill" style="width:${(revPerMo[i]/maxRev)*100}%"></div></div>
+            <span class="amount" style="min-width:80px">₹${revPerMo[i].toLocaleString("en-IN")}</span>
+          </div>
+        </td>
+        <td class="amount">₹${booksPerMo[i] ? Math.round(revPerMo[i]/booksPerMo[i]).toLocaleString("en-IN") : 0}</td>
+        <td style="color:var(--gold)">${pct}%</td>
+      </tr>`;
+    }).filter(Boolean).join("") || '<tr><td class="empty-td" colspan="5">No revenue data yet</td></tr>';
+  }
+
+  // Revenue by move type chart
+  const typeRev = { home: 0, office: 0, single: 0, other: 0 };
+  allBookings.forEach(b => {
+    const t = b.moveType || "other";
+    if (typeRev[t] !== undefined) typeRev[t] += b.total || 0;
+    else typeRev.other += b.total || 0;
+  });
+  const ctx3 = document.getElementById("revenueTypeChart");
+  if (ctx3) {
+    if (revenueTypeChart) revenueTypeChart.destroy();
+    revenueTypeChart = new Chart(ctx3, {
+      type: "bar",
+      data: {
+        labels: ["🏠 Home Move", "🏢 Office Shift", "📦 Single Item", "Other"],
+        datasets: [{
+          data: [typeRev.home, typeRev.office, typeRev.single, typeRev.other],
+          backgroundColor: ["rgba(245,166,35,.5)","rgba(61,156,245,.5)","rgba(0,209,122,.5)","rgba(155,114,245,.5)"],
+          borderColor:     ["#f5a623","#3d9cf5","#00d17a","#9b72f5"],
+          borderWidth: 2, borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "#6b7686" } },
+          y: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "#6b7686", callback: v => "₹" + (v>=1000?(v/1000).toFixed(1)+"k":v) } }
+        }
+      }
+    });
+  }
+}
+
+/* ════════════════════════════════════════════
+   SECTION NAV
+   ════════════════════════════════════════════ */
+const sectionMeta = {
+  overview:   { title: "Overview",    sub: "Live snapshot of your business" },
+  revenue:    { title: "Revenue",     sub: "Sales analytics & breakdown" },
+  newbooking: { title: "New Booking", sub: "Create a booking on behalf of a customer" },
+  bookings:   { title: "Bookings",    sub: "All move orders from packzenblr.in" },
+  customers:  { title: "Customers",   sub: "Registered users & spending" },
+drivers:    { title: "Drivers",     sub: "Fleet status & performance" },
+  advisors:   { title: "Advisor Stats", sub: "Bookings created by each advisor" }
+};
+
+function showSection(name, navEl) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  const sec = document.getElementById("sec" + cap(name));
+  if (sec) sec.classList.add("active");
+  if (navEl) navEl.classList.add("active");
+  const meta = sectionMeta[name] || {};
+  setText("sectionTitle", meta.title || cap(name));
+  setText("sectionSub",   meta.sub   || "Real-time data");
+  activeSection = name;
+  if (name === "overview")   renderCharts();
+  if (name === "revenue")    renderRevenue();
+if (name === "drivers")    renderDrivers();
+  if (name === "advisors")   renderAdvisorStats();
+  if (name === "newbooking") nbInit();
+}
+
+/* ════════════════════════════════════════════
+   EXPORT CSV
+   ════════════════════════════════════════════ */
+function exportBookingsCSV() {
+  const list = filteredBookings || allBookings;
+  const rows = [["Ref","Customer","Phone","Pickup","Drop","Date","Amount","Payment","Status","Driver"]];
+  list.forEach(b => rows.push([
+    b.bookingRef||b.id.slice(-6), b.customerName||"", b.phone||"",
+    (b.pickup||"").replace(/,/g," "), (b.drop||"").replace(/,/g," "),
+    b.date||"", b.total||0, payLabel(b), b.status||"", b.driverName||""
+  ]));
+  downloadCSV(rows, "PackZen-Bookings");
+}
+
+function exportCustomersCSV() {
+  const rows = [["Name","Email","Phone","Bookings","Total Spent","Joined"]];
+  allCustomers.forEach(c => {
+    const bookings = allBookings.filter(b=>b.customerUid===c.id);
+    const spent    = bookings.reduce((s,b)=>s+(b.total||0),0);
+    rows.push([c.name||"", c.email||"", c.phone||"", bookings.length, spent,
+               c.createdAt?.toDate?c.createdAt.toDate().toLocaleDateString("en-IN"):"—"]);
+  });
+  downloadCSV(rows, "PackZen-Customers");
+}
+
+function exportRevenueCSV() {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const booksM = new Array(12).fill(0), revM = new Array(12).fill(0);
+  allBookings.forEach(b => { const d=b.createdAt?.toDate?.(); if(!d) return; booksM[d.getMonth()]++; revM[d.getMonth()]+=b.total||0; });
+  const total = revM.reduce((a,b)=>a+b,0);
+  const rows  = [["Month","Bookings","Revenue","Avg Value","% of Total"]];
+  months.forEach((m,i) => { if(!booksM[i]) return; rows.push([`${m} 2026`, booksM[i], revM[i], booksM[i]?Math.round(revM[i]/booksM[i]):0, total?((revM[i]/total)*100).toFixed(1)+"%":"0%"]); });
+  downloadCSV(rows, "PackZen-Revenue");
+}
+
+function downloadCSV(rows, name) {
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a   = document.createElement("a");
+  a.href    = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `${name}-${new Date().toLocaleDateString("en-IN").replace(/\//g,"-")}.csv`;
+  a.click();
+  toast("📥 CSV downloaded");
+}
+
+/* ════════════════════════════════════════════
+   SIGN OUT
+   ════════════════════════════════════════════ */
+function doSignOut() {
+  if (unsubBookings)  unsubBookings();
+  if (unsubCustomers) unsubCustomers();
+  if (unsubDrivers)   unsubDrivers();
+  auth.signOut().then(() => {
+    const shell = document.getElementById("shell");
+    shell.innerHTML = ""; shell.classList.remove("active");
+    shell.style.display = "none";
+    document.getElementById("loginWrap").style.display = "flex";
+    advisorUser = null; allBookings=[]; allCustomers=[]; allDrivers=[];
+  });
+}
+
+/* ════════════════════════════════════════════
+   UTILS
+   ════════════════════════════════════════════ */
+function cap(s)        { return s ? s.charAt(0).toUpperCase()+s.slice(1) : ""; }
+function setText(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function shortAddr(a)  { return a ? a.split(",")[0].trim() : "—"; }
+function fmt(n)        { return n >= 100000 ? "₹"+(n/100000).toFixed(1)+"L" : "₹"+n.toLocaleString("en-IN"); }
+function payLabel(b)   {
+  if (b.paymentType==="full")     return "Full Paid";
+  if (b.paymentType==="advance")  return "Advance";
+  if (b.source==="whatsapp")      return "WhatsApp";
+  return "Pay on Day";
+}
+
+/* ─── TOAST ─── */
+function toast(msg, dur=3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), dur);
+}
+</script>
+     <script src="../../js/dashboards/advisor-dashboard-patch.js"></script>
+
+
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+
+        // Debounced observer to prevent infinite loops and performance issues
+        let timeout;
+        const observer = new MutationObserver((mutations) => {
+            let shouldUpdate = false;
+            for (let m of mutations) {
+                if (m.addedNodes.length > 0) {
+                    shouldUpdate = true;
+                    break;
+                }
+            }
+            if (shouldUpdate) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => lucide.createIcons(), 50);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
+</script>
+
+  <script src="../../js/core/icon-init.js"></script>
+</body>
+</html>

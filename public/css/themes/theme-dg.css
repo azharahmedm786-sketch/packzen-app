@@ -1,0 +1,665 @@
+/* ================================================================
+   PACKZEN — DG AIR FREIGHT PREMIUM THEME OVERRIDE
+  Deep Command Navy  +  PackZen Trust Green
+   Drop this AFTER your style.css  <link rel="stylesheet" href="theme-dg.css">
+   ================================================================ */
+
+/* ────────────────────────────────────────────────────────────────
+   1. DESIGN TOKENS  — overrides every color variable in style.css
+   ──────────────────────────────────────────────────────────────── */
+:root {
+  --gold: #2F9E5C;
+  --gold-bright: #3FB56E;
+  --gold-gradient: linear-gradient(135deg, #14532D 0%, #2F9E5C 55%, #3FB56E 100%);
+  --gold-glow: 0 8px 32px rgba(47, 158, 92, 0.44);
+  --gold-tint: #F0FBF3;
+
+  --accent: #2F9E5C;
+  --accent-hover: #14532D;
+  --accent-light: #DCFCE7;
+  --accent-gradient: linear-gradient(135deg, #14532D 0%, #2F9E5C 55%, #3FB56E 100%);
+
+  --shadow-gold: 0 8px 32px rgba(47, 158, 92, 0.42);
+  --shadow-blue: 0 8px 32px rgba(6, 14, 36, 0.38);
+
+  --navy-deep: #060e24;
+  --navy-mid: #0c1b3a;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f7fb;
+  --bg-tertiary: #e8eef8;
+}
+/* ────────────────────────────────────────────────────────────────
+   2. GLOBAL RESET HELPERS
+   ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ────────────────────────────────────────────────────────────────
+   3. NAVBAR
+   ──────────────────────────────────────────────────────────────── */
+.navbar {
+  background: #060e24 !important;
+  border-bottom: 2px solid rgba(47, 158, 92, 0.50) !important;
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.50) !important;
+}
+
+.nav-links a::after { background: #3FB56E !important; }
+.nav-links a:hover  { color: #fff !important; }
+
+/* Nav avatar */
+.nav-avatar {
+  background: #2F9E5C !important;
+  box-shadow: 0 4px 12px rgba(47, 158, 92, 0.40) !important;
+}
+
+/* Login / CTA button in nav — DG Air Freight rectangular style */
+.nav-auth-btn {
+  background: #2F9E5C !important;
+  box-shadow: 0 4px 16px rgba(47, 158, 92, 0.44) !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1.4rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
+  border: none !important;
+  transition: all 0.22s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.nav-auth-btn:hover {
+  box-shadow: 0 8px 26px rgba(47, 158, 92, 0.58) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* User dropdown accent */
+.user-dropdown          { border-top-color: #2F9E5C !important; }
+.user-dropdown a:hover  { color: #2F9E5C !important; padding-left: 1.4rem; }
+
+/* ────────────────────────────────────────────────────────────────
+   4. HERO SECTION
+   ──────────────────────────────────────────────────────────────── */
+.hero-badge {
+  background: rgba(47, 158, 92, 0.20) !important;
+  border-color: rgba(47, 158, 92, 0.50) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   5. PREMIUM BUTTONS  — the DG Air Freight look
+      Rectangular · Bold · Deep green · Crisp shadows
+   ──────────────────────────────────────────────────────────────── */
+
+/* ── Primary CTA ── */
+.btn-primary {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 22px rgba(47, 158, 92, 0.42) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px !important;
+  padding: 0.9rem 1.9rem !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: transform 0.22s, box-shadow 0.22s !important;
+}
+.btn-primary::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important; left: -75% !important;
+  width: 50% !important; height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent) !important;
+  transform: skewX(-20deg) !important;
+  transition: left 0.5s !important;
+  pointer-events: none !important;
+}
+.btn-primary:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 14px 36px rgba(47, 158, 92, 0.56) !important;
+}
+.btn-primary:hover::after { left: 130% !important; }
+
+/* ── Form NEXT button ── */
+.btn-next {
+  background: #2F9E5C !important;
+  box-shadow: 0 5px 18px rgba(47, 158, 92, 0.38) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  transition: transform 0.22s, box-shadow 0.22s !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.btn-next:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 28px rgba(47, 158, 92, 0.54) !important;
+}
+
+/* ── Pay / Confirm booking ── */
+.btn-pay {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 22px rgba(47, 158, 92, 0.42) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+  transition: transform 0.22s, box-shadow 0.22s !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.btn-pay:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 34px rgba(47, 158, 92, 0.56) !important;
+}
+
+/* ── Leave Review button ── */
+.leave-review-btn {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 22px rgba(47, 158, 92, 0.42) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+.leave-review-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 34px rgba(47, 158, 92, 0.56) !important;
+}
+
+/* ── Auth / OTP button ── */
+.btn-auth {
+  background: #2F9E5C !important;
+  box-shadow: 0 5px 18px rgba(47, 158, 92, 0.38) !important;
+  border-radius: 8px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  transition: transform 0.22s, box-shadow 0.22s !important;
+}
+.btn-auth:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 28px rgba(47, 158, 92, 0.50) !important;
+}
+
+/* ── Send OTP ── */
+.btn-send-otp {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 20px rgba(47, 158, 92, 0.40) !important;
+  border-radius: 8px !important;
+}
+
+/* ── Promo ── */
+.btn-promo {
+  background: #2F9E5C !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+.btn-promo:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(47, 158, 92, 0.40) !important;
+}
+
+/* ── Copy / small action buttons ── */
+.btn-copy, .tob-btn-track {
+  background: #2F9E5C !important;
+  border-radius: 6px !important;
+}
+
+/* ── Track / chat ── */
+.bs-track-btn, .btn-open-chat {
+  background: #2F9E5C !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+}
+
+/* ── Final CTA call button ── */
+.fcta-call {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 22px rgba(47, 158, 92, 0.42) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+.fcta-call:hover { box-shadow: 0 14px 36px rgba(47, 158, 92, 0.58) !important; }
+
+/* ── Date "pick another date" button ── */
+.date-more-btn {
+  color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  border-color: rgba(47, 158, 92, 0.28) !important;
+  border-radius: 6px !important;
+}
+.date-more-btn:hover { background: #2F9E5C !important; color: #fff !important; }
+
+/* ── Modal action buttons (confirm/primary) ── */
+.am-btn-primary, .am-btn-confirm {
+  background: #2F9E5C !important;
+  box-shadow: 0 5px 18px rgba(47, 158, 92, 0.38) !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  border: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.am-btn-primary:hover, .am-btn-confirm:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 10px 28px rgba(47, 158, 92, 0.50) !important;
+}
+
+/* ── Confirmation card copy / invoice ── */
+.cc-copy-btn {
+  background: #2F9E5C !important;
+  border-radius: 6px !important;
+}
+.cc-copy-btn:hover { box-shadow: 0 4px 12px rgba(47, 158, 92, 0.36) !important; }
+.cc-btn-invoice {
+  background: #2F9E5C !important;
+  border: none !important;
+}
+
+/* ── Chat send button ── */
+.btn-send {
+  background: #2F9E5C !important;
+  box-shadow: 0 4px 14px rgba(47, 158, 92, 0.36) !important;
+}
+
+/* ── Pricing CTA link ── */
+.pricing-section .btn-primary { display: inline-flex !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   6. STATS BAR
+   ──────────────────────────────────────────────────────────────── */
+.stats-bar   { border-top: 4px solid #3FB56E !important; }
+.stat-suffix { color: #3FB56E !important; }
+.stat-number { color: #060e24 !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   7. MARQUEE TICKER
+   ──────────────────────────────────────────────────────────────── */
+.marquee-wrap { border-bottom-color: rgba(47, 158, 92, 0.28) !important; }
+.marquee-track .dot { color: #3FB56E !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   8. SECTION TAGS  (the little pill labels above headings)
+   ──────────────────────────────────────────────────────────────── */
+.section-tag:not(.light) {
+  background: #F0FBF3 !important;
+  color: #2F9E5C !important;
+  border-color: rgba(47, 158, 92, 0.30) !important;
+}
+.section-tag.light {
+  background: rgba(47, 158, 92, 0.18) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(47, 158, 92, 0.40) !important;
+}
+/* Override inline-style color on the quote-section tag */
+.quote-section .section-tag {
+  background: #F0FBF3 !important;
+  color: #2F9E5C !important;
+  border-color: rgba(47, 158, 92, 0.30) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   9. BOOKING FORM — step header, progress, indicators
+   ──────────────────────────────────────────────────────────────── */
+.step-header::before {
+  background: #2F9E5C !important;
+}
+.step-progress-fill {
+  background: #2F9E5C !important;
+  box-shadow: 0 0 14px rgba(47, 158, 92, 0.60) !important;
+}
+.step-dot.active .dot-icon {
+  background: #2F9E5C !important;
+  border-color: #6BCB8E !important;
+  box-shadow: 0 0 0 4px rgba(47, 158, 92, 0.28) !important;
+}
+.step-dot.done .dot-icon { border-color: #6BCB8E !important; }
+
+/* ── Field inputs ── */
+.field-input:focus {
+  border-color: #2F9E5C !important;
+  box-shadow: 0 0 0 4px rgba(47, 158, 92, 0.10) !important;
+}
+.field-input.error { border-color: #ef4444 !important; }
+
+/* ── Toggle switch ── */
+.toggle input:checked + .slider { background: #2F9E5C !important; }
+
+/* ── OTP boxes ── */
+.otp-box:focus {
+  border-color: #2F9E5C !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.16) !important;
+}
+
+/* ── Move Type Cards ── */
+.move-type-card:hover { border-color: #2F9E5C !important; }
+.move-type-card.selected {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 8px 28px rgba(47, 158, 92, 0.18) !important;
+}
+.move-type-card.selected::after {
+  background: #2F9E5C !important;
+}
+
+/* ── Date strip cards ── */
+.date-card:hover { border-color: #2F9E5C !important; background: #F0FBF3 !important; }
+.date-card.selected {
+  background: #2F9E5C !important;
+  border-color: #2F9E5C !important;
+  box-shadow: 0 4px 18px rgba(47, 158, 92, 0.34) !important;
+}
+.date-card.today-card .dc-day { color: #2F9E5C !important; }
+.dc-tag { background: #2F9E5C !important; }
+
+/* ── Time slot buttons ── */
+.time-slot-btn:hover  { border-color: #2F9E5C !important; background: #F0FBF3 !important; }
+.time-slot-btn.selected {
+  background: #2F9E5C !important;
+  border-color: #2F9E5C !important;
+  box-shadow: 0 4px 18px rgba(47, 158, 92, 0.34) !important;
+}
+
+/* ── House / size select cards ── */
+.select-card:hover  { border-color: #2F9E5C !important; background: #F0FBF3 !important; }
+.select-card.selected {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.14) !important;
+}
+.select-card.selected::after { color: #2F9E5C !important; }
+
+/* ── Vehicle cards ── */
+.vehicle-card:hover  { border-color: #2F9E5C !important; background: #F0FBF3 !important; }
+.vehicle-card.selected {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.14) !important;
+}
+.vehicle-card.selected::after { color: #2F9E5C !important; }
+.vc-rate { color: #2F9E5C !important; background: #F0FBF3 !important; }
+
+/* ── Payment option cards ── */
+.payment-opt:hover {
+  border-color: rgba(47, 158, 92, 0.45) !important;
+  transform: translateY(-2px) !important;
+}
+.payment-opt.selected {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 4px 18px rgba(47, 158, 92, 0.18) !important;
+}
+.po-badge:not(.save) { background: #2F9E5C !important; }
+.po-amount { color: #2F9E5C !important; }
+
+/* ── Furniture / item cards ── */
+.furniture-card:has(input:checked),
+.furniture-card.checked {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 4px 16px rgba(47, 158, 92, 0.14) !important;
+}
+.furniture-card:has(input:checked) .fc-check,
+.furniture-card.checked .fc-check { background: #2F9E5C !important; color: #fff !important; }
+.qty-btn        { border-color: #2F9E5C !important; color: #2F9E5C !important; }
+.qty-btn:hover  { background: #2F9E5C !important; color: #fff !important; }
+
+/* ── Photo upload area ── */
+.photo-upload-area:hover { border-color: #2F9E5C !important; background: #F0FBF3 !important; }
+.upload-link    { color: #2F9E5C !important; }
+.photo-thumb    { border-color: #2F9E5C !important; }
+
+/* ── Price summary box ── */
+.price-box {
+    background: #2F9E5C !important;
+  border-color: rgba(47, 158, 92, 0.22) !important;
+}
+.price-amount,
+#livePrice { color: #2F9E5C !important; }
+.advance-info   { border-top-color: rgba(47, 158, 92, 0.20) !important; }
+.discount-row   { color: #2F9E5C !important; }
+
+/* ── Promo input ── */
+.promo-input:focus { border-color: #2F9E5C !important; }
+
+/* ── T&C checkbox ── */
+.tnc-row input[type="checkbox"] { accent-color: #2F9E5C !important; }
+.tnc-row a { color: #2F9E5C !important; }
+
+/* ── Quote perks checkmarks ── */
+.perk-check {
+  background: #2F9E5C !important;
+}
+
+/* ── Distance / intercity badges ── */
+.distance-badge  { background: #F0FBF3 !important; color: #060e24 !important; }
+.intercity-badge { border-left-color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   10. SERVICE CARDS
+   ──────────────────────────────────────────────────────────────── */
+.service-card::before {
+  background: #2F9E5C !important;
+}
+.service-card:hover { border-color: rgba(47, 158, 92, 0.22) !important; }
+.sc-badge {
+  background: #2F9E5C !important;
+  box-shadow: 0 4px 14px rgba(47, 158, 92, 0.32) !important;
+}
+/* Home service banner tint */
+.sc-banner-home { background: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   11. HOW IT WORKS
+   ──────────────────────────────────────────────────────────────── */
+.hiw-step { border-top-color: #2F9E5C !important; }
+.hiw-num {
+  background: #2F9E5C !important;
+  box-shadow: 0 4px 16px rgba(47, 158, 92, 0.48) !important;
+}
+.hiw-connector { color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   12. WHY CHOOSE US CARDS
+   ──────────────────────────────────────────────────────────────── */
+.why-card:hover { border-bottom-color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   13. REVIEWS
+   ──────────────────────────────────────────────────────────────── */
+.review-card   { border-top-color: #2F9E5C !important; }
+.review-stars  { color: #2F9E5C !important; }
+.review-avatar {
+  background: #2F9E5C !important;
+}
+.overall-rating { border-left-color: #2F9E5C !important; }
+.or-stars  { color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   14. FAQ
+   ──────────────────────────────────────────────────────────────── */
+.faq-arrow            { color: #2F9E5C !important; }
+.faq-item.open .faq-q {
+  background: #F0FBF3 !important;
+  color: #2F9E5C !important;
+  border-left: 3px solid #2F9E5C !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   15. LOCAL SEO BLOCK
+   ──────────────────────────────────────────────────────────────── */
+.local-seo           { border-left-color: #2F9E5C !important; }
+.local-seo h3        { color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   16. FOOTER
+   ──────────────────────────────────────────────────────────────── */
+.footer::before {
+  background: #2F9E5C !important;
+}
+.footer-logo span { color: #3FB56E !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   17. TRACK ORDER BANNER (TOB)
+   ──────────────────────────────────────────────────────────────── */
+.tob-inner            { border-left-color: #2F9E5C !important; }
+.tob-progress-fill    { background: #2F9E5C !important; }
+.tob-step.active .tob-step-dot {
+  background: #2F9E5C !important;
+ animation: greenPulse 2s infinite !important;
+}
+@keyframes greenPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(47, 158, 92, 0.45); }
+  50%       { box-shadow: 0 0 0 6px rgba(47, 158, 92, 0); }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   18. MODALS
+   ──────────────────────────────────────────────────────────────── */
+.modal-box     { border-top-color: #2F9E5C !important; }
+.bottom-sheet  { border-top-color: #2F9E5C !important; }
+.auth-link     { color: #2F9E5C !important; }
+
+.dash-tab.active {
+  color: #2F9E5C !important;
+  border-bottom-color: #2F9E5C !important;
+}
+
+/* Referral */
+.referral-code-row { border-color: #2F9E5C !important; }
+.referral-code-text { color: #2F9E5C !important; }
+
+/* Bottom-sheet options */
+.bs-option:hover {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+}
+.bs-option.selected {
+  border-color: #2F9E5C !important;
+  background: #F0FBF3 !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.14) !important;
+}
+.bs-option.selected .bs-opt-check { background: #2F9E5C !important; }
+.bs-opt-price  { color: #2F9E5C !important; }
+.bs-id strong  { color: #2F9E5C !important; }
+
+/* Confirmation card */
+.cc-amount-inline { color: #2F9E5C !important; }
+.cc-loc-dot.pickup { background: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   19. PRICING TABLE
+   ──────────────────────────────────────────────────────────────── */
+.pricing-table thead tr {
+  background: #2F9E5C !important;
+}
+.pricing-table thead th:last-child { color: #6BCB8E !important; }
+.pricing-table tbody tr:hover { background: #F0FBF3 !important; }
+.pricing-table td:last-child { color: #2F9E5C !important; }
+.pricing-note { border-left-color: #2F9E5C !important; }
+
+/* ────────────────────────────────────────────────────────────────
+   20. CHAT MODAL
+   ──────────────────────────────────────────────────────────────── */
+.chat-header { border-bottom-color: #2F9E5C !important; }
+.chat-bubble.mine {
+  background: #2F9E5C !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   21. FOCUS RING  — accessibility consistent with green theme
+   ──────────────────────────────────────────────────────────────── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: #3FB56E !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   22. FLOATING CALL BUTTON  — already red-ish, make it match exactly
+   ──────────────────────────────────────────────────────────────── */
+.float-call {
+  background: #2F9E5C !important;
+  box-shadow: 0 6px 26px rgba(47, 158, 92, 0.50) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   23. TOAST NOTIFICATION
+   ──────────────────────────────────────────────────────────────── */
+.toast-msg {
+  background: #2F9E5C !important;
+  box-shadow: 0 8px 28px rgba(47, 158, 92, 0.44) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   24. INLINE `<style>` TAG OVERRIDES
+       The HTML head contains a <style> block with some blue colors.
+       !important on external CSS overrides them cleanly.
+   ──────────────────────────────────────────────────────────────── */
+
+/* Step numbers in "How it works" section (originally blue #3b82f6) */
+.hiw-num { background: #2F9E5C !important; }
+
+/* FAQ arrow (originally blue) */
+.faq-arrow { color: #2F9E5C !important; }
+.faq-item.open .faq-q { background: rgba(47, 158, 92, 0.07) !important; }
+
+/* Pricing table (originally blue header) */
+.pricing-table thead tr {
+  background: #2F9E5C !important;
+}
+.pricing-table td:last-child { color: #2F9E5C !important; }
+.pricing-note { border-left-color: #2F9E5C !important; }
+
+/* Final CTA call button (was blue in inline style) */
+.fcta-call {
+  background: #2F9E5C !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   25. PREMIUM POLISH — subtle enhancements
+   ──────────────────────────────────────────────────────────────── */
+
+/* Add a faint green glow to active form card */
+.form-card {
+  box-shadow:
+    0 24px 72px rgba(12, 27, 58, 0.18),
+    0 0 0 1px rgba(47, 158, 92, 0.06) !important;
+}
+
+/* Review card hover — slightly richer shadow */
+.review-card:hover {
+  box-shadow:
+    0 20px 52px rgba(12, 27, 58, 0.16),
+    0 0 0 1px rgba(47, 158, 92, 0.08) !important;
+}
+
+/* Service card hover enriched */
+.service-card:hover {
+  box-shadow:
+    0 24px 56px rgba(12, 27, 58, 0.18),
+    0 0 0 1px rgba(47, 158, 92, 0.10) !important;
+}
+
+/* Overall rating badge — keep navy depth */
+.overall-rating {
+  box-shadow:
+    0 8px 32px rgba(6, 14, 36, 0.40),
+    0 0 0 1px rgba(47, 158, 92, 0.12) !important;
+}
+
+/* Smooth button active / pressed state */
+.btn-primary:active,
+.btn-next:active,
+.btn-pay:active,
+.btn-auth:active,
+.nav-auth-btn:active {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 0 3px 10px rgba(47, 158, 92, 0.30) !important;
+}

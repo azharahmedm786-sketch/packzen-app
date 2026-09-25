@@ -1,0 +1,279 @@
+/* ================================================================
+   PACKZEN — GREEN / WHITE THEME OVERRIDE  v1.0
+   Load LAST (after style.css, mobile-fixes.css, theme-dg.css, desktop.css)
+   <link rel="stylesheet" href="theme-green.css">
+   Overrides the navy/purple palette with a forest-green + white palette
+   while keeping a distinct emerald tone reserved for "savings / discount"
+   signals only, so it still stands out from the primary brand green.
+   ================================================================ */
+
+:root {
+  /* ── Green palette (variable names kept as --purple-* for drop-in
+       compatibility with the rest of the codebase — only the values
+       change) ──────────────────────────────────────────────────── */
+  --purple-900: #0F3D2E;
+  --purple-800: #14532D;
+  --purple-700: #1C6E42;
+  --purple-600: #2F9E5C;
+  --purple-500: #3FB56E;
+  --purple-400: #6BCB8E;
+  --purple-100: #DDF3E3;
+  --purple-50:  #F2FBF5;
+
+  /* ── Re-point every alias style.css / desktop.css / theme-dg.css already use ── */
+  --navy-900: var(--purple-900);
+  --navy-800: var(--purple-800);
+  --navy-700: var(--purple-700);
+  --navy-600: var(--purple-600);
+  --navy-deep: var(--purple-900);
+  --navy-mid: var(--purple-800);
+
+  --primary: var(--purple-800);
+  --primary-deep: var(--purple-900);
+  --primary-tint: var(--purple-50);
+  --primary-ring: rgba(47, 158, 92, 0.28);
+  --primary-border: var(--purple-100);
+
+  --accent: var(--purple-600);
+  --accent-bright: var(--purple-500);
+  --accent-hover: var(--purple-700);
+  --accent-light: var(--purple-100);
+  --accent-gradient: linear-gradient(135deg, #14532D 0%, #2F9E5C 55%, #6BCB8E 100%);
+
+  --gold: var(--purple-600);
+  --gold-bright: var(--purple-500);
+  --gold-gradient: linear-gradient(135deg, #14532D 0%, #2F9E5C 55%, #6BCB8E 100%);
+  --gold-glow: 0 8px 28px rgba(47, 158, 92, 0.38);
+  --gold-tint: var(--purple-50);
+
+  --shadow-blue: 0 8px 32px rgba(15, 61, 46, 0.28);
+
+  /* Surfaces stay clean white */
+  --bg-app: #F6FBF7;
+  --bg-primary: #ffffff;
+  --bg-secondary: #F4FAF6;
+  --bg-tertiary: #EEF7F1;
+
+  /* Savings/success uses a distinct AMBER accent on purpose, so discount
+     callouts don't visually disappear into an all-green palette — do not
+     touch --success* / --amber-* */
+  --price-text: var(--purple-700);
+  --success: #B45309;
+}
+
+/* ════════════════════════════════════════════════════════════
+   TOP BAR / FOOTER — dark navy → deep forest green (always)
+════════════════════════════════════════════════════════════ */
+.app-bar:not(.white-nav),
+.navbar,
+footer,
+.site-footer,
+.chat-header,
+.cc-btn-invoice {
+  background: var(--purple-900) !important;
+}
+
+/* Step header: desktop.css already gives this a white bg + dark text +
+   accent color ≥1024px. Only force the dark-header mobile treatment
+   BELOW that breakpoint, so we don't fight it and cause invisible text. */
+@media (max-width: 1023px) {
+  .step-header {
+    background: var(--purple-900) !important;
+  }
+  .step-header::before { background: var(--purple-500); }
+  .step-header::after { background: rgba(255,255,255,0.05); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   PROGRESS / STEP DOTS  (mobile only — desktop.css owns ≥1024px)
+════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  .step-progress-fill {
+    background: linear-gradient(90deg, var(--purple-500), var(--purple-400));
+    box-shadow: 0 0 12px rgba(107, 203, 142, 0.55);
+  }
+  .step-dot.active .dot-icon {
+    background: var(--purple-500);
+    border-color: var(--purple-400);
+    box-shadow: 0 0 0 4px rgba(107, 203, 142, 0.28);
+  }
+  .step-dot.done .dot-icon { background: rgba(107,203,142,0.35); border-color: var(--purple-400); }
+  .step-line.done { background: var(--purple-400); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   HOMEPAGE HERO — these used hardcoded hex colors in style.css /
+   theme-dg.css, not CSS variables, so they need direct overrides.
+════════════════════════════════════════════════════════════ */
+.app-phone-btn {
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #ffffff !important;
+}
+.hero-badge {
+  background: var(--purple-50) !important;
+  border-color: var(--purple-100) !important;
+  color: var(--purple-800) !important;
+}
+.hero-cta-btn.primary {
+  background: var(--accent-gradient) !important;
+  color: #fff !important;
+}
+.hero-cta-btn.primary:hover { box-shadow: 0 8px 24px rgba(47, 158, 92, 0.4) !important; }
+.hero-cta-btn.secondary {
+  color: var(--purple-800) !important;
+  border-color: var(--purple-100) !important;
+}
+.trust-item i,
+.trust-strip-inline i {
+  color: var(--purple-600) !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PRIMARY BUTTONS
+════════════════════════════════════════════════════════════ */
+.btn-next,
+.btn-pay,
+#btnPayOnline,
+button.btn-primary,
+.action-btn.primary {
+  background: var(--accent-gradient) !important;
+  box-shadow: var(--gold-glow) !important;
+}
+.btn-next:hover { box-shadow: 0 10px 26px rgba(47, 158, 92, 0.45) !important; }
+
+.btn-auth-outline { color: var(--purple-800); border-color: var(--purple-800); }
+.btn-auth-outline:hover { background: var(--purple-800); color: #fff; }
+
+.field-input:focus {
+  border-color: var(--purple-500) !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.14) !important;
+}
+
+.toggle input:checked + .slider { background: var(--purple-600) !important; }
+
+/* ════════════════════════════════════════════════════════════
+   VEHICLE CARDS  (matches reference: green border + check, green price)
+════════════════════════════════════════════════════════════ */
+.vehicle-card:hover {
+  border-color: var(--purple-400) !important;
+  background: var(--purple-50) !important;
+}
+.vehicle-card.selected {
+  border-color: var(--purple-600) !important;
+  background: var(--purple-50) !important;
+  box-shadow: 0 0 0 3px rgba(47, 158, 92, 0.14) !important;
+}
+.vehicle-card.selected::after {
+  content: '✓';
+  color: #fff !important;
+  background: var(--purple-600);
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem !important;
+}
+.vc-rate {
+  color: var(--purple-700) !important;
+  background: var(--purple-50) !important;
+}
+.vc-badge {
+  background: var(--purple-600) !important;
+  color: #fff !important;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 10px; border-radius: 999px;
+  position: absolute; top: 10px; right: 10px;
+}
+
+/* Move-type / size cards */
+.move-type-card.selected,
+.size-card.selected,
+.furniture-item.selected {
+  border-color: var(--purple-600) !important;
+  background: var(--purple-50) !important;
+}
+.mt-icon i, .move-type-card .mt-icon { color: var(--purple-600); }
+
+/* ════════════════════════════════════════════════════════════
+   DISCOUNT / SAVINGS — deliberately AMBER, not green, in this theme.
+   With an all-green brand palette, a green "you save ₹X" badge would
+   blend into the buttons/prices around it and lose its signal value.
+   Amber keeps it visually distinct and still reads as a positive callout.
+════════════════════════════════════════════════════════════ */
+.discount-row, #discountRow, .discount-badge, .savings-badge {
+  color: var(--success, #B45309) !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   LINKS / MISC ACCENTS
+════════════════════════════════════════════════════════════ */
+a, .link-purple { color: var(--purple-700); }
+.bk-btn.reschedule { background: rgba(47,158,92,0.10); color: var(--purple-800); }
+.cc-id-value, .cc-expand-btn, .dash-tab:hover, .auth-logo { color: var(--purple-800) !important; }
+
+/* ════════════════════════════════════════════════════════════
+   BOOKING SUMMARY SIDEBAR  (desktop split layout, see index.html)
+════════════════════════════════════════════════════════════ */
+.booking-summary-panel {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #E5F5EA;
+  box-shadow: 0 12px 32px rgba(15, 61, 46, 0.08);
+  padding: 1.5rem;
+  display: none;
+  flex-direction: column;
+  gap: 1.1rem;
+  align-self: flex-start;
+}
+.qsum-header { display: flex; align-items: center; justify-content: space-between; }
+.qsum-title { font-size: 1.05rem; font-weight: 800; color: #12271C; }
+.qsum-edit-btn {
+  border: 1.5px solid var(--purple-200, #BEE9CC); background: #fff; color: var(--purple-700);
+  font-size: 0.75rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+}
+.qsum-edit-btn:hover { background: var(--purple-50); }
+
+.qsum-block { display: flex; flex-direction: column; gap: 0.35rem; }
+.qsum-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #7C9284; }
+.qsum-value { font-size: 0.88rem; font-weight: 700; color: #12271C; }
+.qsum-route { display: flex; flex-direction: column; gap: 0.6rem; }
+.qsum-route-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: #2B3B31; }
+.qsum-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.qsum-dot.pickup { background: var(--purple-600); }
+.qsum-dot.drop { background: #B45309; }
+.qsum-meta-row { display: flex; gap: 1.5rem; }
+
+.qsum-divider { height: 1px; background: #EAF6EE; border: none; margin: 0; }
+
+.qsum-breakdown-title { font-size: 0.82rem; font-weight: 800; color: #12271C; display: flex; align-items: center; justify-content: space-between; }
+.qsum-save-pill {
+  background: #FEF3E1; color: #B45309; font-size: 0.68rem; font-weight: 800;
+  padding: 3px 10px; border-radius: 999px;
+}
+.qsum-line { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #47554C; padding: 2px 0; }
+.qsum-line.discount { color: #B45309; font-weight: 700; }
+.qsum-line-value { font-weight: 600; color: #12271C; }
+
+.qsum-total-row { display: flex; align-items: center; justify-content: space-between; }
+.qsum-total-label { font-size: 0.95rem; font-weight: 800; color: #12271C; }
+.qsum-total-value { font-size: 1.35rem; font-weight: 900; color: var(--purple-700); }
+.qsum-advance-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #667A6D; }
+
+.qsum-trust-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; padding-top: 0.75rem; border-top: 1px solid #EAF6EE; }
+.qsum-trust-item { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 600; color: #667A6D; }
+.qsum-trust-item svg { width: 13px; height: 13px; color: var(--purple-600); }
+
+/* Two-column desktop layout: form + persistent summary */
+@media (min-width: 1024px) {
+  .booking-sheet {
+    width: min(92vw, 1180px) !important;
+    max-width: 1180px !important;
+    border-radius: 24px !important;
+  }
+  .sheet-form-wrap {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  .form-card { flex: 1 1 62%; min-width: 0; border-radius: 20px; overflow: hidden; border: 1px solid #E5F5EA; }
+  .booking-summary-panel { display: flex !important; flex: 1 1 38%; position: sticky; top: 1.5rem; }
+}

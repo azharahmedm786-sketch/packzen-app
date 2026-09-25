@@ -1,0 +1,2184 @@
+/* ============================================================
+   PACKZEN — MOBILE-FIXES.CSS  (Production Rewrite v3.0)
+   Mobile-first, conflict-free, a11y-ready
+   Author: Senior Frontend Engineer Audit
+   ============================================================
+
+   TABLE OF CONTENTS
+   01. CSS Custom Properties (overrides / additions)
+   02. Global Reset Patches
+   03. iOS / Android Input Fixes
+   04. Navbar
+   05. Hero
+   06. Quote Section & Form Card Shell
+   07. Step Header
+   08. Step Indicators
+   09. Step Body (scroll-trap fix)
+   10. Step Footer (fixed on mobile, static on desktop)
+   11. Step 0 — Move Type Grid
+   12. Step 1 — Location
+   13. Step 2 — Details (date, time, house, vehicle)
+   14. Step 3 — Furniture / Items
+   15. Step 4 — Book / Payment
+   16. Bottom spacing guard
+   17. Stats Bar
+   18. Services Section
+   19. How It Works
+   20. Why Section
+   21. Trust Signals
+   22. Reviews Section
+   23. Pricing Table
+   24. FAQ
+   25. Final CTA
+   26. Floating Buttons
+   27. Track Order Banner
+   28. Modals (auth, dashboard, action, chat, checklist)
+   29. Footer
+   30. Touch Targets (WCAG 2.5.5 — 44px min)
+   31. Utility: Reduced Motion
+   32. Utility: High Contrast
+   33. Utility: Print
+   ============================================================ */
+
+
+/* ============================================================
+   01. CSS CUSTOM PROPERTIES
+   ============================================================ */
+:root {
+  /* Consistent footer height tokens — single source of truth */
+  --footer-h-mobile : 72px;
+  --footer-h-desktop: 80px;
+
+  /* Safe area shims */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left  : env(safe-area-inset-left,   0px);
+  --safe-right : env(safe-area-inset-right,  0px);
+
+  /* Touch target minimum */
+  --touch-min: 44px;
+}
+
+
+/* ============================================================
+   02. GLOBAL RESET PATCHES
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+   overscroll-behavior-x: none;
+}
+
+/* Momentum scrolling on all scroll containers */
+.step-body,
+.modal-box,
+.chat-messages,
+.date-strip,
+.bs-body,
+.pricing-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent unwanted tap flash on interactive elements */
+button,
+a,
+[onclick],
+.move-type-card,
+.vehicle-card,
+.select-card,
+.furniture-card,
+.time-slot-btn,
+.payment-opt,
+.date-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ============================================================
+   03. iOS / ANDROID INPUT FIXES
+   Prevents automatic zoom on focus (requires font-size >= 16px)
+   ============================================================ */
+input[type="text"],
+input[type="tel"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+select,
+textarea {
+  font-size: 16px;   /* never drops below — prevents iOS zoom */
+  -webkit-text-size-adjust: 100%;
+}
+
+
+/* ============================================================
+   04. NAVBAR
+   ============================================================ */
+@media (max-width: 768px) {
+  .nav-inner {
+    padding: 0 1rem;
+    height: 58px;
+  }
+
+  /* Hide text nav links on mobile; keep functional buttons */
+  .nav-links a:not(.nav-auth-btn):not(.nav-user) {
+    display: none;
+  }
+
+  .user-dropdown {
+    top: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-img {
+    height: 34px;
+    max-width: 110px;
+  }
+
+  .nav-auth-btn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+  }
+
+  .theme-toggle {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-inner {
+    padding: 0 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .nav-auth-btn {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  #navUserName,
+  .nav-arrow {
+    display: none;
+  }
+
+  .user-dropdown {
+    left: 8px;
+    right: 8px;
+    min-width: auto;
+  }
+}
+
+
+/* ============================================================
+   05. HERO
+   ============================================================ */
+@media (max-width: 768px) {
+  .hero {
+    min-height: unset;
+    padding-top: 86px;
+    padding-bottom: 3rem;
+    text-align: center;
+  }
+
+  .hero::after {
+    height: 48px;
+  }
+
+  .hero-content {
+    max-width: 100%;
+  }
+
+  .hero-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-trust {
+    justify-content: center;
+  }
+
+  .hero-sub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding-top: 78px;
+    padding-bottom: 2.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .hero::after {
+    height: 32px;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    padding: 0.75rem 1.4rem;
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .hero {
+    padding-top: 70px;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .hero-title {
+    font-size: 1.8rem;
+  }
+
+  .hero-badge {
+    font-size: 0.68rem;
+    padding: 0.4rem 0.9rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 0.7rem 1rem;
+    font-size: 0.82rem;
+  }
+}
+
+
+/* ============================================================
+   06. QUOTE SECTION & FORM CARD SHELL
+   ============================================================ */
+
+/* Quote section — remove excess padding on mobile */
+@media (max-width: 1024px) {
+  .quote-section {
+    padding: 2.5rem 1rem;
+  }
+
+  .quote-wrapper {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .quote-left .quote-perks {
+    display: none;
+  }
+
+  .quote-left h2 {
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
+    margin-bottom: 0.4rem;
+  }
+
+  .quote-left p {
+    font-size: 0.88rem;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .quote-section {
+    padding: 2rem 0.75rem;
+  }
+
+  .quote-right {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+/* Form card — never clip or hide content */
+.form-card {
+  width: 100%;
+  overflow: visible;  /* let content breathe */
+  border-radius: var(--radius-xl);
+}
+
+@media (max-width: 480px) {
+  .form-card {
+    border-radius: var(--radius-lg);
+  }
+}
+
+
+/* ============================================================
+   07. STEP HEADER
+   ============================================================ */
+@media (max-width: 768px) {
+  .step-header {
+    padding: 1rem 1.1rem;
+  }
+
+  .step-counter {
+    font-size: 1.5rem;
+  }
+
+  .step-header-label {
+    font-size: 0.8rem;
+  }
+
+  .step-progress-track {
+    margin-bottom: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .step-header {
+    padding: 0.875rem 1rem;
+  }
+
+  .step-counter {
+    font-size: 1.3rem;
+  }
+
+  .step-header-label {
+    font-size: 0.76rem;
+  }
+}
+
+
+/* ============================================================
+   08. STEP INDICATORS
+   Hide on small screens to reduce cognitive clutter;
+   progress bar alone is sufficient wayfinding.
+   ============================================================ */
+/* Numbered stepper now compact enough to keep on mobile (Phase 2b) */
+
+/* Desktop: clean dot sizing */
+.dot-icon {
+  font-size: 0.85rem;
+}
+
+.step-dot.active .dot-icon {
+  font-size: 0.9rem;
+}
+
+
+/* ============================================================
+   09. STEP BODY (NO SCROLL TRAP)
+   ============================================================ */
+
+/* step-body padding is set in section 10 alongside the footer
+   so both are always in sync. Only hint styles live here. */
+
+.step-hint {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 480px) {
+  .step-hint {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
+
+/* ============================================================
+   10. STEP FOOTER
+   ──────────────────────────────────────────────────────────
+   STRATEGY: NEVER use position:fixed for the step footer.
+   Fixed positioning rips the element out of document flow,
+   causing it to float over unrelated page sections (stats
+   bar, floating call/WA buttons, etc.) and leaving a giant
+   blank gap inside the form card.
+
+   The footer is ALWAYS static inside the form card, sitting
+   naturally below the step body content. The form-card uses
+   flex-direction:column so the footer renders immediately
+   after content — exactly like Porter / Urban Company flows.
+   ============================================================ */
+
+/* ── Base footer — all screen sizes ── */
+.step-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 1.5rem;
+  align-items: center;
+  background: var(--bg-primary);
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-light);
+  position: static;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.dark-mode .step-footer {
+  background: var(--bg-secondary);
+}
+
+/* Step 0: no footer — cards auto-advance on tap */
+.form-step:first-child .step-footer {
+  display: none !important;
+}
+
+/* Mobile padding */
+@media (max-width: 768px) {
+  .step-footer {
+    padding: 0.875rem 1rem calc(1rem + var(--safe-bottom));
+    gap: 0.6rem;
+    border-top: 2px solid var(--border-light);
+    box-shadow: 0 -2px 12px rgba(12, 27, 58, 0.07);
+  }
+}
+
+@media (max-width: 480px) {
+  .step-footer {
+    padding: 0.75rem 0.875rem calc(0.875rem + var(--safe-bottom));
+    gap: 0.5rem;
+  }
+}
+
+/* Back-only footer (Step 4 last screen) */
+.step-footer.back-only {
+  padding-top: 0.5rem;
+  border-top: none;
+  box-shadow: none;
+}
+
+/* Remove body padding-bottom — no fixed footer means no gap needed */
+body {
+  padding-bottom: 0;
+}
+
+/* Step body: normal padding, no bottom reserve */
+.step-body {
+  padding: 1.5rem 1.5rem 0.5rem;
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+@media (max-width: 768px) {
+  .step-body {
+    padding: 1.25rem 1rem 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .step-body {
+    padding: 1rem 0.875rem 0.5rem;
+  }
+}
+
+/* ── Nav buttons ── */
+.btn-next {
+  flex: 2;
+  height: 52px;
+  min-height: var(--touch-min);
+  padding: 0 1.5rem;
+  font-size: 0.95rem;
+}
+
+.btn-back {
+  flex: 1;
+  height: 52px;
+  min-height: var(--touch-min);
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .btn-next {
+    height: 50px;
+    font-size: 0.88rem;
+    padding: 0 1.1rem;
+  }
+
+  .btn-back {
+    height: 50px;
+    font-size: 0.84rem;
+    padding: 0 0.875rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .btn-next {
+    font-size: 0.82rem;
+    padding: 0 0.875rem;
+  }
+
+  .btn-back {
+    font-size: 0.78rem;
+    padding: 0 0.75rem;
+  }
+}
+
+
+/* ============================================================
+   11. STEP 0 — MOVE TYPE GRID
+   ============================================================ */
+
+/* Mobile: single column list (scannable, easy to tap) */
+.move-type-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
+}
+
+@media (min-width: 600px) {
+  .move-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Mobile card: horizontal row layout */
+.move-type-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  min-height: 72px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Desktop: revert to vertical column */
+@media (min-width: 600px) {
+  .move-type-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem 0.75rem;
+    min-height: 110px;
+    gap: 0.4rem;
+    overflow: hidden; /* clips the bled image below to the card's rounded corners */
+  }
+}
+
+.mt-icon {
+  font-size: 1.9rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+@media (min-width: 600px) {
+  .mt-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.3rem;
+    /* Bleed the image out to the card's edges instead of sitting inside the padding */
+    width: calc(100% + 1.5rem);
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    margin-top: -1.5rem;
+  }
+  .mt-icon img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 0;
+    margin: 0;
+  }
+}
+.mt-label {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.mt-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+/* Selected state — navy primary ring for accessibility */
+.move-type-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+  transform: none; /* avoid jump on mobile */
+}
+
+.move-type-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 22px;
+  text-align: center;
+}
+
+@media (min-width: 600px) {
+  .move-type-card.selected::after {
+    top: 10px;
+    right: 10px;
+    transform: none;
+  }
+}
+
+.move-type-card:active {
+  transform: scale(0.98);
+}
+
+.move-type-card:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+
+/* ============================================================
+   12. STEP 1 — LOCATION
+   ============================================================ */
+#pickup,
+#drop {
+  font-size: 16px; /* prevent iOS zoom */
+  padding: 0.9rem 1rem;
+}
+
+.toggle-row {
+  min-height: var(--touch-min);
+  padding: 0.65rem 0.875rem;
+  margin: 0.5rem 0 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.toggle-row:active {
+  background: var(--bg-tertiary);
+}
+
+.toggle-text {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 480px) {
+  .toggle-text {
+    font-size: 0.8rem;
+  }
+}
+
+#distanceInfo {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.85rem;
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+
+.intercity-badge {
+  padding: 0.875rem 1.1rem;
+  gap: 0.8rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .intercity-badge {
+    padding: 0.75rem 0.875rem;
+    gap: 0.6rem;
+  }
+
+  .ic-icon  { font-size: 1.3rem; }
+  .ic-title { font-size: 0.8rem; }
+  .ic-sub   { font-size: 0.68rem; }
+}
+
+/* Map: only show when JS reveals it */
+#map {
+  display: none;
+  width: 100%;
+  height: 220px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: 0.875rem;
+  border: 1.5px solid var(--border-light);
+   -webkit-transform: translateZ(0);
+transform: translateZ(0);
+touch-action: manipulation;
+}
+
+
+/* ============================================================
+   13. STEP 2 — DETAILS (date, time, house type, vehicle)
+   ============================================================ */
+
+/* ── Date strip ── */
+.date-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x mandatory;
+}
+
+.date-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.date-card {
+  scroll-snap-align: start;
+  min-width: 62px;
+  flex-shrink: 0;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  min-height: var(--touch-min);
+}
+
+@media (max-width: 600px) {
+  .date-card   { min-width: 56px; padding: 9px 6px; }
+  .dc-num      { font-size: 1.2rem; }
+  .dc-day      { font-size: 0.6rem; }
+  .dc-month    { font-size: 0.58rem; }
+  .dc-tag      { font-size: 0.52rem; }
+}
+
+.date-more-btn {
+  min-height: var(--touch-min);
+  font-size: 0.78rem;
+  padding: 6px 14px;
+}
+
+/* ── Time slots ── */
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (min-width: 600px) {
+  .time-slots-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.time-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 6px;
+  min-height: 48px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.time-slot-btn.selected {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.time-slot-btn.selected .ts-label,
+.time-slot-btn.selected .ts-time {
+  color: var(--primary-dark);
+}
+
+.time-slot-btn.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  font-size: 0.65rem;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.time-slot-btn:active {
+  /* Removed scaling to prevent layout shift */
+}
+
+.ts-emoji { font-size: 1.4rem; margin-bottom: 5px; line-height: 1; }
+.ts-label { font-size: 0.72rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.ts-time  { font-size: 0.62rem; color: var(--text-muted); line-height: 1.3; }
+
+@media (max-width: 480px) {
+  .ts-emoji { font-size: 1.3rem; }
+  .ts-label { font-size: 0.7rem; }
+  .ts-time  { font-size: 0.6rem; }
+}
+
+/* ── House type select cards ── */
+.select-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+}
+
+@media (min-width: 600px) {
+  .select-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.select-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 0.4rem;
+  min-height: 68px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  text-align: center;
+}
+
+.select-card:active {
+  transform: scale(0.97);
+}
+
+.select-card.selected {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.select-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  font-size: 0.65rem;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.sc-label { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
+.sc-sub   { font-size: 0.62rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+/* ── Floor selects ── */
+.field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem;
+  margin-bottom: 1.1rem;
+}
+
+@media (max-width: 420px) {
+  .field-row-2 {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+/* ── Vehicle cards ── */
+.vehicle-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vehicle-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  min-height: 68px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+
+.vehicle-card:active {
+  transform: scale(0.98);
+}
+
+.vehicle-card.selected {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.vehicle-card.selected::after {
+  content: '✓';
+  font-size: 1rem;
+  color: var(--gold);
+  font-weight: 800;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  .vehicle-card {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: flex-start;
+    padding: 0.875rem;
+  }
+
+  .vc-info { flex: 1 1 auto; }
+  .vc-rate { align-self: center; font-size: 0.78rem; }
+  .vc-name { font-size: 0.86rem; }
+  .vc-sub  { font-size: 0.7rem; }
+}
+
+/* ── Field labels ── */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+@media (max-width: 380px) {
+  .field-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.5px;
+  }
+}
+
+/* ── Field inputs ── */
+.field-input {
+  font-size: 16px; /* prevent iOS zoom */
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.10);
+}
+
+/* ── Field groups ── */
+.field-group {
+  margin-bottom: 1.1rem;
+}
+
+
+/* ============================================================
+   14. STEP 3 — FURNITURE / ITEMS
+   ============================================================ */
+
+/* 4-col on desktop, 3-col on most mobiles, 2-col on tiny phones */
+.furniture-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 1.2rem;
+}
+
+@media (max-width: 767px) {
+  .furniture-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .furniture-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+.furniture-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid var(--border-light);
+  background: var(--bg-secondary);
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  display: block;
+}
+
+.furniture-card:active {
+  transform: scale(0.97);
+}
+
+.furniture-card:has(input:checked),
+.furniture-card.checked {
+  border-color: var(--gold);
+  background: var(--gold-tint);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.12);
+}
+
+.fc-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.875rem 0.4rem 0.75rem;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.fc-emoji { font-size: 1.55rem; line-height: 1; }
+.fc-name  { font-size: 0.7rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+
+@media (max-width: 600px) {
+  .fc-body  { padding: 0.75rem 0.25rem 0.6rem; }
+  .fc-emoji { font-size: 1.35rem; }
+  .fc-name  { font-size: 0.65rem; }
+}
+
+@media (max-width: 380px) {
+  .fc-emoji { font-size: 1.2rem; }
+  .fc-name  { font-size: 0.62rem; }
+}
+
+/* Check indicator */
+.fc-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: transparent;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  transition: background 0.2s, color 0.2s;
+}
+
+.furniture-card:has(input:checked) .fc-check,
+.furniture-card.checked .fc-check {
+  background: var(--gold);
+  color: white;
+}
+
+/* Quantity row — always 44px-ish touch area total */
+.fc-qty-row {
+  display: none;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  justify-content: center;
+}
+
+.furniture-card:has(input:checked) .fc-qty-row,
+.furniture-card.checked .fc-qty-row {
+  display: flex;
+}
+
+.qty-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  background: white;
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.qty-btn:hover,
+.qty-btn:active {
+  background: var(--gold);
+  color: white;
+}
+
+@media (max-width: 480px) {
+  .qty-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+.fc-qty {
+  width: 28px;
+  text-align: center;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  padding: 0;
+  -moz-appearance: textfield;
+}
+
+.fc-qty::-webkit-outer-spin-button,
+.fc-qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* Photo upload */
+.photo-upload-area {
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: var(--touch-min);
+}
+
+@media (max-width: 480px) {
+  .photo-upload-area {
+    padding: 1rem;
+  }
+
+  .upload-icon {
+    font-size: 1.3rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .upload-sub {
+    font-size: 0.68rem;
+  }
+
+  .photo-thumb {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+
+/* ============================================================
+   15. STEP 4 — BOOK / PAYMENT
+   ============================================================ */
+
+/* ── Price box ── */
+.price-box {
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1.1rem;
+}
+
+.price-box-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.price-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .price-box {
+    padding: 0.9rem 1rem;
+  }
+
+  .price-amount {
+    font-size: 1.7rem;
+  }
+
+  .price-label     { font-size: 0.65rem; }
+  .price-breakdown { font-size: 0.74rem; }
+  .advance-info    { font-size: 0.74rem; }
+}
+
+/* ── Payment options ── */
+.payment-opts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+}
+
+/* Single column on narrow phones */
+@media (max-width: 520px) {
+  .payment-opts {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .payment-opt {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    text-align: left;
+  }
+
+  .po-badge {
+    position: absolute;
+    left: auto;
+    right: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: var(--radius-pill);
+  }
+
+  .po-icon   { font-size: 1.5rem; margin: 0; flex-shrink: 0; }
+  .po-label  { font-size: 0.72rem; margin-bottom: 0.1rem; }
+  .po-amount { font-size: 1.05rem; margin: 0; }
+  .po-note   { font-size: 0.63rem; }
+}
+
+.payment-opt {
+  min-height: var(--touch-min);
+  cursor: pointer;
+  position: relative;
+}
+
+.payment-opt:active {
+  transform: scale(0.98);
+}
+
+/* ── TnC row ── */
+.tnc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  margin-bottom: 0.875rem;
+  cursor: pointer;
+  font-size: 0.83rem;
+  line-height: 1.4;
+  min-height: var(--touch-min);
+}
+
+.tnc-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--gold);
+}
+
+@media (max-width: 480px) {
+  .tnc-row {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.78rem;
+    gap: 0.5rem;
+  }
+}
+
+/* ── Book action buttons ── */
+.book-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.875rem;
+  /* Extra space so fixed footer doesn't cover last button */
+  padding-bottom: 1rem;
+}
+
+.btn-pay {
+  width: 100%;
+  padding: 1rem;
+  font-size: 0.95rem;
+  min-height: 52px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.2px;
+}
+
+.btn-whatsapp-alt {
+  width: 100%;
+  padding: 0.95rem;
+  font-size: 0.9rem;
+  min-height: var(--touch-min);
+}
+
+.btn-checklist {
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 0.85rem;
+  min-height: var(--touch-min);
+}
+
+@media (max-width: 600px) {
+  .btn-pay          { font-size: 0.88rem; padding: 0.9rem 1rem; }
+  .btn-whatsapp-alt { font-size: 0.85rem; padding: 0.875rem 1rem; }
+  .btn-checklist    { font-size: 0.82rem; padding: 0.8rem 1rem; }
+}
+
+/* ── Promo row ── */
+.promo-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.promo-input {
+  flex: 1;
+  min-height: var(--touch-min);
+  font-size: 16px;
+}
+
+.btn-promo {
+  min-height: var(--touch-min);
+  padding: 0 1.1rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .promo-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .btn-promo {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ── Booking success ── */
+.booking-success-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem 2rem;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .booking-success-body {
+    padding: 2rem 1rem 1.5rem;
+    gap: 0.6rem;
+  }
+
+  .bs-icon     { font-size: 2.5rem; }
+  .bs-title    { font-size: 1.2rem; }
+  .bs-subtitle { font-size: 0.83rem; max-width: 240px; }
+
+  .bs-track-btn,
+  .bs-new-btn {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .bs-track-btn { font-size: 0.88rem; padding: 0.85rem 1rem; }
+}
+
+
+/* Section 16: Bottom spacing guard removed — footer is now static, no reserve needed */
+
+
+/* ============================================================
+   17. STATS BAR
+   ============================================================ */
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .stats-bar { flex-direction: column; }
+  .stat-item { padding: 1.1rem 1.5rem; }
+
+  .stat-item + .stat-item::before {
+    top: 0;
+    left: 10%;
+    right: 10%;
+    width: auto;
+    height: 1px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-item   { padding: 1rem; min-width: 0; }
+  .stat-number { font-size: clamp(1.4rem, 6vw, 2rem); }
+  .stat-suffix { font-size: clamp(0.9rem, 3.5vw, 1.3rem); }
+  .stat-label  { font-size: 0.62rem; letter-spacing: 0.8px; }
+}
+
+
+/* ============================================================
+   18. SERVICES SECTION
+   ============================================================ */
+@media (max-width: 768px) {
+  .services-section {
+    padding: 2.5rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .service-card {
+    padding: 1.5rem 1.25rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ============================================================
+   19. HOW IT WORKS
+   ============================================================ */
+@media (max-width: 600px) {
+  .hiw-steps {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .hiw-step {
+    width: 92%;
+    max-width: 300px;
+    padding: 22px 16px;
+  }
+
+  .hiw-step h3 {
+    font-size: 0.9rem;
+  }
+
+  .hiw-step p {
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .hiw-connector {
+    display: none;
+  }
+}
+
+/* ============================================================
+   20. WHY SECTION
+   ============================================================ */
+@media (max-width: 768px) {
+  .why-section {
+    padding: 2.5rem 1rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .why-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .why-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .why-grid { gap: 12px; }
+  .why-card { padding: 1.25rem 1rem; }
+}
+
+
+/* ============================================================
+   21. TRUST SIGNALS
+   ============================================================ */
+@media (max-width: 420px) {
+  .ts-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .ts-badge {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 12px 8px;
+    gap: 5px;
+  }
+
+  .ts-divider { display: none; }
+  .ts-icon    { font-size: 1.4rem; }
+  .ts-val     { font-size: 0.82rem; }
+  .ts-lbl     { font-size: 0.65rem; }
+}
+
+@media (min-width: 421px) and (max-width: 600px) {
+  .ts-divider { display: none; }
+  .ts-badge   { padding: 8px 16px; }
+}
+
+
+/* ============================================================
+   22. REVIEWS SECTION
+   ============================================================ */
+@media (max-width: 768px) {
+  .reviews-section { padding: 2.5rem 1rem; }
+}
+
+@media (max-width: 480px) {
+  .reviews-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .review-card  { padding: 1.25rem 1rem; }
+
+  .overall-rating {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .review-card { padding: 1rem; }
+  .review-text { font-size: 0.85rem; }
+}
+
+.leave-review-btn {
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* ============================================================
+   23. PRICING TABLE
+   ============================================================ */
+.pricing-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 600px) {
+  .pricing-table { min-width: 320px; }
+
+  .pricing-table th,
+  .pricing-table td {
+    padding: 12px 16px;
+    font-size: 0.83rem;
+    white-space: nowrap;
+  }
+}
+
+
+/* ============================================================
+   24. FAQ
+   ============================================================ */
+@media (max-width: 600px) {
+  .faq-q {
+    font-size: 0.88rem;
+    padding: 15px 16px;
+    min-height: 52px;
+  }
+
+  .faq-a               { font-size: 0.84rem; padding: 0 16px; }
+  .faq-item.open .faq-a { padding: 10px 16px 14px; }
+}
+
+@media (max-width: 480px) {
+  .faq-q  { font-size: 0.85rem; padding: 14px 14px; }
+  .faq-a  { font-size: 0.82rem; }
+}
+
+
+/* ============================================================
+   25. FINAL CTA
+   ============================================================ */
+@media (max-width: 480px) {
+  .final-cta-section  { padding: 52px 1rem; }
+  .final-cta-inner h2 { font-size: 1.5rem; }
+
+  .fcta-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .fcta-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+}
+
+
+/* ============================================================
+   26. FLOATING BUTTONS
+   ============================================================ */
+.float-call {
+  bottom: calc(1.5rem + var(--safe-bottom));
+  left: calc(1.5rem + var(--safe-left));
+}
+
+.float-wa {
+  bottom: calc(1.5rem + var(--safe-bottom));
+  right: calc(1.5rem + var(--safe-right));
+}
+
+@media (max-width: 480px) {
+  .float-call {
+    left: calc(1rem + var(--safe-left));
+    bottom: calc(1rem + var(--safe-bottom));
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .float-wa {
+    right: calc(1rem + var(--safe-right));
+    bottom: calc(1rem + var(--safe-bottom));
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .float-call {
+    left: calc(0.5rem + var(--safe-left));
+    bottom: calc(0.75rem + var(--safe-bottom));
+    padding: 0.55rem 0.85rem;
+    font-size: 0.75rem;
+  }
+
+  .float-wa {
+    right: calc(0.5rem + var(--safe-right));
+    bottom: calc(0.75rem + var(--safe-bottom));
+    padding: 0.55rem 0.85rem;
+    font-size: 0.75rem;
+  }
+}
+
+
+/* ============================================================
+   27. TRACK ORDER BANNER
+   ============================================================ */
+#trackOrderBanner {
+  margin: calc(var(--app-bar-h) + var(--safe-top, 0px) + 0.75rem) 1rem 0.75rem;
+}
+
+@media (max-width: 480px) {
+  #trackOrderBanner { margin: calc(var(--app-bar-h) + var(--safe-top, 0px) + 0.5rem) 0.75rem 0.5rem; }
+  .tob-title        { font-size: 0.78rem; }
+  .tob-id           { font-size: 0.7rem; }
+  .tob-step-label   { font-size: 0.5rem; }
+  .tob-btn-track    { padding: 0.35rem 0.75rem; font-size: 0.72rem; }
+}
+
+@media (max-width: 360px) {
+  #trackOrderBanner    { margin: calc(var(--app-bar-h) + var(--safe-top, 0px) + 0.4rem) 0.5rem 0.4rem; }
+  .tob-inner           { padding: 0.75rem 0.75rem 0.6rem; }
+  .tob-title           { font-size: 0.74rem; }
+  .tob-btn-track       { padding: 0.3rem 0.6rem; font-size: 0.7rem; }
+}
+
+
+/* ============================================================
+   28. MODALS
+   ============================================================ */
+
+/* Overlay */
+.modal-overlay {
+  padding: 1rem 0.75rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* On tall screens, center vertically */
+@media (min-height: 700px) {
+  .modal-overlay {
+    align-items: center;
+  }
+}
+
+/* Modal box */
+.modal-box {
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+/* Close button always accessible */
+.modal-x {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  width: 44px;
+  height: 44px;
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 0.5rem 0.5rem calc(0.5rem + var(--safe-bottom));
+  }
+
+  .modal-box {
+    max-height: calc(96vh - var(--safe-bottom));
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+
+  /* Auth inputs never trigger zoom */
+  .modal-box input,
+  .modal-box select,
+  .modal-box textarea {
+    font-size: 16px;
+  }
+
+  .auth-title  { font-size: 1.2rem; }
+  .auth-logo   { font-size: 1.2rem; }
+  .btn-auth    { font-size: 0.88rem; padding: 0.875rem; }
+  .phone-row   { gap: 0.35rem; }
+  .phone-prefix { padding: 0.75rem 0.6rem; font-size: 0.88rem; }
+  .otp-boxes   { gap: 0.3rem; }
+  .otp-box     { width: 40px; height: 50px; font-size: 1.2rem; }
+
+  .modal-title { font-size: 1.25rem; }
+  .modal-sub   { font-size: 0.82rem; }
+}
+
+@media (max-width: 360px) {
+  .modal-box  { padding: 0.875rem; }
+  .otp-box    { width: 36px; height: 46px; font-size: 1.1rem; border-radius: 8px; }
+  .otp-boxes  { gap: 0.25rem; }
+}
+
+/* ── Dashboard ── */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .ref-stats  { flex-direction: column; gap: 0.75rem; }
+  .dash-tabs  { justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .dashboard-avatar { width: 48px; height: 48px; font-size: 1.3rem; }
+  .dashboard-name   { font-size: 1rem; }
+  .dash-tab { padding: 0.6rem; font-size: 0.78rem; min-height: var(--touch-min); }
+  .ref-stats { flex-direction: row; }
+  .ref-stat-val { font-size: 1.1rem; }
+}
+
+@media (max-width: 360px) {
+  .dash-tabs { gap: 0; }
+  .dash-tab  { padding: 0.5rem 0.4rem; font-size: 0.7rem; }
+  .bk-route  { font-size: 0.8rem; }
+  .bk-status { font-size: 0.7rem; }
+}
+
+/* ── Action modals (cancel, reschedule, rate) ── */
+@media (max-width: 480px) {
+  .action-modal   { padding: 1rem; }
+  .am-header      { gap: 0.75rem; }
+  .am-title       { font-size: 1rem; }
+  .am-footer      { padding: 0.75rem 0 0; gap: 0.5rem; }
+
+  .am-btn-secondary,
+  .am-btn-danger,
+  .am-btn-confirm {
+    padding: 0.75rem;
+    font-size: 0.84rem;
+  }
+}
+
+/* ── Chat ── */
+@media (max-width: 480px) {
+  .chat-box {
+    height: 85vh;
+    max-height: 85vh;
+  }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .chat-box {
+    height: 90vh;
+    max-height: 90vh;
+  }
+}
+
+/* ── Checklist ── */
+@media (max-width: 480px) {
+  .checklist-box { padding: 1rem; }
+  .cl-item { padding: 0.5rem 0.25rem; gap: 0.6rem; min-height: var(--touch-min); }
+  .cl-text { font-size: 0.82rem; }
+}
+
+/* ── Review ── */
+@media (max-width: 480px) {
+  .review-modal-box { padding: 1rem; }
+  .star-btn { font-size: 1.8rem; }
+}
+
+/* ── Confirm card (payment) ── */
+@media (max-width: 480px) {
+  .confirm-card { border-radius: 16px; }
+  .cc-header    { padding: 1.25rem; gap: 0.75rem; }
+  .cc-title     { font-size: 1rem; }
+  .cc-subtitle  { font-size: 0.75rem; }
+  .cc-id-value  { font-size: 0.95rem; }
+
+  .cc-actions { padding: 0.875rem 1rem 1rem; gap: 0.5rem; }
+
+  .cc-btn-wa,
+  .cc-btn-invoice,
+  .cc-btn-close-action {
+    font-size: 0.78rem;
+    padding: 0.65rem 0.4rem;
+  }
+
+  .cc-compact-val { max-width: 100%; }
+  .cc-meta-grid   { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 360px) {
+  .cc-btn-wa,
+  .cc-btn-invoice,
+  .cc-btn-close-action {
+    font-size: 0.72rem;
+    padding: 0.6rem 0.3rem;
+  }
+}
+
+/* ── Tracking ── */
+@media (max-width: 480px) {
+  .tracking-box { padding: 1rem; }
+  .tracking-status-bar {
+    margin: 1rem 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+  }
+  .tracking-status-bar::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tracking-status-bar::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+  .tracking-status-bar::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 4px;
+  }
+  .ts-step {
+    flex: 0 0 auto;
+    min-width: 60px;
+  }
+  .ts-dot { width: 24px; height: 24px; font-size: 0.65rem; }
+  .ts-label { font-size: 0.55rem; }
+
+  .ti-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0.4rem 0;
+  }
+
+  .ti-val  { text-align: left; font-size: 0.82rem; max-width: 100%; }
+  .ti-lbl  { font-size: 0.72rem; }
+}
+
+
+/* ============================================================
+   29. FOOTER
+   ============================================================ */
+@media (max-width: 768px) {
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.75rem;
+  }
+
+  .footer-brand p { margin: 0 auto; }
+}
+
+@media (max-width: 480px) {
+  .footer       { padding: 2.5rem 1rem 1.25rem; }
+  .footer-logo  { font-size: 1.6rem; }
+  .footer-inner { gap: 1.5rem; }
+  .footer-bottom { gap: 0.4rem; font-size: 0.72rem; }
+  .footer-bottom a { margin: 0 6px; font-size: 0.72rem; }
+  .footer-detail { font-size: 0.85rem; }
+}
+
+@media (max-width: 360px) {
+  .footer-bottom div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .footer-bottom a { margin: 0 4px; }
+}
+
+
+/* ============================================================
+   30. TOUCH TARGETS (WCAG 2.5.5 — 44px minimum)
+   Applied to all interactive elements on touch devices.
+   ============================================================ */
+@media (hover: none) {
+  /* Minimum height/width for tappable elements */
+  .faq-q,
+  .dash-tab,
+  .bk-btn,
+  .btn-copy,
+  .tob-btn-track,
+  .cc-expand-btn,
+  .leave-review-btn,
+  .btn-checklist,
+  .btn-whatsapp-alt,
+  .btn-promo,
+  .date-more-btn,
+  .time-slot-btn,
+  .vehicle-card,
+  .select-card,
+  .move-type-card,
+  .payment-opt,
+  .bs-track-btn,
+  .bs-new-btn,
+  .btn-pay,
+  .btn-next,
+  .btn-back,
+  .btn-auth,
+  .btn-send-otp,
+  .toggle-row {
+    min-height: var(--touch-min);
+  }
+
+  /* Square touch targets */
+  .modal-x,
+  .cc-close,
+  .modal-close,
+  .chat-close-btn,
+  .tob-dismiss,
+  .bs-close,
+  .qty-btn,
+  .btn-send {
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+  }
+
+  /* Remove hover-only transforms that misfire on touch */
+  .service-card:hover,
+  .why-card:hover,
+  .review-card:hover,
+  .hiw-step:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-primary:hover,
+  .btn-pay:hover,
+  .nav-auth-btn:hover,
+  .leave-review-btn:hover,
+  .float-call:hover,
+  .float-wa:hover {
+    transform: none;
+  }
+}
+
+
+/* ============================================================
+   31. SECTION SPACING — global mobile reduction
+   ============================================================ */
+@media (max-width: 480px) {
+  .services-section,
+  .why-section,
+  .reviews-section,
+  .hiw-section {
+    padding: 2.5rem 1rem;
+  }
+
+  .section-header {
+    margin-bottom: 1.75rem;
+  }
+
+  .section-header h2 {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+
+  .section-header p {
+    font-size: 0.88rem;
+  }
+
+  .section-tag {
+    font-size: 0.62rem;
+    padding: 0.25rem 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .section-header h2 { font-size: 1.5rem; }
+  .section-header p  { font-size: 0.85rem; }
+}
+
+
+/* ============================================================
+   32. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .marquee-track { animation: none; }
+  .blob          { animation: none; }
+  .float-card    { animation: none; }
+}
+
+
+/* ============================================================
+   33. HIGH CONTRAST
+   ============================================================ */
+@media (prefers-contrast: high) {
+  .navbar {
+    border-bottom: 3px solid #22C55E;
+  }
+
+  .btn-primary,
+  .btn-pay,
+  .nav-auth-btn {
+    border: 2px solid white;
+  }
+
+  .field-input {
+    border: 2px solid #000;
+  }
+
+  .move-type-card,
+  .vehicle-card,
+  .select-card,
+  .furniture-card,
+  .time-slot-btn,
+  .payment-opt {
+    border-width: 2px;
+  }
+}
+
+/* ============================================================
+   34. PRINT
+   ============================================================ */
+@media print {
+  .navbar,
+  .float-call,
+  .float-wa,
+  .marquee-wrap,
+  .hero-visual,
+  .book-actions,
+  .step-footer,
+  .step-header,
+  .modal-overlay,
+  #trackOrderBanner,
+  .hero::after,
+  .blob {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    padding-bottom: 0 !important;
+  }
+
+  .form-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  a { color: black !important; text-decoration: none; }
+
+  .hero {
+    min-height: auto !important;
+    padding: 2rem !important;
+  }
+}
+
+
+/* ============================================================
+   OVERFLOW GUARD — prevent horizontal scroll on every section
+   ============================================================ */
+.hero,
+.services-section,
+.quote-section,
+.reviews-section,
+.why-section,
+.hiw-section,
+.pricing-section,
+.faq-section,
+.final-cta-section,
+.trust-signals-section,
+.stats-bar,
+.form-card,
+.step-body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav-links { display: none !important; }
+  .app-phone-btn { display: none; }
+  .hero-premium-actions { flex-direction: column; }
+  .hero-premium-title { font-size: 2.8rem; }
+}
+
+/* ============================================================
+   QUICK ACTIONS — 2-COLUMN ON NARROW PHONES
+   ──────────────────────────────────────────────────────────
+   The base 4-column grid (style.css) squeezes each image+label
+   into a tiny column below ~420px wide. Switch to 2x2 so each
+   card/image stays legible.
+   ============================================================ */
+@media (max-width: 420px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .qa-label {
+    font-size: 0.78rem;
+  }
+}

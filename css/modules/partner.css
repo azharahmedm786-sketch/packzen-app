@@ -1,0 +1,508 @@
+/* ============================================================
+   PACKZEN — PARTNER LANDING PAGE  partner.css v1.0
+   Loads AFTER style.css + desktop.css.
+   Reuses existing design tokens — defines NO globals, NO resets,
+   NO duplicate selectors from style.css. Scoped to .partner-* only.
+   ============================================================ */
+ 
+/* ════════════════════════════════════════════
+   SHARED LAYOUT WRAPPER
+════════════════════════════════════════════ */
+.partner-landing {
+  padding-top: var(--app-bar-h);
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 1rem;
+}
+
+.partner-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--green-600); 
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  margin-left: 6px;
+}
+.partner-badge-footer { margin-left: 10px; }
+
+/* Reuse pz-btn classes if not already present in style.css (safe fallback) */
+.pz-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; text-decoration: none; font-family: 'Nunito', sans-serif;
+  font-weight: 700; border-radius: var(--radius-pill); cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  border: none;
+}
+.pz-btn-sm { padding: 0.45rem 1rem; font-size: 0.8rem; }
+.pz-btn-lg { padding: 0.95rem 1.75rem; font-size: 0.95rem; width: 100%; }
+.pz-btn-primary {
+  background: #16a34a; color: #fff; box-shadow: var(--gold-glow);
+}
+.pz-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(34,197,94,0.45); }
+.pz-btn-outline {
+  background: transparent; color: var(--text-primary);
+  border: 1.5px solid var(--border-medium);
+}
+.pz-btn-outline:hover { background: var(--bg-secondary); }
+.pz-btn-ghost {
+  background: rgba(255,255,255,0.08); color: #fff;
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.pz-btn-ghost:hover { background: rgba(255,255,255,0.16); }
+
+/* ════════════════════════════════════════════
+   1. HERO
+════════════════════════════════════════════ */
+.partner-hero {
+  padding: 2rem 1.25rem 1.5rem;
+  background: linear-gradient(160deg, var(--navy-900) 0%, var(--navy-700) 70%, var(--navy-600) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.partner-hero::after {
+  content: '';
+  position: absolute; top: -60px; right: -60px;
+  width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,197,94,0.18) 0%, transparent 70%);
+}
+
+.partner-hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(34,197,94,0.14);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: var(--green-400);
+  font-size: 0.7rem; font-weight: 700;
+  padding: 5px 12px; border-radius: var(--radius-pill);
+  margin-bottom: 1rem; position: relative; z-index: 1;
+}
+
+.partner-hero h1 {
+  color: #fff;
+  font-size: clamp(1.9rem, 7vw, 2.6rem);
+  text-shadow: 0 4px 18px rgba(0,0,0,0.4);
+  position: relative; z-index: 1;
+  margin-bottom: 0.875rem;
+}
+.partner-hero-accent { color: var(--green-400); }
+
+.partner-hero-sub {
+  color: rgba(255,255,255,0.82);
+  font-size: 0.95rem; line-height: 1.65;
+  max-width: 90%;
+  position: relative; z-index: 1;
+  margin-bottom: 1.5rem;
+}
+
+.partner-hero-actions {
+  display: flex; flex-direction: column; gap: 0.75rem;
+  position: relative; z-index: 1;
+  margin-bottom: 1.25rem;
+}
+
+.partner-trust-row {
+  list-style: none;
+  display: flex; flex-wrap: wrap; gap: 8px;
+  position: relative; z-index: 1;
+}
+.partner-trust-row li {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: var(--radius-pill);
+  padding: 5px 11px;
+  font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.92);
+}
+
+/* Stats strip */
+.partner-stats-strip {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+  padding: 1rem 1.25rem;
+}
+.partner-stat { text-align: center; }
+.partner-stat-num {
+  display: block; font-family: 'Nunito', sans-serif;
+  font-size: 1.3rem; font-weight: 800; color: var(--green-600);
+}
+.partner-stat-label {
+  display: block; font-size: 0.65rem; color: var(--text-muted);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ════════════════════════════════════════════
+   SECTION SHELLS
+════════════════════════════════════════════ */
+.partner-section {
+  padding: 2rem 1.25rem;
+}
+.partner-section-alt {
+  background: var(--bg-secondary);
+}
+.partner-section-title {
+  margin-bottom: 0.4rem;
+  font-size: clamp(1.4rem, 5vw, 1.8rem);
+}
+.partner-section-sub {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  max-width: 92%;
+}
+
+/* ════════════════════════════════════════════
+   2 & 6. BENEFIT / TRUST CARD GRID
+════════════════════════════════════════════ */
+.partner-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+.partner-benefit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 0.9rem;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.partner-benefit-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(34,197,94,0.35);
+}
+.pbc-icon { font-size: 1.6rem; margin-bottom: 0.6rem; }
+.partner-benefit-card h3 {
+  font-size: 0.92rem; margin-bottom: 4px; color: var(--text-primary);
+}
+.partner-benefit-card p {
+  font-size: 0.76rem; color: var(--text-muted); line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════
+   3. WHO CAN JOIN
+════════════════════════════════════════════ */
+.partner-who-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+}
+.partner-who-card {
+  display: flex; align-items: center; gap: 0.7rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.8rem 0.75rem;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.partner-who-card:hover { transform: translateY(-2px); border-color: rgba(34,197,94,0.35); }
+.pwc-icon { font-size: 1.3rem; flex-shrink: 0; }
+.partner-who-card span {
+  font-size: 0.78rem; font-weight: 700; color: var(--text-primary); line-height: 1.3;
+}
+
+/* ════════════════════════════════════════════
+   4. TIMELINE
+════════════════════════════════════════════ */
+.partner-timeline {
+  list-style: none;
+  position: relative;
+  padding-left: 1.5rem;
+}
+.partner-timeline::before {
+  content: '';
+  position: absolute; left: 13px; top: 6px; bottom: 24px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--green-500), var(--border-light));
+}
+.partner-tl-item {
+  position: relative;
+  display: flex; gap: 1rem;
+  padding-bottom: 1.5rem;
+}
+.partner-tl-item.partner-tl-last { padding-bottom: 0; }
+.tl-num {
+  position: absolute; left: -1.5rem; top: 0;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #16a34a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 800;
+  box-shadow: 0 3px 10px rgba(34,197,94,0.35);
+  flex-shrink: 0; z-index: 1;
+}
+.tl-body { margin-left: 2.25rem; }
+.tl-body h3 { font-size: 0.92rem; margin-bottom: 2px; color: var(--text-primary); }
+.tl-body p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+
+/* ════════════════════════════════════════════
+   5. REQUIREMENTS
+════════════════════════════════════════════ */
+.partner-req-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.partner-req-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 0.4rem;
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.partner-req-card:hover { transform: translateY(-2px); border-color: rgba(34,197,94,0.35); }
+.prc-icon { font-size: 1.3rem; }
+.partner-req-card span { font-size: 0.66rem; font-weight: 700; color: var(--text-primary); }
+
+/* ════════════════════════════════════════════
+   7. EARNINGS
+════════════════════════════════════════════ */
+.partner-earnings-grid {
+  display: flex; flex-direction: column; gap: 0.875rem;
+}
+.partner-earn-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--green-500);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.1rem;
+  box-shadow: var(--shadow-xs);
+}
+.pec-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.partner-earn-card h3 { font-size: 0.95rem; margin-bottom: 4px; color: var(--text-primary); }
+.partner-earn-card p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ════════════════════════════════════════════
+   8. COVERAGE
+════════════════════════════════════════════ */
+.partner-coverage-wrap {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+/* .area-chip reused as-is from style.css — no redefinition here */
+
+/* ════════════════════════════════════════════
+   9. FAQ — reuses .faq-app-list/.faq-item/.faq-q/.faq-a from style.css
+════════════════════════════════════════════ */
+.partner-faq-list { margin-top: 0.25rem; }
+
+/* ════════════════════════════════════════════
+   10. TESTIMONIALS
+════════════════════════════════════════════ */
+.partner-testimonial-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.partner-testimonial-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-xs);
+}
+.ptc-quote {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.875rem;
+  font-style: italic;
+}
+.ptc-author { display: flex; align-items: center; gap: 0.7rem; }
+.ptc-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: #16a34a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.95rem; flex-shrink: 0;
+}
+.ptc-name { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+.ptc-role { font-size: 0.7rem; color: var(--text-muted); }
+.partner-testimonial-note {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════
+   11. FINAL CTA
+════════════════════════════════════════════ */
+.partner-final-cta {
+  background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-700) 100%);
+  padding: 2.5rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.partner-final-cta::before {
+  content: '';
+  position: absolute; bottom: -50px; left: -50px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(34,197,94,0.16) 0%, transparent 70%);
+}
+.pfc-inner { position: relative; z-index: 1; text-align: center; }
+.partner-final-cta h2 {
+  color: #fff;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  margin-bottom: 0.6rem;
+}
+.partner-final-cta p {
+  color: rgba(255,255,255,0.75);
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+  max-width: 320px;
+  margin-left: auto; margin-right: auto;
+}
+.partner-final-cta .pz-btn-lg { max-width: 320px; margin: 0 auto; }
+.partner-existing-link {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+}
+.partner-existing-link a { color: var(--green-400); font-weight: 700; text-decoration: none; }
+.partner-existing-link a:hover { text-decoration: underline; }
+
+/* ════════════════════════════════════════════
+   12. FOOTER — extends .app-footer from style.css
+════════════════════════════════════════════ */
+.partner-footer-full { margin-top: 0; }
+
+/* ════════════════════════════════════════════
+   FOCUS / ACCESSIBILITY
+════════════════════════════════════════════ */
+.partner-landing a:focus-visible,
+.partner-landing button:focus-visible,
+.partner-final-cta a:focus-visible {
+  outline: 3px solid var(--accent-bright);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ════════════════════════════════════════════
+   TABLET (≥600px)
+════════════════════════════════════════════ */
+@media (min-width: 600px) {
+  .partner-benefit-grid { grid-template-columns: repeat(3, 1fr); }
+  .partner-who-grid { grid-template-columns: repeat(3, 1fr); }
+  .partner-req-grid { grid-template-columns: repeat(4, 1fr); }
+  .partner-hero-actions { flex-direction: row; }
+  .pz-btn-lg { width: auto; flex: 1; }
+}
+
+/* ════════════════════════════════════════════
+   DESKTOP (≥768px) — matches app-shell desktop wrapper in style.css
+════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .partner-landing { max-width: 480px; }
+}
+
+/* Wider desktop layout (≥1024px) — opens up the centered app shell
+   for a true landing-page feel without breaking the 480px booking app */
+@media (min-width: 1024px) {
+  body.partner-body { background: var(--bg-app); }
+  body.partner-body .app-bar {
+    max-width: 100%; left: 0; right: 0; transform: none;
+    border-radius: 0;
+  }
+  body.partner-body .app-bar-inner { max-width: 1100px; }
+
+  .partner-landing {
+    max-width: 1100px;
+    padding-top: calc(var(--app-bar-h) + 1rem);
+    box-shadow: none;
+  }
+
+  .partner-hero {
+    padding: 4rem 3rem;
+    border-radius: var(--radius-2xl);
+    margin: 0 1.5rem 1.5rem;
+  }
+  .partner-hero-sub { max-width: 560px; font-size: 1.05rem; }
+  .partner-hero-actions { max-width: 420px; }
+
+  .partner-stats-strip {
+    max-width: calc(100% - 3rem);
+    margin: 0 auto 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .partner-section { padding: 3rem; }
+  .partner-section-sub { max-width: 560px; }
+
+  .partner-benefit-grid { grid-template-columns: repeat(4, 1fr); }
+  .partner-who-grid { grid-template-columns: repeat(5, 1fr); }
+  .partner-req-grid { grid-template-columns: repeat(8, 1fr); }
+
+  .partner-timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    padding-left: 0;
+  }
+  .partner-timeline::before { display: none; }
+  .partner-tl-item { padding-bottom: 0; flex-direction: column; }
+  .tl-num { position: static; margin-bottom: 0.75rem; }
+  .tl-body { margin-left: 0; }
+
+  .partner-earnings-grid { flex-direction: row; flex-wrap: wrap; }
+  .partner-earn-card { flex: 1 1 calc(50% - 0.875rem); }
+
+  .partner-testimonial-grid { flex-direction: row; }
+  .partner-testimonial-card { flex: 1; }
+
+  .partner-final-cta { border-radius: var(--radius-2xl); margin: 0 1.5rem 1.5rem; padding: 3.5rem; }
+  .partner-final-cta p { max-width: 480px; }
+  .partner-final-cta .pz-btn-lg { max-width: 360px; }
+}
+
+/* ════════════════════════════════════════════
+   DARK MODE READY
+════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  .partner-benefit-card,
+  .partner-who-card,
+  .partner-req-card,
+  .partner-earn-card,
+  .partner-testimonial-card {
+    background: #0f1b33;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .partner-section-alt { background: #0a1428; }
+  .partner-benefit-card h3,
+  .partner-who-card span,
+  .partner-req-card span,
+  .partner-earn-card h3,
+  .ptc-name,
+  .partner-section-title {
+    color: #f1f5f9;
+  }
+  .partner-benefit-card p,
+  .partner-earn-card p,
+  .ptc-quote,
+  .partner-section-sub {
+    color: #94a3b8;
+  }
+}
+
+/* ════════════════════════════════════════════
+   REDUCED MOTION
+════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .partner-benefit-card,
+  .partner-who-card,
+  .partner-req-card,
+  .pz-btn-primary {
+    transition: none;
+  }
+}

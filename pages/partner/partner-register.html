@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="robots" content="noindex, nofollow">
+<title>Register as a Partner | PackZen</title>
+<meta name="description" content="Register as a verified PackZen moving partner. Zero joining fee, weekly payouts.">
+
+<link rel="apple-touch-icon" href="../../assets/logo/packzen-logo.png">
+<link rel="icon" href="../../assets/logo/packzen-logo.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+
+<link rel="stylesheet" href="../../css/base/style.css">
+<link rel="stylesheet" href="../../css/base/mobile-fixes.css">
+<link rel="stylesheet" href="../../css/base/desktop.css">
+<link rel="stylesheet" href="../../css/modules/partner.css">
+
+<style>
+/* ── Registration-specific styles ───────────────────── */
+.reg-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-top: var(--app-bar-h);
+  padding-bottom: 2rem;
+  background: var(--bg-app);
+}
+
+/* Progress bar */
+.reg-progress-wrap {
+  position: sticky;
+  top: var(--app-bar-h);
+  z-index: 100;
+  background: var(--navy-900);
+  padding: 0.75rem 1.25rem 0.6rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.reg-step-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.reg-step-label-text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+}
+.reg-step-counter {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+}
+.reg-progress-track {
+  height: 4px;
+  background: rgba(255,255,255,0.14);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.reg-progress-fill {
+  height: 100%;
+  background: var(--gold-gradient);
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: 0 0 10px rgba(34,197,94,0.5);
+}
+
+/* Step dots */
+.reg-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.6rem 0 0.2rem;
+}
+.reg-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  transition: all 0.3s;
+}
+.reg-dot.active { background: var(--green-500); transform: scale(1.3); }
+.reg-dot.done   { background: rgba(34,197,94,0.5); }
+
+/* Form card */
+.reg-card {
+  background: var(--bg-primary);
+  margin: 0.75rem 0.75rem 0;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+}
+.reg-card-header {
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  background: linear-gradient(to right, var(--bg-secondary), var(--bg-primary));
+}
+.reg-card-icon  { font-size: 1.6rem; margin-bottom: 0.4rem; }
+.reg-card-title { font-family: 'Space Grotesk',sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 2px; }
+.reg-card-sub   { font-size: 0.78rem; color: var(--text-muted); }
+.reg-card-body  { padding: 1.1rem 1.25rem; }
+
+/* Form step visibility */
+.reg-step { display: none; }
+.reg-step.active { display: block; animation: regStepIn 0.3s ease; }
+@keyframes regStepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Field helpers */
+.field-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.field-error {
+  font-size: 0.72rem;
+  color: #dc2626;
+  margin-top: 4px;
+  display: none;
+}
+.field-input.has-error { border-color: #dc2626; }
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-secondary);
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--green-500);
+  background: var(--green-50);
+}
+.upload-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.uz-icon  { font-size: 1.4rem; margin-bottom: 5px; }
+.uz-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+.uz-sub   { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+.uz-status {
+  font-size: 0.72rem; font-weight: 700;
+  color: var(--green-600); margin-top: 4px;
+  display: none;
+}
+.upload-zone.uploaded { border-color: var(--green-500); background: var(--green-50); }
+.upload-zone.uploaded .uz-status { display: block; }
+.upload-zone.uploaded .uz-label  { color: var(--green-600); }
+
+/* Vehicle type chips */
+.vehicle-type-grid {
+  display: grid; grid-template-columns: repeat(2,1fr); gap: 8px;
+}
+.vt-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0.75rem 0.875rem;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.2s;
+  background: var(--bg-secondary);
+  font-size: 0.8rem; font-weight: 600; color: var(--text-primary);
+}
+.vt-chip:hover  { border-color: var(--green-500); background: var(--green-50); }
+.vt-chip.selected {
+  border-color: var(--green-600); background: var(--green-50);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+}
+.vt-chip.selected::after { content: '✓'; margin-left: auto; color: var(--green-600); font-weight: 800; }
+.vt-icon { font-size: 1.2rem; }
+
+/* Service area chips */
+.area-select-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.area-select-chip {
+  padding: 5px 12px;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s; background: var(--bg-secondary);
+}
+.area-select-chip:hover  { border-color: var(--green-500); color: var(--green-600); }
+.area-select-chip.selected {
+  background: var(--green-600); color: #fff; border-color: var(--green-600);
+}
+
+/* Summary section */
+.review-section { margin-bottom: 1rem; }
+.review-section-title {
+  font-size: 0.68rem; font-weight: 800; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;
+}
+.review-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border-light);
+  gap: 1rem;
+}
+.review-row:last-child { border-bottom: none; }
+.rv-label { font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; }
+.rv-value { font-size: 0.8rem; font-weight: 700; color: var(--text-primary); text-align: right; }
+
+/* T&C */
+.tnc-box {
+  background: var(--bg-secondary); border: 1px solid var(--border-light);
+  border-radius: var(--radius-md); padding: 0.875rem;
+  font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;
+  max-height: 140px; overflow-y: auto; margin-bottom: 1rem;
+}
+.tnc-box a { color: var(--green-600); font-weight: 700; }
+
+/* Footer nav */
+.reg-footer {
+  margin: 0.75rem;
+  display: flex; gap: 0.75rem;
+  position: sticky; bottom: 0; z-index: 50;
+}
+
+/* Alert */
+.reg-alert {
+  margin: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem; font-weight: 600;
+  display: none;
+}
+.reg-alert.error   { background: #fee2e2; color: #b91c1c; border-left: 3px solid #dc2626; }
+.reg-alert.success { background: var(--green-50); color: var(--green-600); border-left: 3px solid var(--green-500); }
+.reg-alert.show    { display: block; }
+
+/* Password strength */
+.pw-strength { height: 4px; border-radius: 4px; margin-top: 5px; transition: all 0.3s; }
+.pw-strength.weak   { background: #ef4444; width: 33%; }
+.pw-strength.medium { background: #f59e0b; width: 66%; }
+.pw-strength.strong { background: var(--green-500); width: 100%; }
+.pw-strength-label  { font-size: 0.68rem; color: var(--text-muted); margin-top: 3px; }
+</style>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="app-body partner-body">
+
+<a href="#reg-main" class="skip-link">Skip to registration form</a>
+
+<!-- TOP BAR -->
+<header class="app-bar" role="banner">
+  <div class="app-bar-inner">
+    <div class="app-bar-left">
+      <a href="partner.html" class="app-logo" aria-label="Back to Partner page">
+        <img src="../../assets/logo/packzen-logo.png" width="36" height="36" alt="PackZen">
+        <span class="app-logo-text">PackZen</span>
+        <span class="partner-badge-pill">Partner</span>
+      </a>
+    </div>
+    <div class="app-bar-right">
+      <a href="partner-login.html" class="pz-btn pz-btn-ghost pz-btn-sm">Login</a>
+    </div>
+  </div>
+</header>
+
+<main id="reg-main" class="reg-shell">
+
+  <!-- PROGRESS -->
+  <div class="reg-progress-wrap" role="progressbar" aria-label="Registration progress" aria-valuenow="1" aria-valuemin="1" aria-valuemax="7" id="regProgressWrap">
+    <div class="reg-step-label">
+      <span class="reg-step-label-text" id="regStepLabel">Account Setup</span>
+      <span class="reg-step-counter"><span id="regStepNum">1</span> / 7</span>
+    </div>
+    <div class="reg-progress-track">
+      <div class="reg-progress-fill" id="regProgressFill" style="width:14.28%"></div>
+    </div>
+    <div class="reg-dots" role="list" aria-label="Steps">
+      <div class="reg-dot active" id="rd0" role="listitem"></div>
+      <div class="reg-dot"        id="rd1" role="listitem"></div>
+      <div class="reg-dot"        id="rd2" role="listitem"></div>
+      <div class="reg-dot"        id="rd3" role="listitem"></div>
+      <div class="reg-dot"        id="rd4" role="listitem"></div>
+      <div class="reg-dot"        id="rd5" role="listitem"></div>
+      <div class="reg-dot"        id="rd6" role="listitem"></div>
+    </div>
+  </div>
+
+  <!-- ALERT BAR -->
+  <div class="reg-alert" id="regAlert" role="alert" aria-live="polite"></div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 1 — ACCOUNT SETUP
+  ══════════════════════════════════════════ -->
+  <div class="reg-step active" id="regStep1">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon">🔐</div>
+        <div class="reg-card-title">Create Your Account</div>
+        <div class="reg-card-sub">Your login credentials for the PackZen Partner Portal.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-group">
+          <label class="field-label" for="regEmail"><span class="field-icon">✉️</span> Email Address <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="email" id="regEmail" class="field-input" placeholder="you@example.com" autocomplete="email" required>
+          <div class="field-error" id="errEmail">Please enter a valid email address.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="regPassword"><span class="field-icon"><i data-lucide="lock"></i></span> Password <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="password" id="regPassword" class="field-input" placeholder="Min. 8 characters" autocomplete="new-password" required oninput="checkPasswordStrength(this.value)">
+          <div class="pw-strength" id="pwStrengthBar" style="width:0;background:transparent"></div>
+          <div class="pw-strength-label" id="pwStrengthLabel"></div>
+          <div class="field-error" id="errPassword">Password must be at least 8 characters.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="regConfirmPassword"><span class="field-icon"><i data-lucide="lock"></i></span> Confirm Password <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="password" id="regConfirmPassword" class="field-input" placeholder="Re-enter password" autocomplete="new-password" required>
+          <div class="field-error" id="errConfirmPassword">Passwords do not match.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="toggle-row" style="margin:0">
+            <span class="toggle-text" style="font-size:0.82rem">I agree this account is for business use</span>
+            <label class="toggle" aria-label="Business use confirmation">
+              <input type="checkbox" id="regBizConfirm">
+              <span class="slider"></span>
+            </label>
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 2 — BUSINESS INFORMATION
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep2">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon"><i data-lucide="building-2"></i></div>
+        <div class="reg-card-title">Business Information</div>
+        <div class="reg-card-sub">Tell us about your moving business.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-group">
+          <label class="field-label" for="bizName"><span class="field-icon"><i data-lucide="building-2"></i></span> Business / Brand Name <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="bizName" class="field-input" placeholder="e.g. Ravi Movers" autocomplete="organization" required>
+          <div class="field-error" id="errBizName">Please enter your business name.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon"><i data-lucide="truck"></i></span> Business Type <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="vehicle-type-grid" id="bizTypeGrid">
+            <div class="vt-chip" data-value="packers_movers" onclick="selectBizType(this)"><span class="vt-icon"><i data-lucide="building-2"></i></span> Packers & Movers</div>
+            <div class="vt-chip" data-value="individual_mover" onclick="selectBizType(this)"><span class="vt-icon">🧑‍<i data-lucide="wrench"></i></span> Individual Mover</div>
+            <div class="vt-chip" data-value="vehicle_owner" onclick="selectBizType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> Vehicle Owner</div>
+            <div class="vt-chip" data-value="loading_team" onclick="selectBizType(this)"><span class="vt-icon">👷</span> Loading Team</div>
+          </div>
+          <input type="hidden" id="bizType">
+          <div class="field-error" id="errBizType">Please select a business type.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="bizYears"><span class="field-icon"><i data-lucide="calendar"></i></span> Years in Business</label>
+          <select id="bizYears" class="field-input">
+            <option value="">Select experience</option>
+            <option value="0">Less than 1 year</option>
+            <option value="1">1 – 2 years</option>
+            <option value="3">3 – 5 years</option>
+            <option value="5">5 – 10 years</option>
+            <option value="10">10+ years</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon"><i data-lucide="map-pin"></i></span> Service Areas <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="area-select-wrap" id="areaChipsWrap">
+            <div class="area-select-chip" data-area="HSR Layout"        onclick="toggleArea(this)">HSR Layout</div>
+            <div class="area-select-chip" data-area="Koramangala"       onclick="toggleArea(this)">Koramangala</div>
+            <div class="area-select-chip" data-area="Whitefield"        onclick="toggleArea(this)">Whitefield</div>
+            <div class="area-select-chip" data-area="Marathahalli"      onclick="toggleArea(this)">Marathahalli</div>
+            <div class="area-select-chip" data-area="Indiranagar"       onclick="toggleArea(this)">Indiranagar</div>
+            <div class="area-select-chip" data-area="Sarjapur"          onclick="toggleArea(this)">Sarjapur</div>
+            <div class="area-select-chip" data-area="Electronic City"   onclick="toggleArea(this)">Electronic City</div>
+            <div class="area-select-chip" data-area="Bellandur"         onclick="toggleArea(this)">Bellandur</div>
+            <div class="area-select-chip" data-area="JP Nagar"          onclick="toggleArea(this)">JP Nagar</div>
+            <div class="area-select-chip" data-area="BTM Layout"        onclick="toggleArea(this)">BTM Layout</div>
+            <div class="area-select-chip" data-area="Jayanagar"         onclick="toggleArea(this)">Jayanagar</div>
+            <div class="area-select-chip" data-area="Hebbal"            onclick="toggleArea(this)">Hebbal</div>
+            <div class="area-select-chip" data-area="Yelahanka"         onclick="toggleArea(this)">Yelahanka</div>
+            <div class="area-select-chip" data-area="Bannerghatta Road" onclick="toggleArea(this)">Bannerghatta Road</div>
+            <div class="area-select-chip" data-area="Banashankari"      onclick="toggleArea(this)">Banashankari</div>
+            <div class="area-select-chip" data-area="Rajajinagar"       onclick="toggleArea(this)">Rajajinagar</div>
+          </div>
+          <div class="field-error" id="errAreas">Please select at least one service area.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 3 — OWNER DETAILS
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep3">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon"><i data-lucide="user"></i></div>
+        <div class="reg-card-title">Owner Details</div>
+        <div class="reg-card-sub">Your personal information as the account holder.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-row-2">
+          <div class="field-group">
+            <label class="field-label" for="ownerFirst">First Name <span aria-hidden="true" style="color:#dc2626">*</span></label>
+            <input type="text" id="ownerFirst" class="field-input" placeholder="First name" autocomplete="given-name" required>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="ownerLast">Last Name <span aria-hidden="true" style="color:#dc2626">*</span></label>
+            <input type="text" id="ownerLast" class="field-input" placeholder="Last name" autocomplete="family-name" required>
+          </div>
+        </div>
+        <div class="field-error" id="errOwnerName">Please enter your full name.</div>
+
+        <div class="field-group">
+          <label class="field-label" for="ownerPhone"><span class="field-icon"><i data-lucide="phone"></i></span> Mobile Number <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="phone-row">
+            <span class="phone-prefix">+91</span>
+            <input type="tel" id="ownerPhone" class="field-input" style="flex:1" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" autocomplete="tel" required>
+          </div>
+          <div class="field-error" id="errOwnerPhone">Please enter a valid 10-digit mobile number.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="ownerDob"><span class="field-icon">🎂</span> Date of Birth</label>
+          <input type="date" id="ownerDob" class="field-input" max="">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="ownerAddress"><span class="field-icon"><i data-lucide="home"></i></span> Residential Address <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <textarea id="ownerAddress" class="field-input" rows="3" placeholder="Door no., Street, Area, City, PIN" style="resize:vertical" required></textarea>
+          <div class="field-error" id="errOwnerAddress">Please enter your address.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="ownerPincode"><span class="field-icon">📮</span> PIN Code</label>
+          <input type="text" id="ownerPincode" class="field-input" placeholder="560001" maxlength="6" inputmode="numeric">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 4 — VEHICLE INFORMATION
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep4">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon"><i data-lucide="truck"></i></div>
+        <div class="reg-card-title">Vehicle Information</div>
+        <div class="reg-card-sub">Tell us about the vehicles you operate with.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon"><i data-lucide="truck"></i></span> Primary Vehicle Type <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="vehicle-type-grid">
+            <div class="vt-chip" data-value="tata_ace"    onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> Tata Ace</div>
+            <div class="vt-chip" data-value="mini_truck"  onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="car"></i></span> Mini Truck</div>
+            <div class="vt-chip" data-value="14ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> 14 ft Truck</div>
+            <div class="vt-chip" data-value="17ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> 17 ft Truck</div>
+            <div class="vt-chip" data-value="22ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon">🚜</span> 22 ft Truck</div>
+            <div class="vt-chip" data-value="tempo"       onclick="selectVehicleType(this)"><span class="vt-icon">🚌</span> Tempo</div>
+          </div>
+          <input type="hidden" id="vehicleType">
+          <div class="field-error" id="errVehicleType">Please select a vehicle type.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="vehicleMake"><span class="field-icon">🏭</span> Vehicle Make / Model</label>
+          <input type="text" id="vehicleMake" class="field-input" placeholder="e.g. Tata Motors Ace CNG">
+        </div>
+
+        <div class="field-row-2">
+          <div class="field-group">
+            <label class="field-label" for="vehicleYear">Year</label>
+            <input type="number" id="vehicleYear" class="field-input" placeholder="2020" min="2000" max="2026" inputmode="numeric">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="vehicleCount">How Many Vehicles</label>
+            <select id="vehicleCount" class="field-input">
+              <option value="1">1 vehicle</option>
+              <option value="2">2 vehicles</option>
+              <option value="3">3 vehicles</option>
+              <option value="4">4 – 6 vehicles</option>
+              <option value="7">7+ vehicles</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="vehicleRegNo"><span class="field-icon"><i data-lucide="clipboard"></i></span> Vehicle Registration Number <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="vehicleRegNo" class="field-input" placeholder="KA 01 AB 1234" style="text-transform:uppercase" required>
+          <div class="field-error" id="errVehicleReg">Please enter the vehicle registration number.</div>
+        </div>
+
+        <p class="field-hint">📸 You will upload the RC and insurance documents in the next step.</p>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 5 — KYC & DOCUMENTS
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep5">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon">📄</div>
+        <div class="reg-card-title">KYC & Documents</div>
+        <div class="reg-card-sub">Upload clear photos — JPG or PDF, max 5 MB each.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-group">
+          <label class="field-label" for="kycAadhaar"><span class="field-icon">🪪</span> Aadhaar Number <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="kycAadhaar" class="field-input" placeholder="XXXX XXXX XXXX" maxlength="14" inputmode="numeric" required oninput="formatAadhaar(this)">
+          <div class="field-error" id="errAadhaar">Please enter a valid 12-digit Aadhaar number.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon">📄</span> Aadhaar Photo / PDF <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="upload-zone" id="uzAadhaar">
+            <input type="file" accept="image/*,application/pdf" id="fileAadhaar" onchange="handleFileSelect('fileAadhaar','uzAadhaar','docAadhaarName')">
+            <div class="uz-icon">📷</div>
+            <div class="uz-label">Tap to upload Aadhaar</div>
+            <div class="uz-sub">Front &amp; back together · Max 5 MB</div>
+            <div class="uz-status" id="docAadhaarName">✓ Uploaded</div>
+          </div>
+          <div class="field-error" id="errDocAadhaar">Please upload your Aadhaar document.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="kycPan"><span class="field-icon">🧾</span> PAN Number <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="kycPan" class="field-input" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase" required oninput="this.value=this.value.toUpperCase()">
+          <div class="field-error" id="errPan">Please enter a valid PAN number.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon">📄</span> PAN Card Photo <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="upload-zone" id="uzPan">
+            <input type="file" accept="image/*,application/pdf" id="filePan" onchange="handleFileSelect('filePan','uzPan','docPanName')">
+            <div class="uz-icon">📷</div>
+            <div class="uz-label">Tap to upload PAN Card</div>
+            <div class="uz-sub">Clear photo · Max 5 MB</div>
+            <div class="uz-status" id="docPanName">✓ Uploaded</div>
+          </div>
+          <div class="field-error" id="errDocPan">Please upload your PAN card.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon"><i data-lucide="truck"></i></span> Vehicle RC (Registration Certificate) <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="upload-zone" id="uzRC">
+            <input type="file" accept="image/*,application/pdf" id="fileRC" onchange="handleFileSelect('fileRC','uzRC','docRCName')">
+            <div class="uz-icon">📷</div>
+            <div class="uz-label">Tap to upload Vehicle RC</div>
+            <div class="uz-sub">Both sides · Max 5 MB</div>
+            <div class="uz-status" id="docRCName">✓ Uploaded</div>
+          </div>
+          <div class="field-error" id="errDocRC">Please upload the vehicle RC.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon"><i data-lucide="shield-check"></i></span> Vehicle Insurance <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <div class="upload-zone" id="uzInsurance">
+            <input type="file" accept="image/*,application/pdf" id="fileInsurance" onchange="handleFileSelect('fileInsurance','uzInsurance','docInsuranceName')">
+            <div class="uz-icon">📷</div>
+            <div class="uz-label">Tap to upload Insurance</div>
+            <div class="uz-sub">Valid policy · Max 5 MB</div>
+            <div class="uz-status" id="docInsuranceName">✓ Uploaded</div>
+          </div>
+          <div class="field-error" id="errDocInsurance">Please upload the vehicle insurance.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label"><span class="field-icon">🤳</span> Profile / Business Photo</label>
+          <div class="upload-zone" id="uzProfile">
+            <input type="file" accept="image/*" id="fileProfile" onchange="handleFileSelect('fileProfile','uzProfile','docProfileName')">
+            <div class="uz-icon">📷</div>
+            <div class="uz-label">Tap to upload Profile Photo</div>
+            <div class="uz-sub">Optional · Max 5 MB</div>
+            <div class="uz-status" id="docProfileName">✓ Uploaded</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 6 — BANK DETAILS
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep6">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon">🏦</div>
+        <div class="reg-card-title">Bank & Payment Details</div>
+        <div class="reg-card-sub">For receiving your weekly payouts directly.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <div class="field-group">
+          <label class="field-label" for="bankName"><span class="field-icon">🏦</span> Bank Name <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="bankName" class="field-input" placeholder="e.g. State Bank of India" required>
+          <div class="field-error" id="errBankName">Please enter your bank name.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="bankAccountName"><span class="field-icon"><i data-lucide="user"></i></span> Account Holder Name <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="bankAccountName" class="field-input" placeholder="As printed on passbook" required>
+          <div class="field-error" id="errBankAccountName">Please enter the account holder name.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="bankAccountNo"><span class="field-icon">🔢</span> Account Number <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="bankAccountNo" class="field-input" placeholder="XXXXXXXXXXXXXX" inputmode="numeric" required>
+          <div class="field-error" id="errBankAccountNo">Please enter a valid account number.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="bankIfsc"><span class="field-icon">🏷️</span> IFSC Code <span aria-hidden="true" style="color:#dc2626">*</span></label>
+          <input type="text" id="bankIfsc" class="field-input" placeholder="SBIN0001234" maxlength="11" style="text-transform:uppercase" required oninput="this.value=this.value.toUpperCase()">
+          <div class="field-hint">11-character code on your cheque or passbook.</div>
+          <div class="field-error" id="errBankIfsc">Please enter a valid 11-character IFSC code.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="bankUpi"><span class="field-icon">📲</span> UPI ID</label>
+          <input type="text" id="bankUpi" class="field-input" placeholder="yourname@upi (optional)">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 7 — REVIEW & SUBMIT
+  ══════════════════════════════════════════ -->
+  <div class="reg-step" id="regStep7">
+    <div class="reg-card">
+      <div class="reg-card-header">
+        <div class="reg-card-icon"><i data-lucide="check-circle"></i></div>
+        <div class="reg-card-title">Review & Submit</div>
+        <div class="reg-card-sub">Check your details and agree to our terms to submit.</div>
+      </div>
+      <div class="reg-card-body">
+
+        <!-- Summary -->
+        <div class="review-section">
+          <div class="review-section-title">Account</div>
+          <div class="review-row"><span class="rv-label">Email</span><span class="rv-value" id="rvEmail">—</span></div>
+        </div>
+        <div class="review-section">
+          <div class="review-section-title">Business</div>
+          <div class="review-row"><span class="rv-label">Name</span><span class="rv-value" id="rvBizName">—</span></div>
+          <div class="review-row"><span class="rv-label">Type</span><span class="rv-value" id="rvBizType">—</span></div>
+          <div class="review-row"><span class="rv-label">Service Areas</span><span class="rv-value" id="rvAreas">—</span></div>
+        </div>
+        <div class="review-section">
+          <div class="review-section-title">Owner</div>
+          <div class="review-row"><span class="rv-label">Name</span><span class="rv-value" id="rvOwnerName">—</span></div>
+          <div class="review-row"><span class="rv-label">Phone</span><span class="rv-value" id="rvPhone">—</span></div>
+        </div>
+        <div class="review-section">
+          <div class="review-section-title">Vehicle</div>
+          <div class="review-row"><span class="rv-label">Type</span><span class="rv-value" id="rvVehicle">—</span></div>
+          <div class="review-row"><span class="rv-label">Reg No</span><span class="rv-value" id="rvVehicleReg">—</span></div>
+        </div>
+        <div class="review-section">
+          <div class="review-section-title">Bank</div>
+          <div class="review-row"><span class="rv-label">Bank</span><span class="rv-value" id="rvBank">—</span></div>
+          <div class="review-row"><span class="rv-label">Account</span><span class="rv-value" id="rvAccount">—</span></div>
+          <div class="review-row"><span class="rv-label">IFSC</span><span class="rv-value" id="rvIfsc">—</span></div>
+        </div>
+
+        <!-- Terms -->
+        <div class="tnc-box">
+          <strong>Partner Terms & Conditions</strong><br><br>
+          By registering, you agree to:<br>
+          1. Provide truthful, accurate information at all times.<br>
+          2. Maintain valid vehicle insurance and registration.<br>
+          3. Treat customers with professionalism and care.<br>
+          4. Receive and complete jobs as per platform guidelines.<br>
+          5. Allow PackZen to verify your documents.<br>
+          6. Accept the <a href="../../legal/terms.html" target="_blank" rel="noopener">Terms & Conditions</a> and <a href="../../legal/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.<br>
+          7. Understand that commission rates may be updated with notice.<br>
+          8. Not sub-contract jobs without prior approval.
+        </div>
+
+        <label class="tnc-row">
+          <input type="checkbox" id="tncPartnerAccepted">
+          <span>I have read and agree to the <a href="../../legal/terms.html" target="_blank" rel="noopener">Partner Terms</a> &amp; <a href="../../legal/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span>
+        </label>
+        <div class="field-error" id="errTnc">You must agree to the terms to continue.</div>
+
+        <!-- Submit loading state -->
+        <div id="regSubmitting" style="display:none; text-align:center; padding:1rem;">
+          <div style="font-size:2rem;animation:spin 1s linear infinite;display:inline-block"><i data-lucide="clock"></i></div>
+          <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-muted)" id="regSubmitStatus">Creating your account…</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER NAVIGATION -->
+  <div class="reg-footer">
+    <button class="btn-back" id="regBtnBack" onclick="regPrev()" style="display:none" aria-label="Go to previous step">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back
+    </button>
+    <button class="btn-next" id="regBtnNext" onclick="regNext()" aria-label="Go to next step">
+      Continue <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div class="toast-msg" id="toastMsg" role="status" aria-live="polite"></div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+<script src="../../env-config.js"></script>
+<script src="../../js/config/firebase-config.js"></script>
+<script src="https://packzen-config.azharahmedm786.workers.dev"></script>
+<script src="../../js/dashboards/partner.js"></script>
+
+<script>
+/* ============================================================
+   PARTNER REGISTRATION  —  partner-register.html
+   Depends on: window._firebase  (from firebase-config.js)
+   Writes to:  Firestore: partners/{uid}, partnerApplications/{uid}
+               Storage:   partner-docs/{uid}/
+============================================================ */
+
+/* ─── STATE ──────────────────────────────────────────── */
+let regCurrentStep = 1;
+const REG_TOTAL_STEPS = 7;
+const BIZ_TYPE_LABELS = {
+  packers_movers: 'Packers & Movers',
+  individual_mover: 'Individual Mover',
+  vehicle_owner: 'Vehicle Owner',
+  loading_team: 'Loading Team'
+};
+const VEHICLE_TYPE_LABELS = {
+  tata_ace:   'Tata Ace',
+  mini_truck: 'Mini Truck',
+  '14ft_truck': '14 ft Truck',
+  '17ft_truck': '17 ft Truck',
+  '22ft_truck': '22 ft Truck',
+  tempo:      'Tempo'
+};
+const uploadedFiles = {};
+
+/* ─── TOAST ──────────────────────────────────────────── */
+function showToast(msg, dur = 3000) {
+  const t = document.getElementById('toastMsg');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+/* ─── ALERT ──────────────────────────────────────────── */
+function showAlert(msg, type = 'error') {
+  const el = document.getElementById('regAlert');
+  el.textContent = msg;
+  el.className = 'reg-alert ' + type + ' show';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearAlert() {
+  const el = document.getElementById('regAlert');
+  el.className = 'reg-alert';
+}
+
+/* ─── FIELD ERROR HELPERS ────────────────────────────── */
+function setFieldError(inputId, errId, show) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (inp) inp.classList.toggle('has-error', show);
+  if (err) err.style.display = show ? 'block' : 'none';
+}
+
+/* ─── PASSWORD STRENGTH ──────────────────────────────── */
+function checkPasswordStrength(val) {
+  const bar   = document.getElementById('pwStrengthBar');
+  const label = document.getElementById('pwStrengthLabel');
+  if (!bar) return;
+  if (!val) { bar.style.width = '0'; bar.style.background = 'transparent'; label.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  if (score <= 1) { bar.className = 'pw-strength weak';   label.textContent = 'Weak'; }
+  else if (score === 2) { bar.className = 'pw-strength medium'; label.textContent = 'Medium'; }
+  else  { bar.className = 'pw-strength strong'; label.textContent = 'Strong'; }
+}
+
+/* ─── AADHAAR FORMATTER ──────────────────────────────── */
+function formatAadhaar(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 12);
+  input.value = v.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+}
+
+/* ─── BIZ TYPE SELECTOR ──────────────────────────────── */
+function selectBizType(el) {
+  document.querySelectorAll('#bizTypeGrid .vt-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('bizType').value = el.dataset.value;
+  setFieldError('bizType', 'errBizType', false);
+}
+
+/* ─── VEHICLE TYPE SELECTOR ──────────────────────────── */
+function selectVehicleType(el) {
+  el.closest('.vehicle-type-grid').querySelectorAll('.vt-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('vehicleType').value = el.dataset.value;
+  setFieldError('vehicleType', 'errVehicleType', false);
+}
+
+/* ─── AREA TOGGLE ────────────────────────────────────── */
+function toggleArea(el) {
+  el.classList.toggle('selected');
+  setFieldError('areas', 'errAreas', false);
+}
+function getSelectedAreas() {
+  return Array.from(document.querySelectorAll('.area-select-chip.selected'))
+              .map(el => el.dataset.area);
+}
+
+/* ─── FILE UPLOAD HANDLER ────────────────────────────── */
+function handleFileSelect(inputId, zoneId, statusId) {
+  const input  = document.getElementById(inputId);
+  const zone   = document.getElementById(zoneId);
+  const status = document.getElementById(statusId);
+  if (!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('File too large. Max 5 MB allowed.');
+    input.value = '';
+    return;
+  }
+  uploadedFiles[inputId] = file;
+  if (status) { status.textContent = '✓ ' + file.name.substring(0, 28); }
+  if (zone)   { zone.classList.add('uploaded'); }
+}
+
+/* ─── STEP VALIDATORS ────────────────────────────────── */
+function validateStep(step) {
+  clearAlert();
+  let ok = true;
+
+  if (step === 1) {
+    const email = document.getElementById('regEmail').value.trim();
+    const pw    = document.getElementById('regPassword').value;
+    const cpw   = document.getElementById('regConfirmPassword').value;
+    const biz   = document.getElementById('regBizConfirm').checked;
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    setFieldError('regEmail', 'errEmail', !validEmail);
+    if (!validEmail) ok = false;
+    setFieldError('regPassword', 'errPassword', pw.length < 8);
+    if (pw.length < 8) ok = false;
+    setFieldError('regConfirmPassword', 'errConfirmPassword', pw !== cpw);
+    if (pw !== cpw) ok = false;
+    if (!biz) { showAlert('Please confirm this account is for business use.'); ok = false; }
+  }
+
+  if (step === 2) {
+    const bizName = document.getElementById('bizName').value.trim();
+    const bizType = document.getElementById('bizType').value;
+    const areas   = getSelectedAreas();
+    setFieldError('bizName', 'errBizName', !bizName);
+    if (!bizName) ok = false;
+    setFieldError('bizType', 'errBizType', !bizType);
+    if (!bizType) ok = false;
+    const errAreas = document.getElementById('errAreas');
+    if (areas.length === 0) { errAreas.style.display = 'block'; ok = false; }
+    else errAreas.style.display = 'none';
+  }
+
+  if (step === 3) {
+    const first   = document.getElementById('ownerFirst').value.trim();
+    const last    = document.getElementById('ownerLast').value.trim();
+    const phone   = document.getElementById('ownerPhone').value.replace(/\D/g, '');
+    const address = document.getElementById('ownerAddress').value.trim();
+    const nameOk  = first.length >= 2 && last.length >= 2;
+    setFieldError('ownerFirst', 'errOwnerName', !nameOk);
+    if (!nameOk) ok = false;
+    setFieldError('ownerPhone', 'errOwnerPhone', phone.length !== 10);
+    if (phone.length !== 10) ok = false;
+    setFieldError('ownerAddress', 'errOwnerAddress', !address);
+    if (!address) ok = false;
+  }
+
+  if (step === 4) {
+    const vType  = document.getElementById('vehicleType').value;
+    const vReg   = document.getElementById('vehicleRegNo').value.trim();
+    setFieldError('vehicleType', 'errVehicleType', !vType);
+    if (!vType) ok = false;
+    setFieldError('vehicleRegNo', 'errVehicleReg', !vReg);
+    if (!vReg) ok = false;
+  }
+
+  if (step === 5) {
+    const aadhaarRaw = document.getElementById('kycAadhaar').value.replace(/\s/g, '');
+    const pan        = document.getElementById('kycPan').value.trim().toUpperCase();
+    const aadhaarOk  = /^\d{12}$/.test(aadhaarRaw);
+    const panOk      = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
+    setFieldError('kycAadhaar', 'errAadhaar', !aadhaarOk);
+    if (!aadhaarOk) ok = false;
+    setFieldError('kycPan', 'errPan', !panOk);
+    if (!panOk) ok = false;
+    const docs = [
+      { file: 'fileAadhaar',   zone: 'uzAadhaar',   err: 'errDocAadhaar' },
+      { file: 'filePan',       zone: 'uzPan',        err: 'errDocPan' },
+      { file: 'fileRC',        zone: 'uzRC',         err: 'errDocRC' },
+      { file: 'fileInsurance', zone: 'uzInsurance',  err: 'errDocInsurance' }
+    ];
+    docs.forEach(d => {
+      const missing = !uploadedFiles[d.file];
+      document.getElementById(d.err).style.display = missing ? 'block' : 'none';
+      if (missing) ok = false;
+    });
+  }
+
+  if (step === 6) {
+    const bankName  = document.getElementById('bankName').value.trim();
+    const acctName  = document.getElementById('bankAccountName').value.trim();
+    const acctNo    = document.getElementById('bankAccountNo').value.trim();
+    const ifsc      = document.getElementById('bankIfsc').value.trim().toUpperCase();
+    const ifscOk    = /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
+    setFieldError('bankName', 'errBankName', !bankName);            if (!bankName) ok = false;
+    setFieldError('bankAccountName', 'errBankAccountName', !acctName); if (!acctName) ok = false;
+    setFieldError('bankAccountNo', 'errBankAccountNo', acctNo.length < 8); if (acctNo.length < 8) ok = false;
+    setFieldError('bankIfsc', 'errBankIfsc', !ifscOk);              if (!ifscOk) ok = false;
+  }
+
+  if (step === 7) {
+    const tnc = document.getElementById('tncPartnerAccepted').checked;
+    document.getElementById('errTnc').style.display = tnc ? 'none' : 'block';
+    if (!tnc) ok = false;
+  }
+
+  return ok;
+}
+
+/* ─── NAVIGATION ─────────────────────────────────────── */
+const STEP_LABELS = [
+  'Account Setup', 'Business Info', 'Owner Details',
+  'Vehicle Info', 'KYC & Documents', 'Bank Details', 'Review & Submit'
+];
+
+function updateProgressUI() {
+  const fill = (regCurrentStep / REG_TOTAL_STEPS) * 100;
+  document.getElementById('regProgressFill').style.width = fill + '%';
+  document.getElementById('regStepLabel').textContent   = STEP_LABELS[regCurrentStep - 1];
+  document.getElementById('regStepNum').textContent     = regCurrentStep;
+  document.getElementById('regProgressWrap').setAttribute('aria-valuenow', regCurrentStep);
+
+  document.querySelectorAll('.reg-dot').forEach((d, i) => {
+    d.classList.toggle('done',   i < regCurrentStep - 1);
+    d.classList.toggle('active', i === regCurrentStep - 1);
+  });
+
+  document.getElementById('regBtnBack').style.display = regCurrentStep > 1 ? '' : 'none';
+  const btn = document.getElementById('regBtnNext');
+  btn.textContent = regCurrentStep === REG_TOTAL_STEPS ? '🚀 Submit Application' : 'Continue ›';
+}
+
+function goToStep(n) {
+  document.querySelectorAll('.reg-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('regStep' + n).classList.add('active');
+  regCurrentStep = n;
+  updateProgressUI();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function regNext() {
+  if (regCurrentStep === REG_TOTAL_STEPS) {
+    if (validateStep(regCurrentStep)) submitRegistration();
+    return;
+  }
+  if (!validateStep(regCurrentStep)) return;
+  if (regCurrentStep === 6) populateReview();
+  goToStep(regCurrentStep + 1);
+}
+
+function regPrev() {
+  if (regCurrentStep > 1) goToStep(regCurrentStep - 1);
+}
+
+/* ─── REVIEW POPULATION ──────────────────────────────── */
+function populateReview() {
+  document.getElementById('rvEmail').textContent    = document.getElementById('regEmail').value.trim();
+  document.getElementById('rvBizName').textContent  = document.getElementById('bizName').value.trim();
+  document.getElementById('rvBizType').textContent  = BIZ_TYPE_LABELS[document.getElementById('bizType').value] || '—';
+  document.getElementById('rvAreas').textContent    = getSelectedAreas().join(', ') || '—';
+  document.getElementById('rvOwnerName').textContent= (document.getElementById('ownerFirst').value.trim() + ' ' + document.getElementById('ownerLast').value.trim()).trim();
+  document.getElementById('rvPhone').textContent    = '+91 ' + document.getElementById('ownerPhone').value.trim();
+  document.getElementById('rvVehicle').textContent  = VEHICLE_TYPE_LABELS[document.getElementById('vehicleType').value] || '—';
+  document.getElementById('rvVehicleReg').textContent = document.getElementById('vehicleRegNo').value.trim().toUpperCase();
+  document.getElementById('rvBank').textContent     = document.getElementById('bankName').value.trim();
+  // Mask account number: show last 4 digits only
+  const acct = document.getElementById('bankAccountNo').value.trim();
+  document.getElementById('rvAccount').textContent  = acct ? ('•••• ' + acct.slice(-4)) : '—';
+  document.getElementById('rvIfsc').textContent     = document.getElementById('bankIfsc').value.trim().toUpperCase();
+}
+
+/* ─── SUBMIT REGISTRATION ────────────────────────────── */
+async function submitRegistration() {
+  const nextBtn = document.getElementById('regBtnNext');
+  const submitBox = document.getElementById('regSubmitting');
+  nextBtn.disabled = true;
+  nextBtn.textContent = '⏳ Submitting…';
+  submitBox.style.display = 'block';
+
+  function setStatus(msg) {
+    document.getElementById('regSubmitStatus').textContent = msg;
+  }
+
+  function waitFB(cb, n) {
+    n = n || 0;
+    if (window._firebase) { cb(); return; }
+    if (n > 40) { showAlert('Firebase not ready. Please refresh and try again.'); return; }
+    setTimeout(() => waitFB(cb, n + 1), 200);
+  }
+
+  waitFB(async () => {
+    const { auth, db, storage } = window._firebase;
+    const email    = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+
+    try {
+      // ── 1. Create Firebase Auth user ────────────────
+      setStatus('Creating your account…');
+      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      const uid  = cred.user.uid;
+
+      // ── 2. Upload documents to Firebase Storage ────
+      const docMap = {};
+      const uploadDoc = async (fileKey, path) => {
+        const file = uploadedFiles[fileKey];
+        if (!file) return null;
+        const ref  = storage.ref('partner-docs/' + uid + '/' + path);
+        await ref.put(file);
+        const url  = await ref.getDownloadURL();
+        docMap[fileKey] = url;
+        return url;
+      };
+
+      setStatus('Uploading Aadhaar…');
+      await uploadDoc('fileAadhaar',   'aadhaar');
+      setStatus('Uploading PAN…');
+      await uploadDoc('filePan',       'pan');
+      setStatus('Uploading vehicle RC…');
+      await uploadDoc('fileRC',        'vehicle-rc');
+      setStatus('Uploading insurance…');
+      await uploadDoc('fileInsurance', 'insurance');
+      setStatus('Uploading profile photo…');
+      await uploadDoc('fileProfile',   'profile-photo');
+
+      // ── 3. Build Firestore document ────────────────
+      const now       = firebase.firestore.FieldValue.serverTimestamp();
+      const bizType   = document.getElementById('bizType').value;
+      const vType     = document.getElementById('vehicleType').value;
+      const aadRaw    = document.getElementById('kycAadhaar').value.replace(/\s/g,'');
+      const panVal    = document.getElementById('kycPan').value.trim().toUpperCase();
+      const partnerDoc = {
+        uid,
+        email,
+        role:               'partner',
+        verificationStatus: 'pending',
+        createdAt:          now,
+        updatedAt:          now,
+        // Business
+        businessName:       document.getElementById('bizName').value.trim(),
+        businessType:       bizType,
+        businessTypeLabel:  BIZ_TYPE_LABELS[bizType] || bizType,
+        yearsInBusiness:    document.getElementById('bizYears').value,
+        serviceAreas:       getSelectedAreas(),
+        // Owner
+        ownerName:          (document.getElementById('ownerFirst').value.trim() + ' ' + document.getElementById('ownerLast').value.trim()).trim(),
+        ownerFirstName:     document.getElementById('ownerFirst').value.trim(),
+        ownerLastName:      document.getElementById('ownerLast').value.trim(),
+        ownerPhone:         '+91' + document.getElementById('ownerPhone').value.trim(),
+        ownerDob:           document.getElementById('ownerDob').value,
+        ownerAddress:       document.getElementById('ownerAddress').value.trim(),
+        ownerPincode:       document.getElementById('ownerPincode').value.trim(),
+        // Vehicle
+        vehicleType:        vType,
+        vehicleTypeLabel:   VEHICLE_TYPE_LABELS[vType] || vType,
+        vehicleMake:        document.getElementById('vehicleMake').value.trim(),
+        vehicleYear:        document.getElementById('vehicleYear').value,
+        vehicleCount:       document.getElementById('vehicleCount').value,
+        vehicleRegNo:       document.getElementById('vehicleRegNo').value.trim().toUpperCase(),
+        // KYC
+        aadhaarNumber:      aadRaw,
+        panNumber:          panVal,
+        // Bank
+        bankName:           document.getElementById('bankName').value.trim(),
+        bankAccountName:    document.getElementById('bankAccountName').value.trim(),
+        bankAccountNumber:  document.getElementById('bankAccountNo').value.trim(),
+        bankIfsc:           document.getElementById('bankIfsc').value.trim().toUpperCase(),
+        bankUpi:            document.getElementById('bankUpi').value.trim(),
+        // Documents (Storage URLs)
+        documents: {
+          aadhaar:         docMap['fileAadhaar']   || null,
+          pan:             docMap['filePan']        || null,
+          vehicleRc:       docMap['fileRC']         || null,
+          insurance:       docMap['fileInsurance']  || null,
+          profilePhoto:    docMap['fileProfile']    || null
+        },
+        // Wallet seed
+        walletBalance:      0,
+        pendingEarnings:    0,
+        totalEarnings:      0,
+        // Ratings seed
+        averageRating:      0,
+        totalRatings:       0,
+        // Status flags
+        isOnline:           false,
+        isActive:           false,
+        tncAcceptedAt:      now
+      };
+
+      setStatus('Saving your application…');
+      // Write to partners collection
+      await db.collection('partners').doc(uid).set(partnerDoc);
+      // Write a separate application record for admin review
+      await db.collection('partnerApplications').doc(uid).set({
+        uid,
+        email,
+        businessName:   partnerDoc.businessName,
+        businessType:   partnerDoc.businessType,
+        ownerName:      partnerDoc.ownerName,
+        ownerPhone:     partnerDoc.ownerPhone,
+        vehicleType:    partnerDoc.vehicleType,
+        vehicleRegNo:   partnerDoc.vehicleRegNo,
+        serviceAreas:   partnerDoc.serviceAreas,
+        status:         'pending',
+        appliedAt:      now,
+        documents:      partnerDoc.documents,
+        adminNotes:     ''
+      });
+
+      setStatus('Done! Redirecting…');
+      // Redirect to success page
+      setTimeout(() => { window.location.href = 'registration-success.html'; }, 800);
+
+    } catch (err) {
+      nextBtn.disabled = false;
+      nextBtn.textContent = '🚀 Submit Application';
+      submitBox.style.display = 'none';
+
+      const msg = {
+        'auth/email-already-in-use': 'This email is already registered. Please log in instead.',
+        'auth/invalid-email':        'Invalid email address.',
+        'auth/weak-password':        'Password is too weak. Please use at least 8 characters.',
+        'auth/network-request-failed': 'No internet connection. Please check and retry.'
+      }[err.code] || ('Submission failed: ' + (err.message || 'Unknown error'));
+
+      showAlert(msg);
+      console.error('Registration error:', err);
+    }
+  });
+}
+
+/* ─── INIT ───────────────────────────────────────────── */
+(function init() {
+  // Set DOB max to 18 years ago
+  const maxDob = new Date();
+  maxDob.setFullYear(maxDob.getFullYear() - 18);
+  const dobInput = document.getElementById('ownerDob');
+  if (dobInput) dobInput.max = maxDob.toISOString().split('T')[0];
+
+  // Redirect if already approved
+  function waitFB(cb, n) {
+    n = n || 0;
+    if (window._firebase) { cb(); return; }
+    if (n > 30) return;
+    setTimeout(() => waitFB(cb, n + 1), 200);
+  }
+  waitFB(() => {
+    window._firebase.auth.onAuthStateChanged(user => {
+      if (!user) return;
+      window._firebase.db.collection('partners').doc(user.uid).get()
+        .then(doc => {
+          if (!doc.exists) return;
+          const status = doc.data().verificationStatus;
+          if (status === 'approved') window.location.href = 'partner-dashboard.html';
+          else if (status === 'pending') window.location.href = 'registration-success.html';
+        })
+        .catch(() => {});
+    });
+  });
+
+  // Enter key moves to next step
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const active = document.querySelector('.reg-step.active');
+      if (active && !e.target.closest('textarea')) {
+        e.preventDefault();
+        regNext();
+      }
+    }
+  });
+
+  updateProgressUI();
+})();
+
+/* tiny CSS spin */
+const spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(spinStyle);
+</script>
+
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+
+        // Debounced observer to prevent infinite loops and performance issues
+        let timeout;
+        const observer = new MutationObserver((mutations) => {
+            let shouldUpdate = false;
+            for (let m of mutations) {
+                if (m.addedNodes.length > 0) {
+                    shouldUpdate = true;
+                    break;
+                }
+            }
+            if (shouldUpdate) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => lucide.createIcons(), 50);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
+</script>
+
+  <script src="../../js/core/icon-init.js"></script>
+</body>
+</html>
