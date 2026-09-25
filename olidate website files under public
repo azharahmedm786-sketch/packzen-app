@@ -1,0 +1,86 @@
+ assets/logo/icon-128-maskable.png          |  Bin [31m8794[m -> [32m0[m bytes
+ assets/logo/icon-128.png                   |  Bin [31m9062[m -> [32m0[m bytes
+ assets/logo/icon-144-maskable.png          |  Bin [31m10872[m -> [32m0[m bytes
+ assets/logo/icon-144.png                   |  Bin [31m11054[m -> [32m0[m bytes
+ assets/logo/icon-152-maskable.png          |  Bin [31m11781[m -> [32m0[m bytes
+ assets/logo/icon-152.png                   |  Bin [31m12153[m -> [32m0[m bytes
+ assets/logo/icon-192-maskable.png          |  Bin [31m17015[m -> [32m0[m bytes
+ assets/logo/icon-384-maskable.png          |  Bin [31m50573[m -> [32m0[m bytes
+ assets/logo/icon-384.png                   |  Bin [31m54748[m -> [32m0[m bytes
+ assets/logo/icon-48-maskable.png           |  Bin [31m1890[m -> [32m0[m bytes
+ assets/logo/icon-48.png                    |  Bin [31m1921[m -> [32m0[m bytes
+ assets/logo/icon-72-maskable.png           |  Bin [31m3545[m -> [32m0[m bytes
+ assets/logo/icon-72.png                    |  Bin [31m3522[m -> [32m0[m bytes
+ assets/logo/icon-96-maskable.png           |  Bin [31m5542[m -> [32m0[m bytes
+ assets/logo/icon-96.png                    |  Bin [31m5611[m -> [32m0[m bytes
+ assets/logo/newllogo.png                   |  Bin [31m67109[m -> [32m0[m bytes
+ assets/logo/newllogo1.png                  |  Bin [31m15605[m -> [32m0[m bytes
+ assets/logo/packzen-logo                   |    1 [31m-[m
+ assets/logo/packzen-logo.png               |  Bin [31m380925[m -> [32m0[m bytes
+ css/base/desktop.css                       | 1102 [31m-------[m
+ css/base/mobile-fixes.css                  | 2184 [31m--------------[m
+ css/base/style.css                         | 2091 [31m--------------[m
+ css/modules/partner-portal.css             |  377 [31m---[m
+ css/modules/partner.css                    |  508 [31m----[m
+ css/modules/pzchatbot.css                  |  573 [31m----[m
+ css/modules/services.css                   |  151 [31m-[m
+ css/themes/theme-dg.css                    |  665 [31m-----[m
+ css/themes/theme-purple.css                |  279 [31m--[m
+ images/.gitkeep                            |    1 [31m-[m
+ images/footer/footer-bg.jpg                |  Bin [31m90873[m -> [32m0[m bytes
+ images/footer/footer-bg.png                |  Bin [31m1476371[m -> [32m0[m bytes
+ images/mainbackground.jpg                  |  Bin [31m476331[m -> [32m0[m bytes
+ images/movetypes/home.png                  |  Bin [31m302306[m -> [32m0[m bytes
+ images/movetypes/office.png                |  Bin [31m293044[m -> [32m0[m bytes
+ images/movetypes/single-item.png           |  Bin [31m230748[m -> [32m0[m bytes
+ images/offer/first-move-offer.png          |  Bin [31m180110[m -> [32m0[m bytes
+ images/quick-actions/book-your-move.png    |  Bin [31m102318[m -> [32m0[m bytes
+ images/quick-actions/call-us.png           |  Bin [31m109923[m -> [32m0[m bytes
+ images/quick-actions/track.png             |  Bin [31m109116[m -> [32m0[m bytes
+ images/quick-actions/whatsapp.png          |  Bin [31m179541[m -> [32m0[m bytes
+ images/service-home.jpg                    |  Bin [31m254680[m -> [32m0[m bytes
+ images/service-loading.jpg                 |  Bin [31m333820[m -> [32m0[m bytes
+ images/service-office.jpg                  |  Bin [31m314204[m -> [32m0[m bytes
+ images/service-truck.jpg                   |  Bin [31m150352[m -> [32m0[m bytes
+ images/service-truck.jpg.png               |  Bin [31m2285052[m -> [32m0[m bytes
+ images/services-bg.jpg                     |  Bin [31m184469[m -> [32m0[m bytes
+ images/services/home-shift.png             |  Bin [31m272573[m -> [32m0[m bytes
+ images/services/office-shift.png           |  Bin [31m263259[m -> [32m0[m bytes
+ images/services/parcel-delivery.png        |  Bin [31m239806[m -> [32m0[m bytes
+ images/services/single-item.png            |  Bin [31m319567[m -> [32m0[m bytes
+ images/vehicles/tata-ace.png               |  Bin [31m113008[m -> [32m0[m bytes
+ images/vehicles/truck-14ft.png             |  Bin [31m100793[m -> [32m0[m bytes
+ images/vehicles/truck-17ft.png             |  Bin [31m109808[m -> [32m0[m bytes
+ images/vehicles/truck-22ft.png             |  Bin [31m114774[m -> [32m0[m bytes
+ images/why/insured-safe.png                |  Bin [31m111360[m -> [32m0[m bytes
+ images/why/live-gps-tracking.png           |  Bin [31m111237[m -> [32m0[m bytes
+ images/why/on-time-delivery.png            |  Bin [31m118838[m -> [32m0[m bytes
+ images/why/support.png                     |  Bin [31m119049[m -> [32m0[m bytes
+ images/why/transparent-pricing.png         |  Bin [31m119414[m -> [32m0[m bytes
+ images/why/verified-professionals.png      |  Bin [31m117285[m -> [32m0[m bytes
+ js/config/firebase-config.js               |   41 [31m-[m
+ js/core/icon-init.js                       |   23 [31m-[m
+ js/core/pricing-engine-v2.js               |  446 [31m---[m
+ js/core/pzchatbot.js                       |  698 [31m-----[m
+ js/core/script.js                          | 4291 [31m----------------------------[m
+ js/dashboards/advisor-dashboard-patch.js   |  685 [31m-----[m
+ js/dashboards/partner.js                   | 1327 [31m---------[m
+ js/legacy/chatbot.js                       |  476 [31m---[m
+ js/legacy/setupaccounts.js                 |   62 [31m-[m
+ pages/advisor/advisor.html                 | 1869 [31m------------[m
+ pages/partner/partner-booking-details.html |   66 [31m-[m
+ pages/partner/partner-bookings.html        |   66 [31m-[m
+ pages/partner/partner-dashboard.html       |   68 [31m-[m
+ pages/partner/partner-drivers.html         |   66 [31m-[m
+ pages/partner/partner-forgot-password.html |  110 [31m-[m
+ pages/partner/partner-login.html           |  104 [31m-[m
+ pages/partner/partner-notifications.html   |   66 [31m-[m
+ pages/partner/partner-profile.html         |   67 [31m-[m
+ pages/partner/partner-register.html        | 1270 [31m--------[m
+ pages/partner/partner-settings.html        |   66 [31m-[m
+ pages/partner/partner-support.html         |   66 [31m-[m
+ pages/partner/partner-vehicles.html        |   67 [31m-[m
+ pages/partner/partner-wallet.html          |   66 [31m-[m
+ pages/partner/partner.html                 | 1030 [31m-------[m
+ pages/partner/registration-success.html    |   81 [31m-[m
+ 85 files changed, 21109 deletions(-)
