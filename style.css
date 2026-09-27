@@ -505,15 +505,14 @@ img { max-width: 100%; height: auto; display: block; }
 .service-app-card {
   flex: 0 0 150px; scroll-snap-align: start;
   background: #fff; border: 1px solid var(--border-light);
-  border-radius: var(--radius-xl); padding: 8px 8px 12px;
+  border-radius: var(--radius-xl); padding: 10px 10px 14px;
   display: flex; flex-direction: column; gap: 8px;
   box-shadow: var(--shadow-xs);
-  cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  cursor: pointer; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.3s ease;
   position: relative; overflow: hidden;
-  border-top: 3px solid transparent;
 }
-.service-app-card:hover { transform: translateY(-3px) scale(1.02); box-shadow: var(--shadow-lg); border-top-color: var(--green-500); }
-.service-app-card:active { transform: scale(0.97); }
+.service-app-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--green-400); }
+.service-app-card:active { transform: translateY(-1px); }
 
 .sac-img-wrap {
   width: 100%; aspect-ratio: 1 / 1; border-radius: var(--radius-md);
@@ -528,9 +527,8 @@ img { max-width: 100%; height: auto; display: block; }
 .sac-badge {
   position: absolute; top: 8px; right: 8px;
   background: #2F9E5C; color: #fff;
-  font-size: 0.55rem; font-weight: 800; letter-spacing: 0.5px;
-  padding: 2px 6px; border-radius: 100px;
-  text-transform: uppercase;
+  font-size: 0.62rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 100px;
 }
 
 /* Offer Banner */
