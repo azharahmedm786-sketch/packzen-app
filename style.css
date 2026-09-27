@@ -2066,18 +2066,19 @@ body {
 .white-nav .desktop-nav-links a:hover { background: rgba(255,255,255,0.1) !important; color: #ffffff !important; }
 
 .hero-premium-section { padding: 2rem 1rem; position: relative; }
-.hero-badge { display: inline-block; padding: 6px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 100px; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 1.5rem; }
-.hero-premium-title { font-size: 2.5rem; font-weight: 800; line-height: 1.1; color: #111827; letter-spacing: -0.03em; margin-bottom: 1rem; }
+.hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px 7px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 100px; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 1.75rem; }
+.hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #2F9E5C; flex-shrink: 0; }
+.hero-premium-title { font-size: 2.5rem; font-weight: 700; line-height: 1.08; color: #111827; letter-spacing: -0.02em; margin-bottom: 1.25rem; }
 .purple-gradient { background: linear-gradient(135deg, #1C6E42, #4f46e5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.hero-premium-desc { font-size: 1rem; color: #64748b; line-height: 1.6; margin-bottom: 2rem; }
+.hero-premium-desc { font-size: 1.05rem; color: #475569; line-height: 1.65; margin-bottom: 2.25rem; }
 .hero-premium-actions { display: flex; flex-direction: column; gap: 1rem; }
 .hero-cta-btn { padding: 14px 28px; border-radius: 12px; font-weight: 600; font-size: 1rem; text-align: center; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.25s ease; }
 .hero-cta-btn.primary { background: #111827; color: #ffffff; border: none; }
 .hero-cta-btn.primary:hover { background: #1f2937; transform: translateY(-2px); }
 .hero-cta-btn.secondary { background: #ffffff; color: #111827; border: 1px solid #e2e8f0; }
 
-.hero-premium-illustration { position: relative; margin-top: 3rem; border-radius: 24px; overflow: hidden; }
-.illustration-bg { position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(47, 158, 92,0.1) 0%, transparent 70%); z-index: 1; }
+.hero-premium-illustration { position: relative; margin-top: 3rem; border-radius: 24px; overflow: hidden; box-shadow: 0 24px 48px -12px rgba(6,14,36,0.18); }
+.illustration-bg { position: absolute; inset: 0; background: radial-gradient(circle at 25% 15%, rgba(63,181,110,0.28) 0%, transparent 55%), radial-gradient(circle at 85% 85%, rgba(12,27,58,0.16) 0%, transparent 60%); z-index: 1; }
 .hero-truck-img { width: 100%; height: auto; border-radius: 24px; position: relative; z-index: 2; display: block; }
 .floating-track-card { position: static; margin: 1.5rem auto 0; max-width: 480px; background: #ffffff; padding: 16px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
 .track-card-header { font-size: 0.8rem; font-weight: 700; color: #2F9E5C; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
