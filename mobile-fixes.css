@@ -239,13 +239,8 @@ textarea {
     padding-right: 0.75rem;
   }
 
-  .hero-title {
+     .hero-title {
     font-size: 1.8rem;
-  }
-
-  .hero-badge {
-    font-size: 0.68rem;
-    padding: 0.4rem 0.9rem;
   }
 
   .hero-actions {
