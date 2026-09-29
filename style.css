@@ -482,8 +482,8 @@ img { max-width: 100%; height: auto; display: block; }
   transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   overflow: hidden;
 }
-.qa-card:hover { transform: translateY(-3px) scale(1.02); box-shadow: var(--shadow-lg); }
-.qa-card:active { transform: scale(0.96); }
+.qa-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--green-400); }
+.qa-card:active { transform: translateY(-1px); }
 
 .qa-img-wrap {
   width: 100%; aspect-ratio: 1 / 1; border-radius: var(--radius-md);
