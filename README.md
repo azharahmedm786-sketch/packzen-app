@@ -262,3 +262,18 @@ This project is licensed under the MIT License.
 ---
 
 ### Move Smarter. Move Safer. 🚚
+PackZen catalog update — drop-in files
+======================================
+Folder layout matches your repo root. Copy these three folders INTO the repo
+(replace when asked), keeping the folder names exactly:
+
+  public/     -> website files (this is the folder Firebase Hosting deploys)
+  functions/  -> Cloud Functions (new booking + payment functions, tests)
+  tools/      -> seedCatalog.js
+
+firestore.rules is already updated in your repo (the catalog block is live there).
+
+Then, from the repo folder:
+  1. cd functions && npm install && npm test        (expect two PASSED lines)
+  2. Seed the catalog once:  node ../tools/seedCatalog.js --dry-run   then without --dry-run
+  3. firebase deploy --only firestore:rules,functions,hosting
