@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://apis.google.com https://accounts.google.com; frame-src https://checkout.razorpay.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://apis.google.com https://accounts.google.com https://www.google.com; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://packzen-e7539.firebaseapp.com;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <title>All Services &amp; Prices | Packers, Packing, AC &amp; More in Bangalore | PackZen</title>
@@ -160,9 +160,11 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
 <script src="env-config.js?v=2"></script>
 <script src="firebase-config.js"></script>
 <script src="catalog-public.js"></script>
+<script src="catalog-booking.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
 <script>
 (function () {
@@ -178,13 +180,13 @@
     var includes = Array.isArray(item.includes) && item.includes.length
       ? '<ul class="cat-includes">' + item.includes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>"
       : "";
-    var cta = item.pricingUnit === "quote" ? "Get a quote" : (kind === "addon" ? "Add on WhatsApp" : "Book on WhatsApp");
+    var plural = { service: "services", package: "packages", addon: "addons" }[kind];
     return '<article class="cat-card">' +
       "<h3>" + esc(item.name) + "</h3>" +
       (item.description ? '<p class="cat-desc">' + esc(item.description) + "</p>" : "") +
       '<div class="cat-price">' + esc(C.formatPrice(item)) + "</div>" +
       includes +
-      '<div class="cat-book"><a href="' + esc(C.whatsappLink(item)) + '" target="_blank" rel="noopener noreferrer">' + cta + "</a></div>" +
+      '<div class="cat-book" data-key="' + esc(plural + "/" + item.id) + '"><a class="cat-wa" href="' + esc(C.whatsappLink(item)) + '" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a></div>' +
       "</article>";
   }
 
@@ -246,6 +248,7 @@
       if (b) showCategory(b.dataset.cat);
     });
     showCategory(live.some(function (c) { return c.id === wanted; }) ? wanted : "all");
+    if (window.PackZenBooking) PackZenBooking.mount(cat);
     icons();
   }).catch(function (err) { console.error("[catalog]", err); fail(); });
 
