@@ -639,3 +639,5 @@ Object.assign(exports, require("./notifications"));
 Object.assign(exports, require("./scheduled-notifications"));
 Object.assign(exports, require("./auth-emails"));
 Object.assign(exports, require("./oauth-profile"));
+// Catalog bookings (additive — catalog-booking.js): pay-later, online payment, verification
+Object.assign(exports, require("./catalog-booking"));
