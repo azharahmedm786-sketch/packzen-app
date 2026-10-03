@@ -296,6 +296,28 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // SERVICE CATALOG — public read (the website lists services/prices
+    // to signed-out visitors); only admins may create, update or delete.
+    match /serviceCategories/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /packages/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /addons/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
