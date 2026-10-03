@@ -1,0 +1,134 @@
+/* ================================================
+   catalog.css — PackZen dynamic service catalog
+   Additive, `cat-` prefixed. Safe to load on the homepage
+   (unlike services.css, it does not touch <body>).
+   ================================================ */
+
+/* ── Homepage: category cards ─────────────────── */
+.cat-home-scroll {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 0.75rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.cat-home-card {
+  flex: 0 0 150px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 0.9rem;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-lg, 16px);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.cat-home-card:hover { box-shadow: var(--shadow-md, 0 8px 24px rgba(6,14,36,.12)); transform: translateY(-2px); }
+.cat-home-icon { font-size: 1.9rem; line-height: 1; }
+.cat-home-name { font-size: 0.92rem; font-weight: 800; color: var(--text-primary, #0f172a); }
+.cat-home-sub { font-size: 0.76rem; color: var(--text-muted, #64748b); line-height: 1.35; }
+
+@media (min-width: 900px) {
+  .cat-home-scroll { flex-wrap: wrap; overflow: visible; }
+  .cat-home-card { flex: 1 1 190px; max-width: 240px; }
+}
+
+/* ── services.html: category tabs ─────────────── */
+.cat-tabs {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 0;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cat-tab {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--bg-primary, #fff);
+  color: var(--text-secondary, #334155);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cat-tab.active {
+  background: var(--green-600, #2F9E5C);
+  border-color: var(--green-600, #2F9E5C);
+  color: #fff;
+}
+
+/* ── services.html: sections and item cards ───── */
+.cat-section { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 0.5rem; }
+.cat-section > h2 { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.25rem; color: var(--text-primary, #0f172a); }
+.cat-section > .cat-lede { margin: 0 0 1rem; color: var(--text-muted, #64748b); font-size: 0.92rem; }
+.cat-group-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  margin: 1.1rem 0 0.6rem;
+}
+.cat-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+@media (min-width: 640px)  { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .cat-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-lg, 16px);
+}
+.cat-card h3 { margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary, #0f172a); }
+.cat-card .cat-desc { margin: 0; font-size: 0.85rem; color: var(--text-muted, #64748b); line-height: 1.45; }
+.cat-price { font-size: 1.15rem; font-weight: 800; color: var(--green-600, #2F9E5C); margin-top: 0.2rem; }
+.cat-includes { list-style: none; margin: 0.2rem 0 0; padding: 0; }
+.cat-includes li { font-size: 0.83rem; color: var(--text-secondary, #334155); padding-left: 1.3rem; position: relative; margin-bottom: 0.2rem; }
+.cat-includes li::before { content: "✓"; position: absolute; left: 0; color: var(--green-600, #2F9E5C); font-weight: 800; }
+.cat-book {
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
+.cat-book a {
+  display: block;
+  text-align: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--green-600, #2F9E5C);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.cat-book a:hover { filter: brightness(0.93); }
+
+/* ── States ───────────────────────────────────── */
+.cat-state {
+  max-width: 1100px;
+  margin: 1.5rem auto;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+}
+.cat-state a { color: var(--green-600, #2F9E5C); font-weight: 700; }
+.cat-skeleton {
+  height: 120px;
+  border-radius: var(--radius-lg, 16px);
+  background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 50%, #eef2f7 75%);
+  background-size: 200% 100%;
+  animation: cat-shimmer 1.2s infinite;
+}
+@keyframes cat-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .cat-skeleton { animation: none; } }
