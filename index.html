@@ -56,9 +56,9 @@
   <link rel="dns-prefetch" href="https://maps.googleapis.com">
   <link rel="dns-prefetch" href="https://firestore.googleapis.com">
   <link rel="dns-prefetch" href="https://checkout.razorpay.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" media="print" onload="this.media='all'">
   <noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
   </noscript>
 
   <script type="application/ld+json">
@@ -152,6 +152,7 @@
   <link rel="stylesheet" href="theme-dg.css">
   <link rel="stylesheet" href="desktop.css">
   <link rel="stylesheet" href="theme-purple.css">
+  <link rel="stylesheet" href="catalog.css">
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
@@ -235,7 +236,7 @@
 
    <div class="hero-premium-section">
      <div class="hero-premium-content">
-       <div class="hero-badge"><span class="hero-badge-dot"></span>Bangalore's Most Trusted Packers & Movers</div>
+       <div class="hero-badge">⭐ Bangalore's Most Trusted Packers & Movers</div>
        <h1 class="hero-premium-title">Move Smarter.<br><span class="purple-gradient">Move Safer.</span></h1>
        <p class="hero-premium-desc">Instant Pricing • Live GPS Tracking • Insured Transport • Verified Professionals</p>
        <div class="hero-premium-actions">
@@ -324,6 +325,14 @@
 
   </div>
 </div>
+    <!-- Service catalog categories (loaded from Firestore; hidden until data arrives) -->
+    <div class="home-section" id="catalogHome" style="display:none">
+      <div class="section-label-row">
+        <div class="section-label">Explore All Services</div>
+        <a href="services.html" class="see-all-link">See all</a>
+      </div>
+      <div class="cat-home-scroll" id="catalogHomeList"></div>
+    </div>
     <!-- Offer Banner -->
     <div class="home-section">
       <div class="offer-banner">
@@ -1647,6 +1656,27 @@
 <script>emailjs.init("y2TDPrqIRH-YMJ29_");</script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="catalog-public.js"></script>
+<script>
+(function () {
+  if (!window.PackZenCatalog) return;
+  var C = window.PackZenCatalog, esc = C.esc;
+  C.load().then(function (cat) {
+    var live = cat.categories.filter(function (c) {
+      return [].concat(cat.services, cat.packages, cat.addons).some(function (i) { return i.categoryId === c.id; });
+    });
+    if (!live.length) return; // nothing to show → keep the section hidden
+    document.getElementById("catalogHomeList").innerHTML = live.map(function (c) {
+      return '<a class="cat-home-card" href="services.html?category=' + encodeURIComponent(c.id) + '">' +
+        '<span class="cat-home-icon" aria-hidden="true">' + esc(c.icon || "🧰") + '</span>' +
+        '<span class="cat-home-name">' + esc(c.name) + '</span>' +
+        (c.description ? '<span class="cat-home-sub">' + esc(c.description) + '</span>' : '') +
+        '</a>';
+    }).join("");
+    document.getElementById("catalogHome").style.display = "";
+  }).catch(function (e) { console.warn("[catalog] homepage section skipped:", e && e.message); });
+})();
+</script>
 <script src="pricing-engine-v2.js?v=4.2.0"></script>
   <script src="script.js?v=8"></script>
 
