@@ -1,411 +1,284 @@
 /**
- * PackZen — catalog booking UI (cart → checkout → pay)
+ * PackZen — Catalog bookings (additive module, loaded from index.js)
  * ---------------------------------------------------------------
- * Loaded on services.html after catalog-public.js. Adds:
- *   • "Add" buttons / quantity steppers on every catalog card
- *   • a sticky cart bar
- *   • a checkout dialog (details, pay on service / pay online)
+ * Books items from the Admin → Services Catalog (AC install, packing tiers,
+ * moving packages, add-ons …). Deliberately SEPARATE from the existing
+ * createBooking / createRazorpayOrder / verifyRazorpayPayment functions so
+ * the live move-booking and payment flow is untouched.
  *
- * The browser only sends { type, id, qty } plus the customer's details.
- * Prices shown here are for display; the server re-prices from Firestore
- * (functions/catalog-booking.js) and is the only source of what is charged.
+ *   createServiceBooking          callable   pay-later bookings & quote requests
+ *   createServiceRazorpayOrder    HTTPS      starts an online payment
+ *   verifyServiceRazorpayPayment  HTTPS      verifies payment, creates booking
+ *
+ * Security model: the client sends only { type, id, qty } per item plus the
+ * customer's details. Prices come from Firestore on the server.
  */
-(function () {
-  "use strict";
+"use strict";
 
-  var C = window.PackZenCatalog;
-  var esc = C.esc;
-  var FN_BASE = "https://asia-south1-packzen-e7539.cloudfunctions.net/";
-  var WHATSAPP = "919945095453";
-  var MAX_ONLINE = 100000;
+const functions = require("firebase-functions/v1");
+const admin = require("firebase-admin");
+const crypto = require("crypto");
+const Razorpay = require("razorpay");
+const { defineSecret } = require("firebase-functions/params");
+const { BREVO_SECRETS } = require("./brevo-client");
+const { priceCart, validateDetails, validRequestId } = require("./catalog-pricing");
 
-  var items = {};          // "services/ac-1" → catalog item
-  var cart = {};           // "services/ac-1" → qty
-  var requestId = null;    // idempotency key for the current attempt
-  var busy = false;
-  var els = {};
+const RAZORPAY_KEY_ID = defineSecret("RAZORPAY_KEY_ID");
+const RAZORPAY_KEY_SECRET = defineSecret("RAZORPAY_KEY_SECRET");
 
-  /* ── Helpers ─────────────────────────────────────────────── */
-  var inr = function (n) { return "₹" + Number(n).toLocaleString("en-IN"); };
-  var $ = function (id) { return document.getElementById(id); };
+const REGION = "asia-south1";
+const ALLOWED_ORIGINS = ["https://packzenblr.in", "https://www.packzenblr.in", "http://localhost:5000"];
+const cors = require("cors")({ origin: ALLOWED_ORIGINS });
 
-  function newRequestId() {
-    var a = new Uint8Array(12);
-    (window.crypto || window.msCrypto).getRandomValues(a);
-    return "r" + Array.prototype.map.call(a, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
-  }
+const COLL = { services: "services", packages: "packages", addons: "addons", categories: "serviceCategories" };
+const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 
-  function kindOf(item) {
-    var price = Number(item.basePrice);
-    if (item.pricingUnit === "quote" || !isFinite(price) || price <= 0) return "quote";
-    return item.pricingUnit === "starting_from" ? "estimate" : "fixed";
-  }
-  function qtyMax(item) { return item.pricingUnit === "per_carton" ? 500 : 20; }
+/* ── Helpers ────────────────────────────────────────────────── */
 
-  function totals() {
-    var t = { count: 0, fixed: 0, estimate: 0, quotes: 0, lines: [] };
-    Object.keys(cart).forEach(function (key) {
-      var item = items[key]; if (!item) return;
-      var qty = cart[key], kind = kindOf(item);
-      var line = kind === "quote" ? 0 : Number(item.basePrice) * qty;
-      t.count += qty;
-      if (kind === "fixed") t.fixed += line;
-      else if (kind === "estimate") t.estimate += line;
-      else t.quotes += 1;
-      t.lines.push({ key: key, item: item, qty: qty, kind: kind, total: line });
-    });
-    t.onlineOk = t.lines.length > 0 && t.quotes === 0 && t.estimate === 0 && t.fixed >= 1 && t.fixed <= MAX_ONLINE;
-    return t;
-  }
+// Fetch only the catalog documents the cart references (+ their categories).
+async function loadCatalog(db, rawItems) {
+  const catalog = { services: {}, packages: {}, addons: {}, categories: {} };
+  if (!Array.isArray(rawItems)) return catalog;
 
-  function resetAttempt() { requestId = null; }
-  function ensureRequestId() { if (!requestId) requestId = newRequestId(); return requestId; }
-
-  /* ── Card controls ───────────────────────────────────────── */
-  function renderControls() {
-    document.querySelectorAll(".cat-book[data-key]").forEach(function (box) {
-      var key = box.dataset.key, item = items[key]; if (!item) return;
-      var qty = cart[key] || 0;
-      var wa = box.querySelector(".cat-wa");
-      var ctl = box.querySelector(".cat-ctl");
-      if (!ctl) { ctl = document.createElement("div"); ctl.className = "cat-ctl"; box.insertBefore(ctl, box.firstChild); }
-      if (!qty) {
-        ctl.innerHTML = '<button type="button" class="cat-add" data-act="add" data-key="' + esc(key) + '">' +
-          (kindOf(item) === "quote" ? "Request quote" : "Add to booking") + "</button>";
-      } else {
-        ctl.innerHTML = '<div class="cat-stepper" role="group" aria-label="Quantity for ' + esc(item.name) + '">' +
-          '<button type="button" data-act="dec" data-key="' + esc(key) + '" aria-label="Decrease">−</button>' +
-          '<span aria-live="polite">' + qty + "</span>" +
-          '<button type="button" data-act="inc" data-key="' + esc(key) + '" aria-label="Increase">+</button></div>';
-      }
-      if (wa) wa.style.display = "";
-    });
-  }
-
-  function renderBar() {
-    var t = totals();
-    var bar = els.bar;
-    if (!t.lines.length) { bar.hidden = true; return; }
-    var parts = [];
-    if (t.fixed + t.estimate > 0) parts.push((t.estimate || t.quotes ? "Est. " : "") + inr(t.fixed + t.estimate));
-    if (t.quotes) parts.push(t.quotes + " to quote");
-    bar.querySelector(".cat-bar-text").innerHTML =
-      "<strong>" + t.lines.length + (t.lines.length === 1 ? " item" : " items") + "</strong> · " + esc(parts.join(" + ") || "No price yet");
-    bar.hidden = false;
-  }
-
-  function changeQty(key, delta) {
-    var item = items[key]; if (!item) return;
-    var next = (cart[key] || 0) + delta;
-    if (next <= 0) delete cart[key];
-    else cart[key] = Math.min(next, qtyMax(item));
-    resetAttempt();
-    renderControls(); renderBar();
-    if (els.modal.classList.contains("open")) renderSummary();
-  }
-
-  /* ── Checkout dialog ─────────────────────────────────────── */
-  function buildDom() {
-    var bar = document.createElement("div");
-    bar.className = "cat-bar"; bar.hidden = true;
-    bar.innerHTML = '<div class="cat-bar-text"></div><button type="button" class="cat-bar-btn" data-act="open">Review &amp; book</button>';
-    document.body.appendChild(bar);
-
-    var modal = document.createElement("div");
-    modal.className = "cat-overlay"; modal.id = "catCheckout";
-    modal.innerHTML =
-      '<div class="cat-dialog" role="dialog" aria-modal="true" aria-labelledby="catDlgTitle">' +
-      '<button type="button" class="cat-close" data-act="close" aria-label="Close">×</button>' +
-      '<div id="catDlgBody"></div></div>';
-    document.body.appendChild(modal);
-
-    els.bar = bar; els.modal = modal; els.body = modal.querySelector("#catDlgBody");
-  }
-
-  function todayIST() { return new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10); }
-  function plusDays(ymd, n) { var d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
-
-  function openCheckout() {
-    if (!Object.keys(cart).length) return;
-    ensureRequestId();
-    var user = firebase.auth().currentUser;
-    var today = todayIST();
-    els.body.innerHTML =
-      '<h2 id="catDlgTitle">Your booking</h2>' +
-      '<div id="catSummary"></div>' +
-      '<form id="catForm" novalidate autocomplete="on">' +
-      '<div class="cat-fields">' +
-      '<label>Full name<input id="cfName" autocomplete="name" maxlength="80" value="' + esc(user && user.displayName || "") + '"></label>' +
-      '<label>Mobile number<input id="cfPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="14" placeholder="10-digit number"></label>' +
-      '<label class="cat-wide">Email <small>(optional, for confirmation)</small><input id="cfEmail" type="email" autocomplete="email" maxlength="120" value="' + esc(user && user.email || "") + '"></label>' +
-      '<label class="cat-wide">Service address<textarea id="cfAddress" rows="2" maxlength="300" autocomplete="street-address" placeholder="Flat / house no., street, area, Bangalore"></textarea></label>' +
-      '<label>Date<input id="cfDate" type="date" min="' + today + '" max="' + plusDays(today, 180) + '"></label>' +
-      '<label>Time slot<select id="cfSlot"><option value="">Select…</option>' +
-      '<option value="morning">Morning (8am – 12pm)</option><option value="afternoon">Afternoon (12pm – 4pm)</option><option value="evening">Evening (4pm – 8pm)</option></select></label>' +
-      '<label class="cat-wide">Notes <small>(optional)</small><textarea id="cfNotes" rows="2" maxlength="500" placeholder="Floor, lift, landmarks, anything we should know"></textarea></label>' +
-      "</div>" +
-      '<fieldset class="cat-pay" id="catPay"></fieldset>' +
-      '<div id="catAuth"></div>' +
-      '<div class="cat-error" id="catError" role="alert"></div>' +
-      '<button type="submit" class="cat-submit" id="catSubmit">Confirm booking</button>' +
-      "</form>";
-    renderSummary();
-    renderAuth();
-    els.modal.classList.add("open");
-    document.body.classList.add("cat-lock");
-    setTimeout(function () { var f = $("cfName"); if (f) f.focus(); }, 60);
-  }
-
-  function closeCheckout() {
-    if (busy) return;
-    els.modal.classList.remove("open");
-    document.body.classList.remove("cat-lock");
-  }
-
-  function renderSummary() {
-    var t = totals();
-    var box = $("catSummary"); if (!box) return;
-    if (!t.lines.length) { closeCheckout(); return; }
-
-    var rows = t.lines.map(function (l) {
-      var price = l.kind === "quote" ? "Quote" : (l.kind === "estimate" ? "From " : "") + inr(l.total);
-      return '<div class="cat-row"><div><strong>' + esc(l.item.name) + "</strong>" +
-        '<div class="cat-sub">' + (l.qty > 1 ? l.qty + " × " + esc(C.formatPrice(l.item)) : esc(C.formatPrice(l.item))) + "</div></div>" +
-        '<div class="cat-row-right"><span>' + esc(price) + '</span>' +
-        '<button type="button" class="cat-rm" data-act="remove" data-key="' + esc(l.key) + '" aria-label="Remove ' + esc(l.item.name) + '">Remove</button></div></div>';
-    }).join("");
-
-    var note = "";
-    if (t.quotes) note = "Some items are priced after we understand your requirement — we'll call you with the final price. You pay nothing now.";
-    else if (t.estimate) note = "“From” prices are starting prices; we'll confirm the final amount before the service.";
-    var sum = t.fixed + t.estimate;
-    box.innerHTML = rows +
-      '<div class="cat-total"><span>' + (t.estimate || t.quotes ? "Estimated total" : "Total") + "</span><strong>" + (sum ? inr(sum) : "—") + "</strong></div>" +
-      (note ? '<p class="cat-note">' + esc(note) + "</p>" : "");
-
-    var pay = $("catPay");
-    var keep = (pay.querySelector("input:checked") || {}).value;
-    var online = t.onlineOk;
-    var choice = online && keep === "online" ? "online" : "later";
-    pay.innerHTML = "<legend>Payment</legend>" +
-      '<label class="cat-opt"><input type="radio" name="catPayMode" value="later"' + (choice === "later" ? " checked" : "") + "> <span><strong>Pay on service</strong><small>Cash or UPI after the work is done</small></span></label>" +
-      '<label class="cat-opt' + (online ? "" : " off") + '"><input type="radio" name="catPayMode" value="online"' + (choice === "online" ? " checked" : "") + (online ? "" : " disabled") + "> <span><strong>Pay online" + (online ? " " + inr(t.fixed) : "") + "</strong><small>" +
-      (online ? "Secure payment via Razorpay" : "Available when every item has a fixed price") + "</small></span></label>";
-    updateSubmitLabel();
-  }
-
-  function payMode() { var r = document.querySelector('input[name="catPayMode"]:checked'); return r ? r.value : "later"; }
-
-  function updateSubmitLabel() {
-    var b = $("catSubmit"); if (!b || busy) return;
-    var t = totals();
-    b.textContent = payMode() === "online" ? "Pay " + inr(t.fixed) + " & book"
-      : (t.quotes || t.estimate ? "Request booking" : "Confirm booking");
-  }
-
-  function renderAuth() {
-    var box = $("catAuth"); if (!box) return;
-    var user = firebase.auth().currentUser;
-    if (user) {
-      box.innerHTML = '<p class="cat-signed">Signed in as ' + esc(user.email || user.phoneNumber || user.displayName || "your account") + "</p>";
-      return;
+  const wanted = [];
+  for (const it of rawItems.slice(0, 40)) {
+    if (it && COLL[it.type] && it.type !== "categories" && typeof it.id === "string" && ID_RE.test(it.id)) {
+      wanted.push({ type: it.type, id: it.id });
     }
-    box.innerHTML = '<div class="cat-signin"><p>Sign in so we can save this booking to your account.</p>' +
-      '<button type="button" class="cat-google" data-act="google">Continue with Google</button>' +
-      '<p class="cat-sub">Use email or phone? <a href="index.html">Sign in on the home page</a>, then come back here — your cart will be waiting.</p></div>';
   }
+  if (!wanted.length) return catalog;
 
-  function showError(msg) { var e = $("catError"); if (e) e.textContent = msg || ""; }
-
-  function readForm() {
-    return {
-      customerName: $("cfName").value.trim(), phone: $("cfPhone").value.trim(), email: $("cfEmail").value.trim(),
-      address: $("cfAddress").value.trim(), date: $("cfDate").value, timeSlot: $("cfSlot").value, notes: $("cfNotes").value.trim(),
-    };
-  }
-
-  function clientCheck(d) {
-    if (d.customerName.length < 2) return "Please enter your name.";
-    if (!/^[6-9]\d{9}$/.test(d.phone.replace(/[\s()-]/g, "").replace(/^\+?91/, ""))) return "Enter a valid 10-digit mobile number.";
-    if (d.address.length < 8) return "Please enter the full service address.";
-    if (!d.date) return "Choose a service date.";
-    if (d.date < todayIST()) return "The service date can't be in the past.";
-    if (!d.timeSlot) return "Choose a time slot.";
-    return "";
-  }
-
-  function cartPayload() {
-    return Object.keys(cart).map(function (key) {
-      var p = key.split("/"); return { type: p[0], id: p[1], qty: cart[key] };
-    });
-  }
-
-  function setBusy(on, label) {
-    busy = on;
-    var b = $("catSubmit"); if (!b) return;
-    b.disabled = on;
-    if (on) b.textContent = label || "Please wait…"; else updateSubmitLabel();
-  }
-
-  /* ── Sign-in (Google popup, same provider as the main site) ── */
-  function signInGoogle() {
-    showError("");
-    var provider = new firebase.auth.GoogleAuthProvider();
-    return firebase.auth().signInWithPopup(provider).then(function (res) {
-      try { // mirror script.js: create/refresh the user profile (non-blocking)
-        if (window._firebase.functions) window._firebase.functions.httpsCallable("syncOAuthUserProfile")().catch(function () {});
-      } catch (e) {}
-      var u = res.user;
-      if (u && !$("cfName").value) $("cfName").value = u.displayName || "";
-      if (u && !$("cfEmail").value) $("cfEmail").value = u.email || "";
-      renderAuth();
-      return u;
-    });
-  }
-
-  /* ── Submit ──────────────────────────────────────────────── */
-  function onSubmit(e) {
-    e.preventDefault();
-    if (busy) return;
-    showError("");
-    var details = readForm();
-    var problem = clientCheck(details);
-    if (problem) { showError(problem); return; }
-
-    var user = firebase.auth().currentUser;
-    var go = function (u) { return payMode() === "online" ? payOnline(u, details) : payLater(details); };
-
-    if (!user) {
-      setBusy(true, "Signing in…");
-      signInGoogle().then(function (u) { setBusy(false); return go(u); })
-        .catch(function (err) { setBusy(false); showError(err && err.code === "auth/popup-closed-by-user" ? "Sign-in was cancelled." : "Could not sign in. Please try again."); });
-      return;
+  const refs = wanted.map((w) => db.collection(COLL[w.type]).doc(w.id));
+  const snaps = await db.getAll(...refs);
+  const catIds = new Set();
+  snaps.forEach((s, i) => {
+    if (s.exists) {
+      catalog[wanted[i].type][wanted[i].id] = s.data();
+      if (s.data().categoryId) catIds.add(s.data().categoryId);
     }
-    go(user);
-  }
+  });
 
-  function friendly(err) {
-    var m = err && err.message ? String(err.message) : "";
-    if (err && err.code === "functions/unauthenticated") return "Please sign in again and retry.";
-    return m && !/internal|unavailable|deadline/i.test(m) ? m.replace(/^.*?:\s*/, "") : "Something went wrong. Please try again, or message us on WhatsApp.";
+  const validCatIds = [...catIds].filter((c) => typeof c === "string" && ID_RE.test(c));
+  if (validCatIds.length) {
+    const catSnaps = await db.getAll(...validCatIds.map((c) => db.collection(COLL.categories).doc(c)));
+    catSnaps.forEach((s) => { if (s.exists) catalog.categories[s.id] = s.data(); });
   }
+  return catalog;
+}
 
-  function payLater(details) {
-    setBusy(true, "Booking…");
-    return window._firebase.functions.httpsCallable("createServiceBooking")({
-      requestId: ensureRequestId(), items: cartPayload(), details: details,
-    }).then(function (res) {
-      setBusy(false); success(res.data, false);
-    }).catch(function (err) { setBusy(false); showError(friendly(err)); });
-  }
+function newBookingRef() {
+  return "PKZ-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 4).toUpperCase();
+}
 
-  function loadRazorpay() {
-    if (window.Razorpay) return Promise.resolve();
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = "https://checkout.razorpay.com/v1/checkout.js";
-      s.onload = resolve; s.onerror = function () { reject(new Error("Could not load the payment window.")); };
-      document.head.appendChild(s);
+function bookingLines(lines) {
+  return lines.map((l) => ({
+    type: l.type, id: l.id, name: l.name, categoryId: l.categoryId, qty: l.qty,
+    pricingUnit: l.pricingUnit, unitPrice: l.unitPrice, lineTotal: l.lineTotal, kind: l.kind,
+  }));
+}
+
+// Common booking document. Uses the same pickup/drop/moveType/total fields the
+// existing dashboards read, so catalog bookings appear everywhere automatically.
+function buildBooking({ uid, requestId, details, cart, status, paid, paymentType, paymentStatus, extra }) {
+  return Object.assign({
+    bookingType: "service",
+    bookingRef: newBookingRef(),
+    requestId,
+    customerUid: uid,
+    customerName: details.customerName,
+    phone: details.phone,
+    email: details.email,
+    pickup: details.address,   // service address
+    drop: "",                  // no destination for on-site services
+    date: details.date,
+    shiftTime: details.timeSlot,
+    shiftTimeLabel: details.timeSlotLabel,
+    moveType: "service",
+    remarks: details.notes,
+    items: bookingLines(cart.lines),
+    total: cart.estimatedTotal,
+    totalIsEstimate: cart.hasEstimateItems || cart.hasQuoteItems,
+    needsQuote: cart.hasQuoteItems,
+    paid,
+    paymentType,
+    paymentStatus,
+    status,
+    source: "services-page",
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, extra || {});
+}
+
+async function authUid(req) {
+  const h = req.headers.authorization;
+  if (!h || !h.startsWith("Bearer ")) return null;
+  try { return (await admin.auth().verifyIdToken(h.split("Bearer ")[1])).uid; }
+  catch (e) { return null; }
+}
+
+function prepare(db, data) {
+  return loadCatalog(db, data && data.items).then((catalog) => {
+    const cart = priceCart(catalog, data && data.items);
+    const det = validateDetails(data && data.details);
+    return { cart, det };
+  });
+}
+
+/* ── 1. Pay-later booking / quote request ───────────────────── */
+exports.createServiceBooking = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Please sign in to book.");
+    }
+    if (!validRequestId(data && data.requestId)) {
+      throw new functions.https.HttpsError("invalid-argument", "Missing request id.");
+    }
+    const db = admin.firestore();
+    const uid = context.auth.uid;
+
+    const dup = await db.collection("bookings")
+      .where("requestId", "==", data.requestId).where("customerUid", "==", uid).limit(1).get();
+    if (!dup.empty) {
+      const b = dup.docs[0].data();
+      return { docId: dup.docs[0].id, bookingRef: b.bookingRef, status: b.status, total: b.total, needsQuote: !!b.needsQuote, duplicate: true };
+    }
+
+    const { cart, det } = await prepare(db, data);
+    if (!cart.ok) throw new functions.https.HttpsError("invalid-argument", cart.errors.join(" "));
+    if (!det.ok) throw new functions.https.HttpsError("invalid-argument", det.errors.join(" "));
+
+    // Definite prices → confirmed. Quotes / "starting from" prices need a human to confirm.
+    const status = (cart.hasQuoteItems || cart.hasEstimateItems) ? "pending" : "confirmed";
+
+    const booking = buildBooking({
+      uid, requestId: data.requestId, details: det.value, cart, status,
+      paid: 0, paymentType: "pay_later", paymentStatus: "unpaid",
     });
-  }
+    const ref = await db.collection("bookings").add(booking);
+    return { docId: ref.id, bookingRef: booking.bookingRef, status, total: booking.total, needsQuote: booking.needsQuote };
+  });
 
-  function post(path, token, body) {
-    return fetch(FN_BASE + path, {
-      method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify(body),
-    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); });
-  }
+/* ── 2. Start an online payment ─────────────────────────────── */
+exports.createServiceRazorpayOrder = functions
+  .region(REGION)
+  .runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onRequest((req, res) => cors(req, res, async () => {
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    try {
+      const uid = await authUid(req);
+      if (!uid) return res.status(401).json({ error: "Please sign in again." });
 
-  function payOnline(user, details) {
-    setBusy(true, "Starting payment…");
-    var key = window.ENV && window.ENV.RAZORPAY_KEY;
-    if (!key) { setBusy(false); showError("Online payment is unavailable right now. Please choose Pay on service."); return; }
+      const body = req.body || {};
+      if (!validRequestId(body.requestId)) return res.status(400).json({ error: "Missing request id." });
 
-    Promise.all([user.getIdToken(), loadRazorpay()]).then(function (r) {
-      var token = r[0];
-      return post("createServiceRazorpayOrder", token, { requestId: ensureRequestId(), items: cartPayload(), details: details })
-        .then(function (order) {
-          if (!order.success) throw new Error(order.error || "Could not start payment.");
-          setBusy(false);
-          setBusy(true, "Waiting for payment…");
-          var rzp = new window.Razorpay({
-            key: key, amount: order.amount, currency: order.currency, order_id: order.orderId,
-            name: "PackZen Packers & Movers", description: "Service booking",
-            prefill: { name: details.customerName, contact: details.phone, email: details.email },
-            theme: { color: "#2F9E5C" },
-            handler: function (resp) {
-              setBusy(true, "Confirming payment…");
-              post("verifyServiceRazorpayPayment", token, {
-                razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature,
-              }).then(function (v) {
-                setBusy(false);
-                if (!v.success) { showError((v.error || "We could not confirm your payment.") + " Payment ID: " + resp.razorpay_payment_id); return; }
-                success({ bookingRef: v.bookingRef, status: "confirmed", total: order.serverCalculatedTotal, paymentId: resp.razorpay_payment_id }, true);
-              }).catch(function () {
-                setBusy(false);
-                showError("Payment received but confirmation was interrupted. Please WhatsApp us your payment ID: " + resp.razorpay_payment_id);
-              });
-            },
-            modal: { ondismiss: function () { setBusy(false); } },
-          });
-          rzp.on("payment.failed", function (f) { setBusy(false); showError("Payment failed: " + ((f.error && f.error.description) || "please try again.")); });
-          rzp.open();
-        });
-    }).catch(function (err) { setBusy(false); showError(friendly(err)); });
-  }
-
-  /* ── Success ─────────────────────────────────────────────── */
-  function success(data, paid) {
-    var ref = data.bookingRef || "";
-    var pending = data.status === "pending";
-    var msg = paid ? "Payment received — your booking is confirmed."
-      : pending ? "We've received your request. Our team will call you shortly to confirm the final price and slot."
-        : "Your booking is confirmed. You can pay after the service.";
-    var wa = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent("Hi PackZen, my booking reference is " + ref);
-    els.body.innerHTML =
-      '<div class="cat-done"><div class="cat-tick" aria-hidden="true">✓</div>' +
-      '<h2 id="catDlgTitle">' + (pending ? "Request sent" : "Booking confirmed") + "</h2>" +
-      "<p>" + esc(msg) + "</p>" +
-      '<div class="cat-ref">Reference <strong>' + esc(ref) + "</strong></div>" +
-      (data.total ? '<p class="cat-sub">' + (paid ? "Paid " : pending ? "Estimated " : "Total ") + inr(data.total) + "</p>" : "") +
-      '<a class="cat-submit" href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>' +
-      '<button type="button" class="cat-link" data-act="done">Done</button></div>';
-    cart = {}; resetAttempt();
-    renderControls(); renderBar();
-  }
-
-  /* ── Events ──────────────────────────────────────────────── */
-  function bind() {
-    document.addEventListener("click", function (e) {
-      var t = e.target.closest("[data-act]"); if (!t) return;
-      var act = t.dataset.act, key = t.dataset.key;
-      if (act === "add" || act === "inc") changeQty(key, 1);
-      else if (act === "dec") changeQty(key, -1);
-      else if (act === "remove") changeQty(key, -(cart[key] || 0));
-      else if (act === "open") openCheckout();
-      else if (act === "close" || act === "done") closeCheckout();
-      else if (act === "google") {
-        setBusy(true, "Signing in…");
-        signInGoogle().then(function () { setBusy(false); })
-          .catch(function (err) { setBusy(false); showError(err && err.code === "auth/popup-closed-by-user" ? "Sign-in was cancelled." : "Could not sign in. Please try again."); });
+      const db = admin.firestore();
+      const { cart, det } = await prepare(db, body);
+      if (!cart.ok) return res.status(400).json({ error: cart.errors.join(" ") });
+      if (!det.ok) return res.status(400).json({ error: det.errors.join(" ") });
+      if (!cart.onlineEligible) {
+        return res.status(400).json({ error: "These items need a quote or final price first, so they can't be paid online. Choose “Pay on service” instead." });
       }
-    });
-    els.modal.addEventListener("click", function (e) { if (e.target === els.modal) closeCheckout(); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && els.modal.classList.contains("open")) closeCheckout(); });
-    document.addEventListener("submit", function (e) { if (e.target && e.target.id === "catForm") onSubmit(e); });
-    document.addEventListener("change", function (e) { if (e.target && e.target.name === "catPayMode") updateSubmitLabel(); });
-    firebase.auth().onAuthStateChanged(function () { if (els.modal.classList.contains("open") && $("catAuth")) renderAuth(); });
-  }
 
-  /* ── Public API ──────────────────────────────────────────── */
-  window.PackZenBooking = {
-    // cat = result of PackZenCatalog.load(); call after the cards are in the DOM
-    mount: function (cat) {
-      items = {};
-      ["services", "packages", "addons"].forEach(function (type) {
-        (cat[type] || []).forEach(function (it) { items[type + "/" + it.id] = it; });
+      const amount = cart.payableNow; // ₹, integer — computed on the server only
+      const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+      const order = await razorpay.orders.create({
+        amount: amount * 100,
+        currency: "INR",
+        receipt: "svc_" + Date.now(),
       });
-      if (!els.bar) { buildDom(); bind(); }
-      renderControls(); renderBar();
-    },
-  };
-})();
+
+      // Separate collection from the move flow's `pendingPayments` on purpose.
+      await db.collection("pendingServicePayments").doc(order.id).set({
+        uid, amount, requestId: body.requestId, details: det.value, lines: bookingLines(cart.lines),
+        estimatedTotal: cart.estimatedTotal, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return res.status(200).json({
+        success: true, orderId: order.id, amount: order.amount, currency: order.currency, serverCalculatedTotal: amount,
+      });
+    } catch (err) {
+      console.error("createServiceRazorpayOrder:", err && (err.message || err.description || err));
+      return res.status(500).json({ error: "Could not start payment. Please try again." });
+    }
+  }));
+
+/* ── 3. Verify payment → create the booking ─────────────────── */
+exports.verifyServiceRazorpayPayment = functions
+  .region(REGION)
+  .runWith({ secrets: [...BREVO_SECRETS, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onRequest(async (req, res) => {
+    const origin = req.headers.origin;
+    if (ALLOWED_ORIGINS.includes(origin)) res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") return res.status(204).send("");
+
+    try {
+      const uid = await authUid(req);
+      if (!uid) return res.status(401).json({ success: false, error: "Please sign in again." });
+
+      const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body || {};
+      if (!orderId || !paymentId || !signature) {
+        return res.status(400).json({ success: false, error: "Missing payment identifiers" });
+      }
+
+      const expected = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET.value()).update(orderId + "|" + paymentId).digest("hex");
+      const a = Buffer.from(expected), b = Buffer.from(String(signature));
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return res.status(400).json({ success: false, error: "Invalid signature" });
+      }
+
+      const db = admin.firestore();
+      const pendingRef = db.collection("pendingServicePayments").doc(orderId);
+      let created = null;
+
+      // Transaction: only one request can consume the pending order.
+      const outcome = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(pendingRef);
+        if (!snap.exists) return { missing: true };
+        const p = snap.data();
+        if (p.uid !== uid) return { forbidden: true };
+
+        const cart = { lines: p.lines, estimatedTotal: p.estimatedTotal, hasEstimateItems: false, hasQuoteItems: false };
+        const booking = buildBooking({
+          uid, requestId: p.requestId, details: p.details, cart, status: "confirmed",
+          paid: p.amount, paymentType: "full", paymentStatus: "paid",
+          extra: { paymentId, orderId },
+        });
+        tx.set(db.collection("bookings").doc(), booking);
+        tx.delete(pendingRef);
+        return { booking };
+      });
+
+      if (outcome.forbidden) return res.status(403).json({ success: false, error: "This payment belongs to another account." });
+
+      if (outcome.missing) {
+        // Already processed (double-submit / retry)? Return the existing booking.
+        const existing = await db.collection("bookings").where("paymentId", "==", paymentId).limit(1).get();
+        if (!existing.empty) {
+          const e = existing.docs[0].data();
+          if (e.customerUid !== uid) return res.status(403).json({ success: false, error: "This payment belongs to another account." });
+          return res.status(200).json({ success: true, bookingRef: e.bookingRef, message: "Payment already processed." });
+        }
+        return res.status(400).json({ success: false, error: "No matching order found for this payment" });
+      }
+
+      created = outcome.booking;
+
+      // Confirmation email — never blocks the response.
+      if (created.email) {
+        try {
+          const { sendBookingConfirmationEmail } = require("./booking-notifications");
+          await sendBookingConfirmationEmail({
+            bookingRef: created.bookingRef, customerName: created.customerName, customerEmail: created.email,
+            pickup: created.pickup, drop: "", date: created.date, total: created.paid, paymentStatus: "paid",
+          });
+        } catch (e) { console.error("Service booking email (non-blocking):", e.message); }
+      }
+
+      return res.status(200).json({ success: true, bookingRef: created.bookingRef });
+    } catch (err) {
+      console.error("verifyServiceRazorpayPayment:", err.message);
+      return res.status(500).json({ success: false, error: "Could not confirm your payment. If money was deducted, contact us on WhatsApp with your payment ID." });
+    }
+  });

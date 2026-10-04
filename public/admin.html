@@ -132,6 +132,23 @@
   </style>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    /* Services Catalog tab */
+    .svc-tabs{display:flex;gap:6px;padding:12px 20px 0;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+    .svc-tabs button{background:none;border:none;border-bottom:3px solid transparent;padding:8px 14px;font-family:'Manrope',sans-serif;font-size:.85rem;font-weight:700;color:var(--text-muted);cursor:pointer}
+    .svc-tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+    .svc-count{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;background:var(--surface2);font-size:.72rem}
+    .svc-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px}
+    .svc-overlay.open{display:flex}
+    .svc-modal{background:var(--surface,#fff);color:var(--text);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+    .svc-modal h3{margin:0 0 16px;font-family:'Space Grotesk',sans-serif}
+    .svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .svc-full{grid-column:1 / -1}
+    .svc-grid input:not([type=checkbox]),.svc-grid select,.svc-grid textarea{width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Manrope',sans-serif;font-size:.88rem;background:var(--surface2);color:var(--text);outline:none}
+    .svc-grid input:focus,.svc-grid select:focus,.svc-grid textarea:focus{border-color:var(--primary)}
+    .svc-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+    @media(max-width:600px){.svc-grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 
@@ -418,6 +435,7 @@ function buildShell(adminName) {
     <div class="nav-item" onclick="showSection('drivers',this)"><span class="ni">🚚</span> Drivers</div>
     <div class="sb-role">Manage</div>
     <div class="nav-item" onclick="showSection('customers',this)"><span class="ni">👥</span> Customers</div>
+    <div class="nav-item" onclick="showSection('services',this)"><span class="ni">🧰</span> Services Catalog</div>
     <div class="nav-item" onclick="showSection('reviews',this)"><span class="ni">⭐</span> Reviews</div>
     <div class="nav-item" onclick="showSection('cancels',this)"><span class="ni">✕</span> Cancellations</div>
     <div class="nav-item" onclick="showSection('claims',this)"><span class="ni">🔧</span> Damage Claims</div>
@@ -585,6 +603,57 @@ function buildShell(adminName) {
         <div class="table-hdr"><div class="table-title">Customer Reviews</div></div>
         <table><thead><tr><th>Name</th><th>Rating</th><th>Review</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="reviewsTable"><tr class="empty-row"><td colspan="6">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+    <!-- SERVICES CATALOG -->
+    <div class="section" id="sectionServices">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-title" id="svcTitle">Services</div>
+          <button class="btn-primary-sm" onclick="svcOpenModal()">+ Add</button>
+        </div>
+        <div class="svc-tabs" id="svcTabs">
+          <button type="button" data-tab="categories" onclick="svcSwitchTab('categories')">Categories <span class="svc-count" id="svcCount-categories">0</span></button>
+          <button type="button" data-tab="services" class="active" onclick="svcSwitchTab('services')">Services <span class="svc-count" id="svcCount-services">0</span></button>
+          <button type="button" data-tab="packages" onclick="svcSwitchTab('packages')">Packages <span class="svc-count" id="svcCount-packages">0</span></button>
+          <button type="button" data-tab="addons" onclick="svcSwitchTab('addons')">Add-ons <span class="svc-count" id="svcCount-addons">0</span></button>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead id="svcHead"></thead>
+            <tbody id="svcTable"><tr class="empty-row"><td colspan="6">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add / Edit modal -->
+      <div class="svc-overlay" id="svcModal" onclick="if(event.target===this)svcCloseModal()">
+        <div class="svc-modal">
+          <h3 id="svcModalTitle">Add Service</h3>
+          <div class="svc-grid">
+            <div class="svc-full"><label class="field-label" style="margin-top:0">Name</label><input id="svcName" placeholder="e.g. AC Installation" maxlength="80"></div>
+            <div id="svcCategoryWrap" class="svc-full"><label class="field-label" style="margin-top:0">Category</label><select id="svcCategory"></select></div>
+            <div id="svcPriceWrap"><label class="field-label" style="margin-top:0">Base Price (₹)</label><input id="svcPrice" type="number" min="0" step="1" placeholder="e.g. 1400"></div>
+            <div id="svcUnitWrap"><label class="field-label" style="margin-top:0">Price Type</label>
+              <select id="svcUnit">
+                <option value="fixed">Fixed</option>
+                <option value="starting_from">Starting from</option>
+                <option value="per_item">Per item</option>
+                <option value="per_carton">Per carton</option>
+                <option value="quote">Get a quote</option>
+              </select>
+            </div>
+            <div id="svcIconWrap" style="display:none"><label class="field-label" style="margin-top:0">Icon (emoji)</label><input id="svcIcon" placeholder="🚚" maxlength="4"></div>
+            <div><label class="field-label" style="margin-top:0">Display Order</label><input id="svcOrder" type="number" step="1" placeholder="1"></div>
+            <div class="svc-full"><label class="field-label" style="margin-top:0">Description</label><textarea id="svcDesc" rows="2" maxlength="300" placeholder="Shown to customers"></textarea></div>
+            <div class="svc-full"><label class="field-label" style="margin-top:0">ID (used internally)</label><input id="svcId" placeholder="auto-generated from name" maxlength="60"><small style="color:var(--text-muted)">Letters, numbers and dashes. Cannot be changed after saving.</small></div>
+            <div class="svc-full"><label style="display:flex;gap:8px;align-items:center;font-size:.88rem;cursor:pointer"><input type="checkbox" id="svcActive" checked style="width:auto"> Active (visible to customers)</label></div>
+          </div>
+          <div class="svc-actions">
+            <button type="button" class="btn-sm" style="background:var(--surface2);color:var(--text)" onclick="svcCloseModal()">Cancel</button>
+            <button type="button" class="btn-primary-sm" id="svcSaveBtn" onclick="svcSave()">Save</button>
+          </div>
+        </div>
       </div>
     </div>
     <!-- PROMOS -->
@@ -1347,7 +1416,7 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
@@ -1356,6 +1425,7 @@ function showSection(name, el) {
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
   if (name==="analytics") renderAnalytics();
+  if (name==="services" && typeof loadServicesCatalog === "function") loadServicesCatalog();
 }
 
 function escapeHTML(str) {
@@ -1917,6 +1987,7 @@ async function emailInvoice(docId) {
   });
 </script>
 
+  <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>
 </body>
 </html>
