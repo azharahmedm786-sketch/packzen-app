@@ -42,6 +42,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   }
   for (const id of ["c_selfconfirm", "c_reopen", "c_total", "c_read", "c_rate", "c_damage", "c_resched_pending_nostatus"])
     await seed(`bookings/${id}`, booking({ status: id === "c_selfconfirm" || id === "c_resched_pending_nostatus" ? "pending" : id === "c_reopen" ? "cancelled" : id === "c_rate" || id === "c_damage" ? "delivered" : "confirmed" }));
+  await seed("bookings/c_resched_confirmed_legacy", booking({ status: "confirmed" }));
   await seed("bookings/other", booking({ customerUid: "cust2", total: 9000 }));
   await seed("bookings/paidNoUid", { paymentId: "pay_1", status: "confirmed", total: 500 });
   // Driver bookings.
@@ -117,12 +118,16 @@ for (const s of ["packing", "transit", "delivered", "cancelled"])
   await t(`B3.${s}`, `Customer cancels own ${s} booking`, false, () => updateDoc(doc(cust, `bookings/c_cancel_${s}`), cancelPayload));
 await t("B4", "Customer re-opens own CANCELLED booking", false, () => updateDoc(doc(cust, "bookings/c_reopen"), { status: "confirmed" }));
 await t("B5", "Customer self-confirms own PENDING quote booking", false, () => updateDoc(doc(cust, "bookings/c_selfconfirm"), { status: "confirmed" }));
-const reschedPayload = { date: "2030-01-15", time: "", rescheduledAt: now, rescheduledBy: "customer", status: "confirmed" };
-await t("B6", "Customer reschedules own CONFIRMED booking (exact client payload incl. status:'confirmed')", true, () => updateDoc(doc(cust, "bookings/c_resched_confirmed"), reschedPayload));
-await t("B7", "Customer reschedules own PENDING booking with client payload (status → confirmed)", false, () => updateDoc(doc(cust, "bookings/c_resched_pending"), reschedPayload));
-await t("B8", "Customer reschedules own PENDING booking without changing status", true, () => updateDoc(doc(cust, "bookings/c_resched_pending_nostatus"), { date: "2030-01-15", rescheduledAt: now, rescheduledBy: "customer" }));
+// confirmReschedule() payload (script.js) — status is not written.
+const reschedPayload = { date: "2030-01-15", time: "", rescheduledAt: now, rescheduledBy: "customer" };
+// Payload sent by browsers still running the previous script.js (cached during rollout).
+const legacyReschedPayload = { ...reschedPayload, status: "confirmed" };
+await t("B6", "Customer reschedules own CONFIRMED booking (exact client payload)", true, () => updateDoc(doc(cust, "bookings/c_resched_confirmed"), reschedPayload));
+await t("B6.legacy", "Customer reschedules own CONFIRMED booking (legacy payload incl. status:'confirmed')", true, () => updateDoc(doc(cust, "bookings/c_resched_confirmed_legacy"), legacyReschedPayload));
+await t("B7", "Customer reschedules own PENDING booking with legacy payload (status → confirmed)", false, () => updateDoc(doc(cust, "bookings/c_resched_pending"), legacyReschedPayload));
+await t("B8", "Customer reschedules own PENDING booking (exact client payload)", true, () => updateDoc(doc(cust, "bookings/c_resched_pending_nostatus"), reschedPayload));
 for (const s of ["assigned", "packing", "transit", "delivered", "cancelled"])
-  await t(`B9.${s}`, `Customer reschedules own ${s} booking`, false, () => updateDoc(doc(cust, `bookings/c_resched_${s}`), { date: "2030-01-15", rescheduledAt: now, rescheduledBy: "customer" }));
+  await t(`B9.${s}`, `Customer reschedules own ${s} booking (exact client payload)`, false, () => updateDoc(doc(cust, `bookings/c_resched_${s}`), reschedPayload));
 await t("B10", "Customer rates driver on delivered booking", true, () => updateDoc(doc(cust, "bookings/c_rate"), { driverRating: 5, driverFeedback: "Good", ratedAt: now }));
 await t("B11", "Customer flags damage claim on delivered booking", true, () => updateDoc(doc(cust, "bookings/c_damage"), { damageClaimed: true, damageClaimId: "dc1", damageClaimedAt: now }));
 await t("B12", "Customer changes own booking total", false, () => updateDoc(doc(cust, "bookings/c_total"), { total: 1 }));
