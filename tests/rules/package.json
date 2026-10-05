@@ -1,0 +1,13 @@
+{
+  "name": "packzen-firestore-rules-tests",
+  "private": true,
+  "description": "Firestore security rules regression suite (runs in the local emulator only, demo project — never touches production)",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-packzen --config firebase.json \"node firestore.rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-tools": "14.27.0"
+  }
+}

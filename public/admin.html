@@ -9,7 +9,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive"/>
 
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"></script>
   <style>
     :root{--primary:#0057ff;--accent:#00c96e;--dark:#050d1a;--text:#1a2744;--text-muted:#5a6a8a;--surface:#fff;--surface2:#f4f7ff;--border:#dde4f5;--shadow-sm:0 2px 12px rgba(0,60,180,.08);--shadow-md:0 8px 32px rgba(0,60,180,.12)}
     body.dark{--text:#e2e8f4;--text-muted:#8a9bbf;--surface:#0d1f3c;--surface2:#091529;--border:#1e3a5f;--dark:#020810}
@@ -131,7 +131,7 @@
     }
   </style>
 
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
   <style>
     /* Services Catalog tab */
     .svc-tabs{display:flex;gap:6px;padding:12px 20px 0;flex-wrap:wrap;border-bottom:1px solid var(--border)}
@@ -187,10 +187,10 @@
 /* ================================================================
    ✅ SECURITY CONSTANTS
    ================================================================ */
+// Must match isAdmin() in firestore.rules (UI gate only — the rules decide).
 const ADMIN_EMAILS = [
-  "admin@packzen.com",
-  "support@packzenblr.in",
   "azharahmedm786@gmail.com",
+  "azharahmednaz@gmail.com",
   "moveeasyblr@gmail.com"
 ];
 
@@ -454,7 +454,7 @@ function buildShell(adminName) {
         <span class="session-timer" id="sessionTimerDisplay">Session: 120m</span>
         <button class="theme-btn" onclick="toggleAdminTheme()">🌙</button>
         <div class="admin-badge">🔐 Admin</div>
-        <span style="font-size:.83rem;color:var(--text-muted);font-weight:500;" id="adminNameDisplay">${adminName}</span>
+        <span style="font-size:.83rem;color:var(--text-muted);font-weight:500;" id="adminNameDisplay">${escapeHTML(adminName)}</span>
       </div>
     </div>
     <!-- OVERVIEW -->
@@ -814,7 +814,7 @@ function renderAnalytics() {
     const d = b.createdAt?.toDate ? b.createdAt.toDate() : null;
     if (!d) return;
     bByMonth[d.getMonth()]++;
-    rByMonth[d.getMonth()] += b.total || 0;
+    rByMonth[d.getMonth()] += Number(b.total) || 0;
   });
 
   const tbody = el("analyticsMonthlyTable");
@@ -907,7 +907,8 @@ function renderParcelBookings(list) {
   const tb = document.getElementById("parcelTable");
   tb.innerHTML = "";
   if (!list.length) return tb.innerHTML="<tr class='empty-row'><td colspan='7'>No parcel bookings found.</td></tr>";
-  list.forEach(b => {
+  list.forEach(raw => {
+    const b = escFields(raw);
     const d = b.createdAt ? b.createdAt.toDate().toLocaleDateString('en-IN') : "--";
     const st = b.status || "confirmed";
     const stColor = st==="delivered"?"color:#16a34a":st==="cancelled"?"color:#dc2626":"color:#d97706";
@@ -917,7 +918,7 @@ function renderParcelBookings(list) {
       <td><b>${b.customerName||"--"}</b><br><small style="color:var(--text-muted)">${b.customerPhone||"--"}</small></td>
       <td><span class="truncate" style="display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.pickupAddress}">${b.pickupAddress||"--"}</span></td>
       <td><span class="truncate" style="display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.deliveryAddress}">${b.deliveryAddress||"--"}</span></td>
-      <td style="font-weight:700;">₹${b.totalFare||0}</td>
+      <td style="font-weight:700;">₹${Number(raw.totalFare)||0}</td>
       <td style="font-weight:700;text-transform:capitalize;${stColor}">${st}</td>
       <td style="font-size:0.85rem;color:var(--text-muted);">${d}</td>
     `;
@@ -1009,10 +1010,11 @@ function loadBroadcastHistory() {
     if (!tbody) return;
     if (snap.empty) { tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No broadcasts yet.</td></tr>'; return; }
     tbody.innerHTML = snap.docs.map(d => {
-      const b = d.data();
+      const raw = d.data();
+      const b = escFields(raw);
       const date = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString("en-IN") : "—";
-      const preview = (b.message||"").slice(0,60) + ((b.message||"").length > 60 ? "..." : "");
-      return `<tr><td>${preview}</td><td>${b.recipients||0}</td><td>${date}</td><td>${b.via||"—"}</td></tr>`;
+      const preview = escapeHTML((raw.message||"").slice(0,60) + ((raw.message||"").length > 60 ? "..." : ""));
+      return `<tr><td>${preview}</td><td>${Number(raw.recipients)||0}</td><td>${date}</td><td>${b.via||"—"}</td></tr>`;
     }).join("");
   });
 }
@@ -1064,7 +1066,7 @@ function renderOverview() {
   if (!tbody) return;
   const recent = allBookings.slice(0, 8);
   if (!recent.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No bookings yet</td></tr>'; return; }
-  tbody.innerHTML = recent.map(b => `
+  tbody.innerHTML = recent.map(raw => { const b = escFields(raw); return `
     <tr>
       <td><code style="font-size:.75rem;color:var(--primary)">#${b.id.slice(-6).toUpperCase()}</code></td>
       <td>${b.customerName||"—"}</td>
@@ -1072,11 +1074,11 @@ function renderOverview() {
       <td>${b.date||"—"}</td>
       <td><span class="badge badge-${b.status||"pending"}">${cap(b.status||"pending")}</span></td>
       <td><button class="btn-sm btn-assign"
-onclick="openAssignModal('${b.id}')">
+onclick="openAssignModal(${jsArg(raw.id)})">
 🚚 ${b.driverUid ? "Change Driver" : "Assign Driver"}
 </button>
 </td>
-    </tr>`).join("");
+    </tr>`; }).join("");
 }
 
 /* ── BOOKINGS TABLE ── */
@@ -1084,7 +1086,7 @@ function renderBookingsTable(list) {
   const tbody = document.getElementById("bookingsTable");
   if (!tbody) return;
   if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No bookings found</td></tr>'; return; }
-  tbody.innerHTML = list.map(b => `
+  tbody.innerHTML = list.map(raw => { const b = escFields(raw); return `
     <tr>
       <td>
         <code style="font-size:.75rem;color:var(--primary)">${b.bookingRef||("#"+b.id.slice(-6).toUpperCase())}</code>
@@ -1094,30 +1096,30 @@ function renderBookingsTable(list) {
       <td>${b.phone||"—"}</td>
       <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(b.pickup||"").split(",")[0]} → ${(b.drop||"").split(",")[0]}</td>
       <td>${b.date||"—"}</td>
-      <td>₹${(b.total||0).toLocaleString("en-IN")} <small style="color:var(--text-muted)">${b.paymentType==="pay_later"?"(Pay Later)":b.source==="whatsapp"?"(WA)":b.paid?"(₹"+b.paid+" paid)":""}</small></td>
+      <td>₹${(Number(raw.total)||0).toLocaleString("en-IN")} <small style="color:var(--text-muted)">${b.paymentType==="pay_later"?"(Pay Later)":b.source==="whatsapp"?"(WA)":raw.paid?"(₹"+(Number(raw.paid)||0)+" paid)":""}</small></td>
       <td>
-        <select class="status-sel" onchange="updateStatus('${b.id}',this.value)">
+        <select class="status-sel" onchange="updateStatus(${jsArg(raw.id)},this.value)">
           ${["pending","confirmed","assigned","packing","transit","delivered","cancelled"].map(s=>`<option value="${s}"${b.status===s?" selected":""}>${cap(s)}</option>`).join("")}
         </select>
       </td>
       <td>${b.driverName||'<span style="color:var(--text-muted);font-size:.78rem">Unassigned</span>'}</td>
 <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-  <button class="btn-sm" onclick="viewBooking('${b.id}')">👁 View</button>
+  <button class="btn-sm" onclick="viewBooking(${jsArg(raw.id)})">👁 View</button>
 
 <button class="btn-sm btn-assign"
-onclick="openAssignModal('${b.id}')">
+onclick="openAssignModal(${jsArg(raw.id)})">
 🚚 ${b.driverUid ? "Change" : "Assign"}
 </button>
 
   <button class="btn-sm"
           style="background:rgba(220,38,38,.1);color:#dc2626;"
-          onclick="deleteBooking('${b.id}','${b.bookingRef||b.id.slice(-6).toUpperCase()}')">
+          onclick="deleteBooking(${jsArg(raw.id)},${jsArg(raw.bookingRef||raw.id.slice(-6).toUpperCase())})">
     🗑 Delete
   </button>
 </td>
 </tr>
 
-${expandedBookingId === b.id ? `
+${expandedBookingId === raw.id ? `
 <tr>
  <td colspan="9">
 
@@ -1154,20 +1156,20 @@ line-height:1.8;
     <b>Driver:</b> ${b.driverName || "Not Assigned"}<br>
     <b>Driver Phone:</b> ${b.driverPhone || "-"}<br>
 <b>Payment Type:</b> ${b.paymentType || "-"}<br>
-<b>Advance Paid:</b> ₹${b.paid || 0}<br>
+<b>Advance Paid:</b> ₹${Number(raw.paid) || 0}<br>
 
-<b>Original Quote:</b> ₹${b.originalTotal || b.total || 0}<br>
-<b>Promo Discount:</b> ₹${b.promoDiscount || 0}<br>
-<b>Total:</b> ₹${b.total || 0}<br>
+<b>Original Quote:</b> ₹${Number(raw.originalTotal || raw.total) || 0}<br>
+<b>Promo Discount:</b> ₹${Number(raw.promoDiscount) || 0}<br>
+<b>Total:</b> ₹${Number(raw.total) || 0}<br>
 
-<b>Total:</b> ₹${b.total || 0}<br><br>
+<b>Total:</b> ₹${Number(raw.total) || 0}<br><br>
 
 <b>Items Selected:</b><br>
 
 ${b.selectedFurniture
 ? Object.entries(b.selectedFurniture)
     .filter(([k,v]) => v > 0)
-    .map(([k,v]) => `${k} × ${v}`)
+    .map(([k,v]) => `${escapeHTML(k)} × ${Number(v) || 0}`)
     .join("<br>")
 : "No items recorded"}
 
@@ -1178,13 +1180,13 @@ ${b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("en-IN") : "-"}
 <br>
 
 <button class="btn-sm btn-assign"
-onclick="openAssignModal('${b.id}')">
+onclick="openAssignModal(${jsArg(raw.id)})">
 🚚 ${b.driverUid ? "Change Driver" : "Assign Driver"}
 </button>
 
 <button class="btn-sm"
 style="background:#16a34a;color:white;margin-left:8px;"
-onclick="updateStatus('${b.id}','delivered')">
+onclick="updateStatus(${jsArg(raw.id)},'delivered')">
 ✅ Mark Delivered
 </button>
 ${b.driverPhone ? `
@@ -1202,10 +1204,10 @@ style="background:#7c3aed;color:white;margin-left:8px;text-decoration:none;">
 </a>
 ` : ""}
 
-<button class="btn-sm" style="background:#0ea5e9;color:white;margin-left:8px;" onclick="downloadInvoice('${b.id}')">
+<button class="btn-sm" style="background:#0ea5e9;color:white;margin-left:8px;" onclick="downloadInvoice(${jsArg(raw.id)})">
   📄 Invoice
 </button>
-<button class="btn-sm" style="background:#f59e0b;color:white;margin-left:8px;" onclick="emailInvoice('${b.id}')">
+<button class="btn-sm" style="background:#f59e0b;color:white;margin-left:8px;" onclick="emailInvoice(${jsArg(raw.id)})">
   ✉️ Email
 </button>
 </div>
@@ -1214,7 +1216,7 @@ style="background:#7c3aed;color:white;margin-left:8px;text-decoration:none;">
 </tr>
 ` : ""}
 
-`).join("");
+`; }).join("");
 }
   
 function filterBookings(q) {
@@ -1279,7 +1281,7 @@ function renderDrivers() {
   const el = document.getElementById("driversList");
   if (!el) return;
   if (!allDrivers.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px;">No drivers yet. Create one using the form above.</div>'; return; }
-  el.innerHTML = allDrivers.map(d => `
+  el.innerHTML = allDrivers.map(raw => { const d = escFields(raw); return `
     <div class="driver-card">
       <div class="driver-info">
         <div class="driver-avatar">${(d.name||"D").charAt(0)}</div>
@@ -1290,7 +1292,7 @@ function renderDrivers() {
         </div>
       </div>
       <span class="badge ${d.isOnline?"badge-delivered":"badge-pending"}">${d.isOnline?"🟢 Active":"⚫ Offline"}</span>
-    </div>`).join("");
+    </div>`; }).join("");
 }
 
 /* ── CUSTOMERS ── */
@@ -1298,13 +1300,13 @@ function renderCustomers() {
   const tbody = document.getElementById("customersTable");
   if (!tbody) return;
   if (!allCustomers.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No customers yet</td></tr>'; return; }
-  tbody.innerHTML = allCustomers.map(c => `
+  tbody.innerHTML = allCustomers.map(raw => { const c = escFields(raw); return `
     <tr>
       <td>${c.name||"—"}</td><td>${c.email||"—"}</td><td>${c.phone||"—"}</td>
-      <td>${allBookings.filter(b=>b.customerUid===c.id).length}</td>
-      <td>${c.referralCount||0} (₹${c.referralCredits||0})</td>
+      <td>${allBookings.filter(b=>b.customerUid===raw.id).length}</td>
+      <td>${Number(raw.referralCount)||0} (₹${Number(raw.referralCredits)||0})</td>
       <td>${c.createdAt?.toDate?c.createdAt.toDate().toLocaleDateString("en-IN"):"—"}</td>
-    </tr>`).join("");
+    </tr>`; }).join("");
 }
 
 /* ── REVIEWS ── */
@@ -1312,18 +1314,18 @@ function renderReviews() {
   const tbody = document.getElementById("reviewsTable");
   if (!tbody) return;
   if (!allReviews.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No reviews yet</td></tr>'; return; }
-  tbody.innerHTML = allReviews.map(r => `
+  tbody.innerHTML = allReviews.map(raw => { const r = escFields(raw); return `
     <tr>
       <td>${r.name||"—"}</td>
-      <td style="color:#f59e0b">${"★".repeat(r.rating||0)}</td>
+      <td style="color:#f59e0b">${"★".repeat(Math.max(0, Math.min(5, Math.round(Number(raw.rating) || 0))))}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.text||""}</td>
       <td>${r.date||"—"}</td>
       <td><span class="badge ${r.status==="approved"?"badge-delivered":"badge-pending"}">${cap(r.status||"pending")}</span></td>
       <td>
-        ${r.status!=="approved"?`<button class="btn-sm btn-assign" onclick="approveReview('${r.id}')">Approve</button>`:""}
-        <button class="btn-sm" style="background:rgba(229,62,62,.1);color:#e53e3e;margin-left:4px" onclick="deleteReview('${r.id}')">Delete</button>
+        ${raw.status!=="approved"?`<button class="btn-sm btn-assign" onclick="approveReview(${jsArg(raw.id)})">Approve</button>`:""}
+        <button class="btn-sm" style="background:rgba(229,62,62,.1);color:#e53e3e;margin-left:4px" onclick="deleteReview(${jsArg(raw.id)})">Delete</button>
       </td>
-    </tr>`).join("");
+    </tr>`; }).join("");
   updateStats();
 }
 function approveReview(id) { requireAdmin(() => window._firebase.db.collection("reviews").doc(id).update({ status:"approved" }).then(()=>toast("✅ Review approved!")).catch(e=>toast("❌ "+e.message))); }
@@ -1348,17 +1350,17 @@ function renderPromos() {
   const tbody = document.getElementById("promosTable");
   if (!tbody) return;
   if (!allPromos.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No promo codes yet</td></tr>'; return; }
-  tbody.innerHTML = allPromos.map(p => `
+  tbody.innerHTML = allPromos.map(raw => { const p = escFields(raw); return `
     <tr>
       <td><strong style="font-family: 'Space Grotesk',sans-serif;color:var(--primary)">${p.code}</strong></td>
       <td>${cap(p.type)}</td><td>${p.type==="percent"?p.value+"%":"₹"+p.value}</td>
       <td>${p.used||0}</td><td>${p.max||"∞"}</td>
       <td><span class="badge ${p.active?"badge-delivered":"badge-pending"}">${p.active?"Active":"Inactive"}</span></td>
       <td>
-        <button class="btn-sm btn-assign" onclick="togglePromo('${p.id}',${!p.active})">${p.active?"Pause":"Activate"}</button>
-        <button class="btn-sm" style="background:rgba(229,62,62,.1);color:#e53e3e;margin-left:4px" onclick="deletePromo('${p.id}')">Delete</button>
+        <button class="btn-sm btn-assign" onclick="togglePromo(${jsArg(raw.id)},${!raw.active})">${p.active?"Pause":"Activate"}</button>
+        <button class="btn-sm" style="background:rgba(229,62,62,.1);color:#e53e3e;margin-left:4px" onclick="deletePromo(${jsArg(raw.id)})">Delete</button>
       </td>
-    </tr>`).join("");
+    </tr>`; }).join("");
 }
 
 /* ── BROADCAST ── */
@@ -1384,17 +1386,17 @@ function openAssignModal(id) {
   const b = allBookings.find(x => x.id === id);
   if (!b) return;
   document.getElementById("assignInfo").innerHTML =
-    `<strong>Booking:</strong> #${id.slice(-6).toUpperCase()}<br>` +
-    `<strong>Customer:</strong> ${b.customerName||"—"}<br>` +
-    `<strong>Route:</strong> ${(b.pickup||"").split(",")[0]} → ${(b.drop||"").split(",")[0]}<br>` +
-    `<strong>Date:</strong> ${b.date||"—"}`;
+    `<strong>Booking:</strong> #${escapeHTML(id.slice(-6).toUpperCase())}<br>` +
+    `<strong>Customer:</strong> ${escapeHTML(b.customerName)||"—"}<br>` +
+    `<strong>Route:</strong> ${escapeHTML((b.pickup||"").split(",")[0])} → ${escapeHTML((b.drop||"").split(",")[0])}<br>` +
+    `<strong>Date:</strong> ${escapeHTML(b.date)||"—"}`;
   document.getElementById("assignModal").style.display = "flex";
 }
 function closeAssignModal() { document.getElementById("assignModal").style.display = "none"; assigningId = null; }
 function populateAssignSelect() {
   const sel = document.getElementById("assignSelect");
   if (!sel) return;
-  sel.innerHTML = '<option value="">-- Select a driver --</option>' + allDrivers.map(d=>`<option value="${d.id}">${d.name||d.email}</option>`).join("");
+  sel.innerHTML = '<option value="">-- Select a driver --</option>' + allDrivers.map(d=>`<option value="${escapeHTML(d.id)}">${escapeHTML(d.name||d.email)}</option>`).join("");
 }
 function confirmAssign() {
   requireAdmin(() => {
@@ -1435,6 +1437,28 @@ function escapeHTML(str) {
   }[tag]));
 }
 
+// Copy of a Firestore record with every string field HTML-escaped, for
+// interpolation into markup. Numbers, timestamps and nested objects pass
+// through unchanged (nested values must be escaped where they are used).
+function escFields(obj) {
+  const out = {};
+  for (const k in obj) out[k] = typeof obj[k] === "string" ? escapeHTML(obj[k]) : obj[k];
+  return out;
+}
+
+// Argument for an inline on*="fn(...)" handler. HTML-escaping alone is not
+// enough there — the browser decodes entities before running the handler —
+// so the value is JSON-quoted first and then HTML-escaped.
+function jsArg(v) {
+  return escapeHTML(JSON.stringify(String(v ?? "")));
+}
+
+// Only inline image data (what the damage-claim form stores) may be used as
+// an <img src>.
+function safeImageSrc(src) {
+  return typeof src === "string" && /^data:image\//i.test(src) ? escapeHTML(src) : "";
+}
+
 /* ── ACCOUNT DELETION REQUESTS ── */
 async function loadDeletionRequests() {
   const tbody = document.getElementById("deletionTable");
@@ -1462,17 +1486,17 @@ async function loadDeletionRequests() {
       const status = escapeHTML(data.status) || "Pending";
       const sColor = statusColor[status] || "#d97706";
 
-      let actions = `<button class="btn-action" style="background:#2563eb;color:white" onclick="viewDeletionRequest('${reqId}')">View</button>`;
+      let actions = `<button class="btn-action" style="background:#2563eb;color:white" onclick="viewDeletionRequest(${jsArg(reqId)})">View</button>`;
 
       if (status === "Pending") {
-         actions += `<button class="btn-action" style="background:#16a34a;color:white;margin-left:4px" onclick="updateDeletionStatus('${reqId}', 'Processed')">Approve & Process</button>
-                     <button class="btn-action" style="background:#dc2626;color:white;margin-left:4px" onclick="updateDeletionStatus('${reqId}', 'Rejected')">Reject</button>`;
+         actions += `<button class="btn-action" style="background:#16a34a;color:white;margin-left:4px" onclick="updateDeletionStatus(${jsArg(reqId)}, 'Processed')">Approve & Process</button>
+                     <button class="btn-action" style="background:#dc2626;color:white;margin-left:4px" onclick="updateDeletionStatus(${jsArg(reqId)}, 'Rejected')">Reject</button>`;
       }
 
-      actions += `<button class="btn-action" style="background:#ef4444;color:white;margin-left:4px;opacity:0.8" onclick="deleteDeletionRequest('${reqId}')">🗑️</button>`;
+      actions += `<button class="btn-action" style="background:#ef4444;color:white;margin-left:4px;opacity:0.8" onclick="deleteDeletionRequest(${jsArg(reqId)})">🗑️</button>`;
 
       return `<tr>
-        <td style="font-family:'Space Grotesk',sans-serif;font-weight:600;">${reqId}</td>
+        <td style="font-family:'Space Grotesk',sans-serif;font-weight:600;">${escapeHTML(reqId)}</td>
         <td>${name}</td>
         <td>${contact}</td>
         <td>${date}</td>
@@ -1568,33 +1592,34 @@ async function loadDamageClaims() {
     if (snap.empty) { tbody.innerHTML = "<tr class='empty-row'><td colspan='8'>No damage claims yet.</td></tr>"; return; }
     const statusColor = { pending:"#d97706", investigating:"#2563eb", approved:"#16a34a", rejected:"#dc2626" };
     tbody.innerHTML = snap.docs.map(d => {
-      const c = d.data();
+      const c = escFields(d.data());
       const date   = c.createdAt?.toDate?.().toLocaleDateString("en-IN") || "—";
-      const photos = c.photos?.length ? `<span style="color:#2563eb;cursor:pointer;font-weight:600" onclick="openClaimDetail('${d.id}')">${c.photos.length} photo(s)</span>` : "None";
+      const photos = c.photos?.length ? `<span style="color:#2563eb;cursor:pointer;font-weight:600" onclick="openClaimDetail(${jsArg(d.id)})">${Number(c.photos.length)} photo(s)</span>` : "None";
       const col = statusColor[c.status] || "#64748b";
       return `<tr>
-        <td style="font-family:monospace;font-size:.75rem">${d.id.slice(0,8).toUpperCase()}</td>
+        <td style="font-family:monospace;font-size:.75rem">${escapeHTML(d.id.slice(0,8).toUpperCase())}</td>
         <td>${c.bookingDocId?.slice(0,8)||"—"}</td>
         <td>${c.damageType||"—"}</td>
         <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.description||"—"}</td>
         <td>${photos}</td><td>${date}</td>
         <td><span style="color:${col};font-weight:700;font-size:.78rem">${(c.status||"pending").toUpperCase()}</span></td>
-        <td><button onclick="openClaimDetail('${d.id}')" style="padding:.3rem .7rem;background:#7c3aed;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Review</button></td>
+        <td><button onclick="openClaimDetail(${jsArg(d.id)})" style="padding:.3rem .7rem;background:#7c3aed;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Review</button></td>
       </tr>`;
     }).join("");
-  } catch(e) { tbody.innerHTML = `<tr><td colspan='8' style='color:red'>Error: ${e.message}</td></tr>`; }
+  } catch(e) { tbody.innerHTML = `<tr><td colspan='8' style='color:red'>Error: ${escapeHTML(e.message)}</td></tr>`; }
 }
 async function openClaimDetail(docId) {
   currentClaimDocId = docId;
   const doc = await window._firebase.db.collection("damageClaims").doc(docId).get();
   if (!doc.exists) return;
-  const c = doc.data();
+  const raw = doc.data();
+  const c = escFields(raw);
   const panel = document.getElementById("claimDetailPanel");
   const content = document.getElementById("claimDetailContent");
-  const photoHtml = c.photos?.length ? c.photos.map(p=>`<img src="${p}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)">`).join("") : "<span style='color:var(--text-muted);font-size:.82rem'>No photos attached</span>";
+  const photoHtml = raw.photos?.length ? raw.photos.map(safeImageSrc).filter(Boolean).map(p=>`<img src="${p}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)">`).join("") : "<span style='color:var(--text-muted);font-size:.82rem'>No photos attached</span>";
   content.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem 1.2rem;margin-bottom:1rem;font-size:.85rem">
-      <div><span style="color:var(--text-muted)">Claim ID:</span> <strong>${docId.slice(0,8).toUpperCase()}</strong></div>
+      <div><span style="color:var(--text-muted)">Claim ID:</span> <strong>${escapeHTML(docId.slice(0,8).toUpperCase())}</strong></div>
       <div><span style="color:var(--text-muted)">Booking:</span> <strong>${c.bookingDocId?.slice(0,8)||"—"}</strong></div>
       <div><span style="color:var(--text-muted)">Type:</span> <strong>${c.damageType||"—"}</strong></div>
       <div><span style="color:var(--text-muted)">Status:</span> <strong style="color:#7c3aed">${(c.status||"pending").toUpperCase()}</strong></div>
@@ -1632,16 +1657,16 @@ async function loadCancelRequests() {
     const snap = await window._firebase.db.collection("cancelRequests").orderBy("createdAt","desc").limit(50).get();
     if (snap.empty) { tbody.innerHTML = "<tr class='empty-row'><td colspan='6'>No cancellation requests yet.</td></tr>"; return; }
     tbody.innerHTML = snap.docs.map(d => {
-      const c = d.data();
+      const c = escFields(d.data());
       const date = c.createdAt?.toDate?.().toLocaleDateString("en-IN") || "—";
       return `<tr>
         <td>${c.bookingDocId||"—"}</td><td>${c.customerUid?.slice(0,8)||"—"}</td>
         <td>${c.reason||"—"}</td><td>${date}</td>
         <td><span style="color:${c.resolved?'#16a34a':'#dc2626'}">${c.resolved?"✅ Resolved":"⏳ Pending"}</span></td>
-        <td><button onclick="resolveCancelRequest('${d.id}')" style="padding:.3rem .7rem;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Mark Resolved</button></td>
+        <td><button onclick="resolveCancelRequest(${jsArg(d.id)})" style="padding:.3rem .7rem;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Mark Resolved</button></td>
       </tr>`;
     }).join("");
-  } catch(e) { tbody.innerHTML = `<tr><td colspan='6' style='color:red'>Error: ${e.message}</td></tr>`; }
+  } catch(e) { tbody.innerHTML = `<tr><td colspan='6' style='color:red'>Error: ${escapeHTML(e.message)}</td></tr>`; }
 }
 async function resolveCancelRequest(docId) {
   if (!window._firebase) return;
