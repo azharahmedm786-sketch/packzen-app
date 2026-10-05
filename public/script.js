@@ -3036,11 +3036,15 @@ function loadUserBookings() {
         const color = statusColors[b.status] || "#5a6a8a";
         const icon = statusIcons[b.status] || "📋";
         const canCancel = !["packing","transit","delivered","cancelled"].includes(b.status);
-        const canReschedule = !["transit","delivered","cancelled"].includes(b.status);
+        // Matches firestore.rules: customers may reschedule only pending/confirmed bookings.
+        const canReschedule = ["pending","confirmed"].includes(b.status);
      const canRate = b.status === "delivered" && !b.driverRating;
 const canClaim = b.status === "delivered" && !b.damageClaimed;
+        // The card's action row (buttons, delivery OTP, invoice) keeps its previous
+        // visibility; it used to be gated through the wider canReschedule condition.
+        const showActionRow = !["transit","delivered","cancelled"].includes(b.status) || canRate || canClaim;
 const showOtp = ["assigned", "packing", "transit", "delivered"].includes(b.status) && b.deliveryOtp;
-        return `<div class="bk-card"> <div class="bk-card-top"><div class="bk-route">${escapeHTML((b.pickup||"?").split(",")[0])} → ${escapeHTML((b.drop||"?").split(",")[0])}</div><div class="bk-status" style="color:${color}">${icon} ${escapeHTML(capitalize(b.status||"confirmed"))}</div></div> <div class="bk-meta"><span>₹${(b.total||0).toLocaleString("en-IN")}</span><span>${escapeHTML(b.date)||"Date TBD"}</span><span style="font-size:.72rem;color:#5a6a8a">${escapeHTML(b.bookingRef)||""}</span></div> ${canCancel||canReschedule||canRate||canClaim?`
+        return `<div class="bk-card"> <div class="bk-card-top"><div class="bk-route">${escapeHTML((b.pickup||"?").split(",")[0])} → ${escapeHTML((b.drop||"?").split(",")[0])}</div><div class="bk-status" style="color:${color}">${icon} ${escapeHTML(capitalize(b.status||"confirmed"))}</div></div> <div class="bk-meta"><span>₹${(b.total||0).toLocaleString("en-IN")}</span><span>${escapeHTML(b.date)||"Date TBD"}</span><span style="font-size:.72rem;color:#5a6a8a">${escapeHTML(b.bookingRef)||""}</span></div> ${showActionRow?`
 ${canReschedule?`<button class="bk-btn reschedule" data-action="reschedule" data-id="${id}" data-ref="${b.bookingRef||id}" data-date="${b.date||""}">📅 Reschedule</button>`:""}
 ${showOtp ? `
 <div style="
@@ -3310,7 +3314,8 @@ async function confirmReschedule() {
   const btn = document.getElementById("btnConfirmReschedule");
   if (btn) { btn.textContent = "Saving..."; btn.disabled = true; }
   try {
-    await window._firebase.db.collection("bookings").doc(docId).update({ date: newDate, time: newTime||"", rescheduledAt: firebase.firestore.FieldValue.serverTimestamp(), rescheduledBy:"customer", status:"confirmed" });
+    // Status is left unchanged — firestore.rules rejects a customer status change on reschedule.
+    await window._firebase.db.collection("bookings").doc(docId).update({ date: newDate, time: newTime||"", rescheduledAt: firebase.firestore.FieldValue.serverTimestamp(), rescheduledBy:"customer" });
     const bookingDoc = await window._firebase.db.collection("bookings").doc(docId).get();
     if (bookingDoc.exists) {
       const b = bookingDoc.data();

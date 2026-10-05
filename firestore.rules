@@ -10,17 +10,18 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
-    // ✅ FIXED: Uses auth token email directly — no get() call that can crash
+    // 🔒 Release 1: the email must be VERIFIED and on the approved list.
+    // Previously any account whose (unverified) email matched the list was
+    // admin, and email/password sign-up is enabled — so anyone could register
+    // a listed address that had no account yet and get full access.
     function isAdmin() {
-      return isAuth() && (
-        request.auth.token.email in [
-          'admin@packzen.com',
-          'support@packzenblr.in',
+      return isAuth()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
           'azharahmedm786@gmail.com',
-          'moveeasyblr@gmail.com',
-          'azharahmednaz@gmail.com'
-        ]
-      );
+          'azharahmednaz@gmail.com',
+          'moveeasyblr@gmail.com'
+        ];
     }
 
     function isDriver() {
@@ -57,6 +58,15 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
+    // Driver status may stay the same (location/photo updates) or advance
+    // exactly one step along the driver.html flow.
+    function isAllowedDriverStep(from, to) {
+      return to == from
+        || (from == 'assigned' && to == 'packing')
+        || (from == 'packing' && to == 'transit')
+        || (from == 'transit' && to == 'delivered');
+    }
+
     // USERS
     match /users/{uid} {
       // ✅ ADDED isAdvisor() so the advisor dashboard's customers/drivers
@@ -70,15 +80,22 @@ service cloud.firestore {
       // Self-created docs are now forced to role:"customer"; anything
       // else (driver/advisor/admin/partner) must be admin-created.
       allow create: if isAdmin()
-        || (isOwner(uid) && (!('role' in request.resource.data) || request.resource.data.role == 'customer'));
+        || (isOwner(uid)
+            && (!('role' in request.resource.data) || request.resource.data.role == 'customer')
+            && !request.resource.data.keys().hasAny(['referralCredits', 'referralCount', 'referredBy',
+                                                     'referralCreditApplied', 'phoneVerified']));
 
       // 🔒 FIXED: isOwner(uid) update previously had no field restriction
       // either, so an existing customer could later run
       // update({role:"admin"}) from devtools. Owners can still update
       // every other field on their own doc (name, phone, prefs, etc.) —
       // just not role.
+      // 🔒 Release 1: referral balances and phone verification are server-
+      // owned. `email` / `emailVerified` stay owner-writable because the
+      // email-verification and email-change flows in script.js write them.
       allow update: if isAdmin()
-        || (isOwner(uid) && noneOfFields(['role']))
+        || (isOwner(uid) && noneOfFields(['role', 'referralCredits', 'referralCount',
+                                          'referredBy', 'referralCreditApplied', 'phoneVerified']))
         || (isAdvisor() && onlyFields(['currentBooking']));
 
       allow delete: if false;
@@ -143,22 +160,38 @@ service cloud.firestore {
       allow create: if isAuth()
         && (isAdvisor() || isAdmin());
 
-     allow update: if isAuth()
+      // 🔒 Release 1: customers may cancel only before the move starts, and
+      // may reschedule only without changing status (previously a customer
+      // could re-open cancelled/delivered bookings or self-confirm a quote).
+      // The client still sends status:"confirmed" on reschedule; that is
+      // accepted for already-confirmed bookings because an unchanged value
+      // is not part of the diff.
+      allow update: if isAuth()
         && resource.data.customerUid == request.auth.uid
         && (
           (onlyFields(['status','cancelReason','cancelledAt','cancelledBy'])
-            && request.resource.data.status == 'cancelled')
-          || (onlyFields(['date','time','rescheduledAt','rescheduledBy','status'])
-            && request.resource.data.status == 'confirmed')
+            && request.resource.data.status == 'cancelled'
+            && resource.data.status in ['pending', 'confirmed', 'assigned'])
+          || (onlyFields(['date','time','rescheduledAt','rescheduledBy'])
+            && resource.data.status in ['pending', 'confirmed'])
           || onlyFields(['driverRating','driverFeedback','ratedAt'])
           || onlyFields(['damageClaimed','damageClaimId','damageClaimedAt'])
         );
 
-      allow update: if isDriver() && isAssignedDriver(resource.data);
-      // ✅ ADDED: advisors manage bookings on customers' behalf
-      // (status changes, driver assignment via confirmAssign()) —
-      // same update scope admins already have, no delete.
-      allow update: if isAdvisor();
+      // 🔒 Release 1: assigned drivers may only touch job-execution fields
+      // (exactly what driver.html writes) and move status one step forward:
+      // assigned → packing → transit → delivered. Money, ownership and
+      // assignment fields are no longer driver-writable.
+      allow update: if isDriver() && isAssignedDriver(resource.data)
+        && onlyFields(['status', 'deliveryOtp', 'driverLat', 'driverLng', 'locationUpdatedAt',
+                       'deliveryPhotos', 'deliveryUploadedAt'])
+        && isAllowedDriverStep(resource.data.status, request.resource.data.status);
+
+      // 🔒 Release 1: advisors assign drivers / set status (what
+      // advisor-dashboard-patch.js writes); totals, payments and ownership
+      // are no longer advisor-writable. Advisor create is unchanged.
+      allow update: if isAdvisor()
+        && onlyFields(['driverUid', 'driverName', 'driverPhone', 'status']);
       allow read, update, delete: if isAdmin();
     }
 
@@ -209,15 +242,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // SMS QUEUE
+    // SMS QUEUE — 🔒 Release 1: server-only creation (Cloud Functions use
+    // the Admin SDK). Any signed-in user could previously queue arbitrary
+    // SMS to any number through PackZen's MSG91 sender.
     match /smsQueue/{docId} {
-      allow create: if isAuth();
+      allow create: if false;
       allow read, update, delete: if isAdmin();
     }
 
-    // WHATSAPP QUEUE
+    // WHATSAPP QUEUE — 🔒 Release 1: server-only creation.
     match /whatsappQueue/{docId} {
-      allow create: if isAuth();
+      allow create: if false;
       allow read, update, delete: if isAdmin();
     }
 
@@ -261,18 +296,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // LEADS
+    // LEADS — 🔒 Release 1: nothing in the app writes leads; closed to
+    // unauthenticated spam.
     match /leads/{leadId} {
-      allow create: if true;
+      allow create: if false;
       allow read, update, delete: if isAdmin();
     }
 
-    // PARCEL DELIVERY SYSTEM
+    // PARCEL DELIVERY SYSTEM — 🔒 Release 1: parcel delivery is not live
+    // (parcel.html is "coming soon"). Customers could create "paid" parcel
+    // bookings with any fare and any driver could edit any parcel, so writes
+    // are admin-only until the flow is rebuilt server-side.
     match /parcelBookings/{bookingId} {
-      allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isDriver() || isAdmin());
-      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
-      allow update: if isAuth() && (resource.data.customerUid == request.auth.uid || isDriver() || isAdmin());
-      allow delete: if isAdmin();
+      allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
     }
 
     match /parcelTracking/{docId} {
@@ -292,8 +329,7 @@ service cloud.firestore {
 
     match /parcelTransactions/{txId} {
       allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isAdmin());
-      allow create: if isAuth() && request.resource.data.customerUid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // SERVICE CATALOG — public read (the website lists services/prices

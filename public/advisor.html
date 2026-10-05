@@ -6,7 +6,7 @@
   <title>PackZen — Advisor Dashboard</title>
   <meta name="robots" content="noindex,nofollow,noarchive"/>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"></script>
   <style>
     :root {
       --bg:       #0a0c0f;
@@ -754,7 +754,7 @@
     @media (max-width: 900px) { .nb-grid { grid-template-columns: 1fr; } .nb-summary { position: static; } }
   </style>
 
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -799,10 +799,26 @@
    CONFIG — who can log into the Advisor panel
    ════════════════════════════════════════════ */
 const ADVISOR_ROLES = ["admin", "advisor", "manager"];
+
+// Release 1 (XSS): booking/customer fields are customer-controlled, so every
+// value interpolated into markup goes through escapeHTML.
+function escapeHTML(str) {
+  if (str === null || str === undefined) return "";
+  return String(str).replace(/[&<>'"]/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+  }[ch]));
+}
+// Copy of a Firestore record with every string field HTML-escaped; numbers,
+// timestamps and nested objects pass through unchanged.
+function escFields(obj) {
+  const out = {};
+  for (const k in obj) out[k] = typeof obj[k] === "string" ? escapeHTML(obj[k]) : obj[k];
+  return out;
+}
+// Must match isAdmin() in firestore.rules (UI gate only — the rules decide).
 const ADMIN_EMAILS  = [
-  "admin@packzen.com",
-  "support@packzenblr.in",
   "azharahmedm786@gmail.com",
+  "azharahmednaz@gmail.com",
   "moveeasyblr@gmail.com"
 ];
 
@@ -911,9 +927,9 @@ function buildShell() {
     <div class="nav-item" onclick="showSection('advisors',this)"><span class="nav-icon">🧑‍💼</span> Advisor Stats</div>
     <div class="sb-bottom">
       <div class="advisor-chip">
-        <div class="advisor-avatar">${initLetter}</div>
+        <div class="advisor-avatar">${escapeHTML(initLetter)}</div>
         <div>
-          <div class="advisor-name">${name.split(" ")[0]}</div>
+          <div class="advisor-name">${escapeHTML(name.split(" ")[0])}</div>
           <div class="advisor-role">Advisor Access</div>
         </div>
       </div>
@@ -1369,7 +1385,7 @@ function renderRecentTable() {
   if (!tbody) return;
   const recent = allBookings.slice(0, 10);
   if (!recent.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="6">No bookings yet</td></tr>'; return; }
-  tbody.innerHTML = recent.map(b => `
+  tbody.innerHTML = recent.map(raw => { const b = escFields(raw); return `
     <tr>
       <td><span class="booking-ref">${b.bookingRef || b.id.slice(-6).toUpperCase()}</span></td>
       <td>${b.customerName || "—"}</td>
@@ -1380,9 +1396,9 @@ function renderRecentTable() {
         </div>
       </td>
       <td>${b.date || "—"}</td>
-      <td class="amount">₹${(b.total||0).toLocaleString("en-IN")}</td>
+      <td class="amount">₹${(Number(raw.total)||0).toLocaleString("en-IN")}</td>
       <td><span class="badge badge-${b.status||"pending"}">${cap(b.status||"pending")}</span></td>
-    </tr>`).join("");
+    </tr>`; }).join("");
 }
 
 /* ════════════════════════════════════════════
@@ -1396,7 +1412,7 @@ function renderBookingsTable(list) {
   if (!list.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="9">No bookings found</td></tr>'; return; }
 
   // Build summary strip
-  const total   = list.reduce((s,b) => s+(b.total||0), 0);
+  const total   = list.reduce((s,b) => s+(Number(b.total)||0), 0);
   const strip   = document.getElementById("bookingSummary");
   if (strip) {
     strip.innerHTML = `
@@ -1407,7 +1423,7 @@ function renderBookingsTable(list) {
       <div class="ss-item"><div class="ss-label">Cancelled</div><div class="ss-value">${list.filter(b=>b.status==="cancelled").length}</div></div>`;
   }
 
-  tbody.innerHTML = list.map(b => `
+  tbody.innerHTML = list.map(raw => { const b = escFields(raw); return `
     <tr>
       <td><span class="booking-ref">${b.bookingRef||b.id.slice(-6).toUpperCase()}</span></td>
       <td>
@@ -1424,11 +1440,11 @@ function renderBookingsTable(list) {
         </div>
       </td>
       <td>${b.date||"—"}</td>
-      <td class="amount">₹${(b.total||0).toLocaleString("en-IN")}</td>
-      <td style="font-size:.75rem;color:var(--muted)">${payLabel(b)}</td>
+      <td class="amount">₹${(Number(raw.total)||0).toLocaleString("en-IN")}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${payLabel(raw)}</td>
       <td><span class="badge badge-${b.status||"pending"}">${cap(b.status||"pending")}</span></td>
       <td style="font-size:.78rem">${b.driverName||'<span style="color:var(--muted2)">Unassigned</span>'}</td>
-    </tr>`).join("");
+    </tr>`; }).join("");
 }
 
 function filterBookings(q) {
@@ -1463,9 +1479,10 @@ function renderCustomers(list) {
   const tbody = document.getElementById("customersTable");
   if (!tbody) return;
   if (!list.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="6">No customers yet</td></tr>'; return; }
-  tbody.innerHTML = list.map(c => {
-    const bookings = allBookings.filter(b => b.customerUid === c.id);
-    const spent    = bookings.reduce((s, b) => s + (b.total || 0), 0);
+  tbody.innerHTML = list.map(raw => {
+    const c = escFields(raw);
+    const bookings = allBookings.filter(b => b.customerUid === raw.id);
+    const spent    = bookings.reduce((s, b) => s + (Number(b.total) || 0), 0);
     const joined   = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString("en-IN") : "—";
     return `<tr>
       <td>
@@ -1507,7 +1524,7 @@ function renderDrivers() {
   setText("drvOnline", online);
   setText("drvOnJob",  onJob);
   if (!allDrivers.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="8">No drivers registered</td></tr>'; return; }
-  tbody.innerHTML = allDrivers.map(d => `
+  tbody.innerHTML = allDrivers.map(raw => { const d = escFields(raw); return `
     <tr>
       <td>
         <div class="cust-cell">
@@ -1521,8 +1538,8 @@ function renderDrivers() {
       <td><span class="badge ${d.isOnline?"badge-delivered":"badge-cancelled"}">${d.isOnline?"🟢 Online":"⚫ Offline"}</span></td>
       <td style="font-size:.78rem">${d.currentBooking ? `<span class="booking-ref">${d.currentBooking.slice(-6).toUpperCase()}</span>` : '<span style="color:var(--muted2)">Free</span>'}</td>
       <td>${d.rating ? `<span style="color:#fbbf24;font-weight:700">★ ${d.rating}</span>` : "—"}</td>
-      <td class="amount">${d.totalMoves || 0}</td>
-    </tr>`).join("");
+      <td class="amount">${Number(raw.totalMoves) || 0}</td>
+    </tr>`; }).join("");
 }
   /* ════════════════════════════════════════════
    ADVISOR STATS
@@ -1549,7 +1566,7 @@ if (!stats[key]) {
   };
 }
     stats[key].count++;
-    stats[key].revenue += b.total || 0;
+    stats[key].revenue += Number(b.total) || 0;
     if (b.status === "delivered") stats[key].delivered++;
     if (b.status === "cancelled") stats[key].cancelled++;
   });
@@ -1559,8 +1576,8 @@ if (!stats[key]) {
     <tr>
       <td>
         <div class="cust-cell">
-          <div class="cust-avatar">${s.name.charAt(0).toUpperCase()}</div>
-          ${s.name}
+          <div class="cust-avatar">${escapeHTML(s.name.charAt(0).toUpperCase())}</div>
+          ${escapeHTML(s.name)}
         </div>
       </td>
       <td class="amount">${s.count}</td>
@@ -1634,7 +1651,7 @@ function renderCharts() {
     if (legend) {
       legend.innerHTML = labels.map((l, i) => `
         <div class="legend-item">
-          <div class="legend-left"><div class="legend-dot" style="background:${statusColors[l]||"#555"}"></div>${cap(l)}</div>
+          <div class="legend-left"><div class="legend-dot" style="background:${statusColors[l]||"#555"}"></div>${escapeHTML(cap(l))}</div>
           <div class="legend-val">${values[i]}</div>
         </div>`).join("");
     }

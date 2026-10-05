@@ -181,7 +181,7 @@
     @media(max-width:480px){.driver-app{padding:14px}}
   </style>
 
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -441,6 +441,26 @@
 </script>
 <script>
 let driverUser = null, currentBookingId = null, currentBookingData = null;
+
+// Release 1 (XSS): booking/chat fields are customer-controlled, so values are
+// HTML-escaped before interpolation into markup.
+function drvEsc(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).replace(/[&<>'"]/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+  }[ch]));
+}
+// Copy of a record with every string field escaped (numbers/timestamps kept).
+function escFields(obj) {
+  const out = {};
+  for (const k in obj) out[k] = typeof obj[k] === "string" ? drvEsc(obj[k]) : obj[k];
+  return out;
+}
+// Argument for an inline on*="fn(...)" handler: JSON-quote, then HTML-escape
+// (HTML-escaping alone is decoded by the browser before the handler runs).
+function jsArg(v) {
+  return drvEsc(JSON.stringify(String(v ?? "")));
+}
 let locationInterval = null, driverMap = null, driverMarker = null;
 let chatListener = null, bookingListener = null;
 let selectedDeliveryPhotos = [];
@@ -641,10 +661,11 @@ function listenForBooking() {
     });
 }
 
-function renderAssignedJobHtml(b, hasActiveJob) {
+function renderAssignedJobHtml(raw, hasActiveJob) {
+  const b = escFields(raw);
   const btnAttr = hasActiveJob
     ? 'disabled style="background:var(--text-muted);color:#fff;padding:8px 14px;border-radius:20px;border:none;font-weight:700;cursor:not-allowed;font-size:.8rem"'
-    : `onclick="startAssignedJob('${b.id}')" style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:20px;border:none;font-weight:700;cursor:pointer;font-size:.8rem;box-shadow:0 4px 12px rgba(0,87,255,.2)"`;
+    : `onclick="startAssignedJob(${jsArg(raw.id)})" style="background:var(--primary);color:#fff;padding:8px 14px;border-radius:20px;border:none;font-weight:700;cursor:pointer;font-size:.8rem;box-shadow:0 4px 12px rgba(0,87,255,.2)"`;
 
   return `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow-sm)">
@@ -656,7 +677,7 @@ function renderAssignedJobHtml(b, hasActiveJob) {
       <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:4px">📍 ${b.pickup || "—"}</div>
       <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px">🏁 ${b.drop || "—"}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;color:var(--primary);font-size:1.1rem">₹${(b.total || 0).toLocaleString()}</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;color:var(--primary);font-size:1.1rem">₹${(Number(raw.total) || 0).toLocaleString()}</div>
         <button ${btnAttr}>▶ Start Job</button>
       </div>
     </div>
@@ -884,7 +905,7 @@ function listenChat() {
         const msg  = d.data();
         const mine = msg.senderUid === driverUser?.uid;
         const time = msg.time?.toDate ? msg.time.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-        container.innerHTML += `<div class="chat-bubble ${mine?"mine":"theirs"}"><div>${msg.text}</div><div class="chat-time">${time}</div></div>`;
+        container.innerHTML += `<div class="chat-bubble ${mine?"mine":"theirs"}"><div>${drvEsc(msg.text)}</div><div class="chat-time">${drvEsc(time)}</div></div>`;
       });
       container.scrollTop = container.scrollHeight;
     });
@@ -969,13 +990,13 @@ function loadParcelJobs() {
       } else {
          let html = "";
          snap.forEach(doc => {
-            const d = doc.data();
+            const d = escFields(doc.data());
             html += `
                <div style="border:1px solid var(--border); border-radius:12px; padding:15px; margin-top:10px;">
                   <div style="font-weight:700;">Pickup: ${d.pickupAddress}</div>
                   <div style="margin-top:5px; font-weight:700;">Drop: ${d.deliveryAddress}</div>
-                  <div style="margin-top:5px;">Distance: ${Number(d.distanceKm||0).toFixed(1)} km | Fare: ₹${d.totalFare}</div>
-                  <button onclick="acceptParcelJob('${doc.id}')" class="btn-primary" style="margin-top:10px; padding:8px 12px; width:100%;">Accept Job</button>
+                  <div style="margin-top:5px;">Distance: ${Number(d.distanceKm||0).toFixed(1)} km | Fare: ₹${Number(d.totalFare)||0}</div>
+                  <button onclick="acceptParcelJob(${jsArg(doc.id)})" class="btn-primary" style="margin-top:10px; padding:8px 12px; width:100%;">Accept Job</button>
                </div>
             `;
          });
@@ -991,7 +1012,8 @@ function loadParcelJobs() {
       } else {
          let html = "";
          snap.forEach(doc => {
-            const d = doc.data();
+            const raw = doc.data();
+            const d = escFields(raw);
             let nextAction = "";
             let btnLabel = "";
             if (d.status === "assigned") { nextAction = "arrived"; btnLabel = "Mark Arrived"; }
@@ -1008,8 +1030,8 @@ function loadParcelJobs() {
                   <div style="margin-top:5px;">Receiver: ${d.receiverName} (${d.receiverMobile})</div>
                   <div style="margin-top:10px; font-weight:800; font-size:1.1rem;">Delivery OTP: ${d.deliveryOTP}</div>
 
-                  <button onclick="updateParcelStatus('${doc.id}', '${nextAction}')" class="btn-primary" style="margin-top:15px; padding:10px 15px; width:100%;">${btnLabel}</button>
-                  <a href="https://maps.google.com/?q=${encodeURIComponent(d.status==='in_transit' ? d.deliveryAddress : d.pickupAddress)}" target="_blank" class="btn-secondary" style="margin-top:10px; text-decoration:none; display:block; text-align:center;">Navigate</a>
+                  <button onclick="updateParcelStatus(${jsArg(doc.id)}, '${nextAction}')" class="btn-primary" style="margin-top:15px; padding:10px 15px; width:100%;">${btnLabel}</button>
+                  <a href="https://maps.google.com/?q=${encodeURIComponent(raw.status==='in_transit' ? raw.deliveryAddress : raw.pickupAddress)}" target="_blank" class="btn-secondary" style="margin-top:10px; text-decoration:none; display:block; text-align:center;">Navigate</a>
                </div>
             `;
          });
@@ -1087,12 +1109,13 @@ function renderHistory(bookings) {
     list.innerHTML = '<div class="hist-empty">📭 No completed jobs yet.<br>Complete your first delivery to see history here.</div>';
     return;
   }
-  list.innerHTML = bookings.map(b => {
+  list.innerHTML = bookings.map(raw => {
+    const b = escFields(raw);
     const date    = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : (b.date || "—");
     const pickup  = (b.pickup || "").split(",")[0] || "—";
     const drop    = (b.drop   || "").split(",")[0] || "—";
-    const total   = b.total || 0;
-    const paid    = b.paid  || 0;
+    const total   = Number(raw.total) || 0;
+    const paid    = Number(raw.paid)  || 0;
     const due     = Math.max(0, total - paid);
     const paidFull = paid >= total;
     return `
@@ -1184,12 +1207,13 @@ function loadEarnings(period) {
         list.innerHTML = '<div class="hist-empty">📭 No earnings for this period.</div>';
         return;
       }
-      list.innerHTML = bookings.map(b => {
+      list.innerHTML = bookings.map(raw => {
+        const b = escFields(raw);
         const date    = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : (b.date || "—");
         const pickup  = (b.pickup || "").split(",")[0] || "—";
         const drop    = (b.drop   || "").split(",")[0] || "—";
-        const total   = b.total || 0;
-        const paid    = b.paid  || 0;
+        const total   = Number(raw.total) || 0;
+        const paid    = Number(raw.paid)  || 0;
         const cash    = Math.max(0, total - paid);
         const paidFull = paid >= total;
         return `

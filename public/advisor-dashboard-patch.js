@@ -8,6 +8,15 @@
    your table buttons already reference.
    ============================================================ */
 
+// Release 1 (XSS): escape Firestore values (driver/booking/customer fields)
+// before they are interpolated into markup.
+function advEsc(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).replace(/[&<>'"]/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+  }[ch]));
+}
+
 /* ------------------------------------------------------------
    0. GOOGLE MAPS — required for the New Booking distance calc.
    The dashboard never loaded Maps at all. We load it once,
@@ -91,7 +100,7 @@ function nbInit() {
   if (drvSel) {
     drvSel.innerHTML = '<option value="">Unassigned</option>' +
       (typeof allDrivers !== "undefined" ? allDrivers : []).map(d =>
-        `<option value="${d.id}">${(d.name || d.email || "Driver")}</option>`
+        `<option value="${advEsc(d.id)}">${advEsc(d.name || d.email || "Driver")}</option>`
       ).join("");
   }
 
@@ -633,14 +642,14 @@ function openAssignModal(bookingId) {
   const b = (allBookings || []).find(x => x.id === bookingId);
   const info = document.getElementById("assignDriverInfo");
   if (info && b) {
-    info.innerHTML = `<strong>Booking:</strong> ${b.bookingRef || ("#" + bookingId.slice(-6).toUpperCase())}<br>
-      <strong>Customer:</strong> ${b.customerName || "—"}<br>
-      <strong>Route:</strong> ${(b.pickup||"").split(",")[0]} → ${(b.drop||"").split(",")[0]}`;
+    info.innerHTML = `<strong>Booking:</strong> ${advEsc(b.bookingRef || ("#" + bookingId.slice(-6).toUpperCase()))}<br>
+      <strong>Customer:</strong> ${advEsc(b.customerName || "—")}<br>
+      <strong>Route:</strong> ${advEsc((b.pickup||"").split(",")[0])} → ${advEsc((b.drop||"").split(",")[0])}`;
   }
   const sel = document.getElementById("assignDriverSelect");
   if (sel) {
     sel.innerHTML = '<option value="">-- Select a driver --</option>' +
-      (allDrivers || []).map(d => `<option value="${d.id}" ${b && b.driverUid === d.id ? "selected" : ""}>${d.name || d.email}</option>`).join("");
+      (allDrivers || []).map(d => `<option value="${advEsc(d.id)}" ${b && b.driverUid === d.id ? "selected" : ""}>${advEsc(d.name || d.email)}</option>`).join("");
   }
   document.getElementById("assignDriverModal").style.display = "flex";
 }
