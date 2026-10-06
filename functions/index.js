@@ -398,6 +398,63 @@ exports.verifyRazorpayPayment = functions
     return res.status(out.status).json(out.body);
   }));
 
+/* ═══ R3 — Razorpay webhook, reconciliation, admin refunds ═══
+   Logic: payment-webhook.js / payment-refund.js. Booking creation is shared
+   with verifyRazorpayPayment via move-payment.finalizeCapture (one model). */
+const paymentWebhook = require("./payment-webhook");
+const paymentRefund = require("./payment-refund");
+const RAZORPAY_WEBHOOK_SECRET = defineSecret("RAZORPAY_WEBHOOK_SECRET");
+
+// Server-to-server only (no CORS). Configure in Razorpay Dashboard → Webhooks:
+// payment.authorized, payment.captured, payment.failed, order.paid,
+// refund.created, refund.processed, refund.failed.
+exports.razorpayWebhook = functions
+  .region("asia-south1")
+  .runWith({ secrets: [...BREVO_SECRETS, RAZORPAY_WEBHOOK_SECRET] })
+  .https.onRequest(async (req, res) => {
+    if (req.method !== "POST") return res.status(405).send("");
+    const out = await paymentWebhook.handleWebhook(req, movePaymentDeps({
+      webhookSecret: RAZORPAY_WEBHOOK_SECRET.value(),
+      sendConfirmation: (data) => sendBookingConfirmationEmail(data),
+    }));
+    return res.status(out.status).json(out.body);
+  });
+
+// Finds move payments whose browser verification and webhook were both lost.
+exports.reconcileRazorpayPayments = functions
+  .region("asia-south1")
+  .runWith({ secrets: [...BREVO_SECRETS, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .pubsub.schedule("every 60 minutes")
+  .timeZone("Asia/Kolkata")
+  .onRun(async () => {
+    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+    await paymentWebhook.reconcilePendingPayments(movePaymentDeps({
+      fetchOrderPayments: async (orderId) => {
+        const r = await razorpay.orders.fetchPayments(orderId);
+        return (r && r.items) || [];
+      },
+      sendConfirmation: (data) => sendBookingConfirmationEmail(data),
+    }));
+    return null;
+  });
+
+// Admin-only. Amount is validated server-side against what is still refundable.
+exports.adminRefundPayment = functions
+  .region("asia-south1")
+  .runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onCall(async (data, context) => {
+    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+    return paymentRefund.handleRefund(data, context, movePaymentDeps({
+      isAdmin: async (ctx) => {
+        if (!ctx || !ctx.auth || !ctx.auth.token || ctx.auth.token.email_verified !== true) return false;
+        const u = await admin.firestore().collection("users").doc(ctx.auth.uid).get();
+        return u.exists && u.data().role === "admin";
+      },
+      createRefund: (paymentId, opts) => razorpay.payments.refund(paymentId, opts),
+      toClientError: (code, message) => new functions.https.HttpsError(code, message),
+    }));
+  });
+
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)
