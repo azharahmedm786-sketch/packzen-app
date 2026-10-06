@@ -1609,85 +1609,171 @@ async function startPayment() {
 
   if (!window._lastQuoteRawInput) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
+  const _resetPayBtn = () => { isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } };
+
+  // Phase 1 (I-07): both payment calls carry a fresh Firebase ID token. The
+  // server re-prices the move; no total, amount, email or uid is sent.
+  let order;
   try {
-    const orderResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/createRazorpayOrder", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        quoteInput: window._lastQuoteRawInput,
-        paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
-        customerName: name, phone: phone, moveType: selectedMoveType,
-        pickup: pickupField, drop: dropField, date: shiftDate
-      })
+    const { status, data } = await _authedPaymentPost("/createRazorpayOrder", {
+      quoteInput: window._lastQuoteRawInput,
+      paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
+      customerName: name, phone: phone, moveType: selectedMoveType,
+      pickup: pickupField, drop: dropField, date: shiftDate,
+      requestId: _newPaymentRequestId()
     });
-    const orderData = await orderResponse.json();
-    console.log("Razorpay API response:", orderData);
-    if (!orderData.success) { showToast("Failed to create payment order"); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
+    if (status !== 200 || !data.success || !data.orderId) {
+      if (status === 401) { showToast("👋 Please sign in again to pay."); openAuthModal("login"); }
+      else showToast("⚠️ " + (data.error || "Couldn't start the payment. Please try again."));
+      _resetPayBtn();
+      return;
+    }
+    order = data;
+  } catch (err) {
+    console.error("createRazorpayOrder failed:", err && err.code ? err.code : "network");
+    showToast("⚠️ Couldn't start the payment. Please check your connection and try again.");
+    _resetPayBtn();
+    return;
+  }
 
-    // The server is the source of truth for the amount actually charged —
-    // use it for what we display from here on, not the client-side guess.
-    const serverTotal = orderData.serverCalculatedTotal;
+  const confirmationBase = {
+    name: name, phone: phone, pickup: pickupField, drop: dropField, date: shiftDate,
+    house: document.getElementById("house")?.options[document.getElementById("house")?.selectedIndex]?.text || "",
+    vehicle: document.getElementById("vehicle")?.options[document.getElementById("vehicle")?.selectedIndex]?.text || ""
+  };
 
+  try {
     const rzp = new Razorpay({
-      key: RAZORPAY_KEY, amount: orderData.amount, currency: orderData.currency, order_id: orderData.orderId,
+      key: RAZORPAY_KEY, amount: order.amount, currency: order.currency, order_id: order.orderId,
       name: "PackZen Packers & Movers", description: selectedPayment === "full" ? "Full Payment" : "Advance Payment",
       prefill: { name, contact: phone }, theme: { color: "#ea580c" },
       handler: async function (response) {
-        try {
-          const verifyResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/verifyRazorpayPayment", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              bookingData: { email: email || null }
-            })
-          });
-          const verifyData = await verifyResponse.json();
-          if (!verifyData.success) { showToast("Payment verification failed"); return; }
-          isProcessingPayment = false;
-          if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
-          showToast("✅ Payment successful!");
-          showConfirmationCard({
-            bookingRef: verifyData.bookingRef || paymentReceiptId,
-            name: name, phone: phone, pickup: pickupField, drop: dropField, date: shiftDate,
-            house: document.getElementById("house")?.options[document.getElementById("house")?.selectedIndex]?.text || "",
-            vehicle: document.getElementById("vehicle")?.options[document.getElementById("vehicle")?.selectedIndex]?.text || "",
-            total: serverTotal || payAmount,
-            paymentLabel: selectedPayment === "full" ? "Paid Full Online" : "Advance Paid Online",
-            paymentNote: "Payment ID: " + response.razorpay_payment_id,
+        // Razorpay returning here does NOT mean the booking exists. Only a
+        // server bookingRef does (N-04).
+        if (payBtn) payBtn.innerText = "Confirming…";
+        const result = await _confirmMovePayment(response);
+        _resetPayBtn();
+        if (result.state === "confirmed") {
+          const d = result.data;
+          currentBookingId = d.bookingId || currentBookingId;
+          if (d.bookingId) { try { localStorage.setItem("packzen_active_booking", d.bookingId); } catch (e) {} }
+          showToast("✅ Booking confirmed!");
+          const balanceTxt = Number(d.balanceDue) > 0
+            ? "Balance ₹" + Number(d.balanceDue).toLocaleString("en-IN") + " payable on moving day."
+            : "Fully paid — nothing to pay on moving day.";
+          showConfirmationCard(Object.assign({}, confirmationBase, {
+            bookingRef: d.bookingRef,
+            total: d.total,
+            paymentLabel: d.paymentType === "full" ? "Paid Full Online" : "Advance Paid Online",
+            paymentNote: "Paid ₹" + Number(d.paid).toLocaleString("en-IN") + " online. " + balanceTxt,
             source: "payment", showInvoice: true
-          });
-        } catch (err) {
-          console.error("Verify error:", err);
-          isProcessingPayment = false;
-          if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
-          showToast("✅ Payment received! Booking confirmed.");
-          showConfirmationCard({
-            bookingRef: paymentReceiptId,
-            name: name, phone: phone, pickup: pickupField, drop: dropField, date: shiftDate,
-            house: document.getElementById("house")?.options[document.getElementById("house")?.selectedIndex]?.text || "",
-            vehicle: document.getElementById("vehicle")?.options[document.getElementById("vehicle")?.selectedIndex]?.text || "",
-            total: payAmount,
-            paymentLabel: selectedPayment === "full" ? "Paid Full Online" : "Advance Paid Online",
-            paymentNote: "Payment received via Razorpay — ID: " + response.razorpay_payment_id,
-            source: "payment", showInvoice: true
-          });
+          }));
+        } else {
+          _showPaymentPendingNotice(response && response.razorpay_payment_id);
         }
       },
-      modal: { ondismiss: () => { isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } } }
+      modal: { ondismiss: _resetPayBtn }
+    });
+    rzp.on("payment.failed", r => {
+      _resetPayBtn();
+      showToast("❌ Payment failed. No money was taken for this attempt — please try again.");
     });
     rzp.open();
-    rzp.on("payment.failed", r => {
-      isProcessingPayment = false;
-      if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
-      showToast("❌ Payment failed: " + r.error.description);
-    });
   } catch (err) {
-    console.log("Caught exception:", err);
-    isProcessingPayment = false;
-    if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
-    showToast("Payment error: " + err.message);
+    console.error("Razorpay checkout error:", err && err.message ? err.message : "unknown");
+    _resetPayBtn();
+    showToast("⚠️ Couldn't open the payment window. Please try again.");
   }
+}
+
+/* ============================================
+MOVE PAYMENT — AUTH + CONFIRMATION HELPERS (Phase 1)
+============================================ */
+const MOVE_PAYMENT_API = "https://asia-south1-packzen-e7539.cloudfunctions.net";
+
+function _newPaymentRequestId() {
+  try {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID().replace(/-/g, "");
+  } catch (e) {}
+  return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+
+// POST with the signed-in user's ID token. getIdToken() refreshes an expiring
+// token automatically; on a 401 we retry once with a forced refresh. Tokens are
+// never stored by this code.
+async function _authedPaymentPost(path, body) {
+  const user = (window._firebase && window._firebase.auth && window._firebase.auth.currentUser) || currentUser;
+  if (!user || typeof user.getIdToken !== "function") return { status: 401, data: { success: false, code: "unauthenticated" } };
+  const send = async (forceRefresh) => {
+    const token = await user.getIdToken(forceRefresh);
+    return fetch(MOVE_PAYMENT_API + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify(body)
+    });
+  };
+  let resp = await send(false);
+  if (resp.status === 401) resp = await send(true);
+  let data = {};
+  try { data = (await resp.json()) || {}; } catch (e) { data = {}; }
+  return { status: resp.status, data };
+}
+
+// Verification is idempotent server-side (booking id = order id), so it is
+// safe to retry. Returns {state:"confirmed", data} only with a server bookingRef;
+// anything else is "pending" — the customer is never told it failed or succeeded
+// without proof, because money may already have been captured.
+async function _confirmMovePayment(response) {
+  const body = {
+    razorpay_order_id: response && response.razorpay_order_id,
+    razorpay_payment_id: response && response.razorpay_payment_id,
+    razorpay_signature: response && response.razorpay_signature
+  };
+  const delays = [0, 2000, 5000, 10000];
+  let last = { state: "pending", data: {} };
+  for (const d of delays) {
+    if (d) await new Promise(r => setTimeout(r, d));
+    try {
+      const { status, data } = await _authedPaymentPost("/verifyRazorpayPayment", body);
+      if (status === 200 && data.success && data.bookingRef) return { state: "confirmed", data };
+      last = { state: "pending", data };
+      // Retry only transient states; definitive rejections stop retrying but
+      // still leave the UI in the safe "pending" state.
+      if (!(status === 202 || status === 503 || status >= 500 || status === 401)) break;
+    } catch (e) {
+      last = { state: "pending", data: {} };
+    }
+  }
+  return last;
+}
+
+function _showPaymentPendingNotice(paymentId) {
+  const ending = paymentId ? String(paymentId).slice(-6) : "";
+  const old = document.getElementById("pzPaymentPending");
+  if (old) old.remove();
+  const box = document.createElement("div");
+  box.id = "pzPaymentPending";
+  box.setAttribute("role", "alertdialog");
+  box.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+  const card = document.createElement("div");
+  card.style.cssText = "background:#fff;color:#1a2744;max-width:420px;width:100%;border-radius:14px;padding:22px;font-family:inherit;box-shadow:0 10px 40px rgba(0,0,0,.25)";
+  const h = document.createElement("h3");
+  h.textContent = "⏳ Payment received — confirmation pending";
+  h.style.cssText = "margin:0 0 10px;font-size:1.1rem";
+  const p1 = document.createElement("p");
+  p1.textContent = "Razorpay has your payment, but we haven't been able to confirm your booking yet. Please don't pay again.";
+  const p2 = document.createElement("p");
+  p2.textContent = "Check My Bookings in a few minutes. If it isn't there within 30 minutes, contact PackZen support" +
+    (ending ? " with the payment ID ending " + ending + "." : ".");
+  p2.style.cssText = "font-size:.9rem;color:#5a6a8a";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "OK";
+  btn.style.cssText = "margin-top:8px;background:#ea580c;color:#fff;border:0;border-radius:10px;padding:10px 22px;font-weight:700;cursor:pointer";
+  btn.onclick = () => box.remove();
+  card.append(h, p1, p2, btn);
+  box.appendChild(card);
+  document.body.appendChild(box);
 }
 
 // NOTE: the old onPaymentSuccess()/PackZenShared.createBooking() pair that
