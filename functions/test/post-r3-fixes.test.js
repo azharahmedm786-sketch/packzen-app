@@ -150,14 +150,19 @@ test("invoices (customer + admin) use the formatter; no raw object stringificati
 });
 
 /* ── payment UI: run the real helper code in a sandbox with fast timers ── */
-function loadHelpers({ fetchImpl, getIdToken }) {
+function loadHelpers({ fetchImpl, getIdToken, tokenMs = 40, requestMs = 60, maxMs = 5000, delays = "[0, 5, 5, 5, 5, 5, 5]" }) {
   const a = scriptSrc.indexOf("const PAYMENT_TOKEN_TIMEOUT_MS");
   const z = scriptSrc.indexOf("// Descriptive booking details for the paid flow");
-  let code = scriptSrc.slice(a, z)
-    .replace("const PAYMENT_TOKEN_TIMEOUT_MS = 10000;", "const PAYMENT_TOKEN_TIMEOUT_MS = 40;")
-    .replace("const PAYMENT_REQUEST_TIMEOUT_MS = 25000;", "const PAYMENT_REQUEST_TIMEOUT_MS = 60;")
-    .replace("[0, 2000, 3000, 5000, 8000, 12000, 15000]", "[0, 5, 5, 5, 5, 5, 5]");
-  assert.ok(code.includes("= 40;") && code.includes("= 60;") && code.includes("[0, 5, 5"), "test hooks matched");
+  const src = scriptSrc.slice(a, z);
+  for (const hook of ["const PAYMENT_TOKEN_TIMEOUT_MS = 10000;", "const PAYMENT_REQUEST_TIMEOUT_MS = 25000;",
+                      "const PAYMENT_CONFIRM_MAX_MS = 90000;", "[0, 2000, 3000, 5000, 8000, 12000, 15000]"]) {
+    assert.strictEqual(src.split(hook).length, 2, "test hook must match exactly once: " + hook);
+  }
+  const code = src
+    .replace("const PAYMENT_TOKEN_TIMEOUT_MS = 10000;", "const PAYMENT_TOKEN_TIMEOUT_MS = " + tokenMs + ";")
+    .replace("const PAYMENT_REQUEST_TIMEOUT_MS = 25000;", "const PAYMENT_REQUEST_TIMEOUT_MS = " + requestMs + ";")
+    .replace("const PAYMENT_CONFIRM_MAX_MS = 90000;", "const PAYMENT_CONFIRM_MAX_MS = " + maxMs + ";")
+    .replace("[0, 2000, 3000, 5000, 8000, 12000, 15000]", delays);
   const ctx = { window: { _firebase: { auth: { currentUser: { getIdToken } } } }, currentUser: null, MOVE_PAYMENT_API: "https://x.test",
     fetch: fetchImpl, AbortController, setTimeout, clearTimeout, Promise, Date, JSON, Object, Error };
   vm.createContext(ctx);
@@ -190,6 +195,35 @@ test("ui: hung verify request is aborted and retried; never hangs; ends pending"
   const t0 = Date.now();
   const r = await loadHelpers({ getIdToken: async () => "T", fetchImpl: hang })._confirmMovePayment(RZP);
   assert.strictEqual(r.state, "pending"); assert.strictEqual(n, 7); assert.ok(Date.now() - t0 < 3000);
+});
+test("ui: hard overall deadline — permanently hanging verify (ignores abort) cannot exceed PAYMENT_CONFIRM_MAX_MS", async () => {
+  // Per-request timeout (2 s) and retry schedule (7 attempts) would allow far
+  // more than the 300 ms ceiling; only the overall deadline can stop this.
+  let n = 0;
+  const neverResolves = () => { n++; return new Promise(() => {}); };
+  const h = loadHelpers({ getIdToken: async () => "T", fetchImpl: neverResolves, tokenMs: 2000, requestMs: 2000, maxMs: 300,
+                          delays: "[0, 50, 50, 50, 50, 50, 50]" });
+  const t0 = Date.now();
+  const r = await h._confirmMovePayment(RZP);
+  const elapsed = Date.now() - t0;
+  assert.strictEqual(r.state, "pending");
+  assert.ok(elapsed >= 280 && elapsed < 450, "elapsed " + elapsed + "ms must stay within the 300 ms ceiling (+ timer slack)");
+  assert.strictEqual(n, 1, "the in-flight request at the deadline is abandoned; no further attempts start");
+});
+test("ui: hard overall deadline also bounds the retry sleeps", async () => {
+  let n = 0;
+  const h = loadHelpers({ getIdToken: async () => "T", fetchImpl: async () => { n++; return reply(202, { code: "payment_not_captured" }); },
+                          maxMs: 250, delays: "[0, 200, 200, 200, 200, 200, 200]" });
+  const t0 = Date.now();
+  const r = await h._confirmMovePayment(RZP);
+  const elapsed = Date.now() - t0;
+  assert.strictEqual(r.state, "pending"); assert.ok(elapsed < 400, "elapsed " + elapsed + "ms"); assert.ok(n >= 2 && n <= 3, "attempts " + n);
+});
+test("ui: production ceiling is 90 s and every verify call is raced against the remaining time", () => {
+  assert.ok(/const PAYMENT_CONFIRM_MAX_MS = 90000;/.test(scriptSrc));
+  const fn = scriptSrc.slice(scriptSrc.indexOf("async function _confirmMovePayment"), scriptSrc.indexOf("function _collectMoveDetails"));
+  assert.ok(/_withTimeout\(\s*_authedPaymentPost\("\/verifyRazorpayPayment", body\), remaining\(\), "confirm_deadline"\)/.test(fn));
+  assert.ok(/Math\.min\(delays\[i\], remaining\(\)\)/.test(fn));
 });
 test("ui: hung getIdToken is time-bounded", async () => {
   let n = 0;

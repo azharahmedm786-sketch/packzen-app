@@ -1722,6 +1722,9 @@ function _newPaymentRequestId() {
 // never stored by this code.
 const PAYMENT_TOKEN_TIMEOUT_MS = 10000;
 const PAYMENT_REQUEST_TIMEOUT_MS = 25000;
+// Hard ceiling for the whole post-payment confirmation (all waits + all
+// verify calls). Every sleep and every request is bounded by what remains.
+const PAYMENT_CONFIRM_MAX_MS = 90000;
 
 function _withTimeout(promise, ms, code) {
   let t;
@@ -1767,6 +1770,9 @@ async function _authedPaymentPost(path, body) {
 // without proof, because money may already have been captured. The schedule
 // (~45 s of waits, each call ≤ 25 s) covers verify cold starts and Razorpay
 // auto-capture lag (verify answers 202 while a payment is only authorized).
+// The whole operation never exceeds PAYMENT_CONFIRM_MAX_MS: a request still in
+// flight at the deadline is abandoned (verification is idempotent, so a late
+// server-side success is still picked up by My Bookings / the webhook).
 async function _confirmMovePayment(response, onProgress) {
   const body = {
     razorpay_order_id: response && response.razorpay_order_id,
@@ -1774,22 +1780,29 @@ async function _confirmMovePayment(response, onProgress) {
     razorpay_signature: response && response.razorpay_signature
   };
   const delays = [0, 2000, 3000, 5000, 8000, 12000, 15000];
-  const deadline = Date.now() + 90000;
+  const deadline = Date.now() + PAYMENT_CONFIRM_MAX_MS;
+  const remaining = () => deadline - Date.now();
   let last = { state: "pending", data: {} };
   for (let i = 0; i < delays.length; i++) {
-    if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
-    if (Date.now() > deadline) break;
+    if (delays[i]) {
+      const wait = Math.min(delays[i], remaining());
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    }
+    if (remaining() <= 0) break;
     if (typeof onProgress === "function") { try { onProgress(i + 1); } catch (e) {} }
     try {
-      const { status, data } = await _authedPaymentPost("/verifyRazorpayPayment", body);
+      const { status, data } = await _withTimeout(
+        _authedPaymentPost("/verifyRazorpayPayment", body), remaining(), "confirm_deadline");
       if (status === 200 && data.success && data.bookingRef) return { state: "confirmed", data };
       last = { state: "pending", data };
       // Retry only transient states; definitive rejections stop retrying but
       // still leave the UI in the safe "pending" state.
       if (!(status === 202 || status === 503 || status >= 500 || status === 401)) break;
     } catch (e) {
-      // timeout / network: transient — keep trying until the schedule ends
+      // timeout / network: transient — keep trying until the schedule ends,
+      // unless the overall deadline itself was hit.
       last = { state: "pending", data: {} };
+      if (e && e.code === "confirm_deadline") break;
     }
   }
   return last;
