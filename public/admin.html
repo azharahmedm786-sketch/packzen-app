@@ -183,6 +183,7 @@
 <script src="env-config.js"></script>
 <script src="firebase-config.js"></script>
 <script src="payment-state.js"></script>
+<script src="booking-format.js"></script>
 
 <script>
 /* ================================================================
@@ -1800,9 +1801,9 @@ async function downloadInvoice(docId) {
     doc.text(dropLines, 14, yPos);
     yPos += (dropLines.length * 5);
 
-    doc.text(`Move Date: ${safe(b.date)} ${safe(b.shiftTimeLabel)}`, 14, yPos);
+    doc.text(`Move Date: ${safe(b.date)} ${window.PackZenBookingFormat.timeLabel(b)}`.trim(), 14, yPos);
     doc.text(`Distance: ${b.distance ? b.distance + ' km' : '—'}`, 14, yPos + 6);
-    doc.text(`Vehicle: ${safe(b.vehicle)}`, 14, yPos + 12);
+    doc.text(`Vehicle: ${safe(window.PackZenBookingFormat.vehicleLabel(b))}`, 14, yPos + 12);
 
     // Driver Info (Right side)
     doc.setFont("helvetica", "bold");
@@ -1902,15 +1903,17 @@ async function downloadInvoice(docId) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
 
-        let furnText = b.furniture || "";
-        if (!furnText && b.selectedFurniture) {
-            furnText = Object.entries(b.selectedFurniture)
-                .filter(([k,v]) => v > 0)
-                .map(([k,v]) => `${k} x${v}`)
-                .join(", ");
+        // furniture may be a readable string (pay-later/advisor) or an
+        // id → qty object (online-paid bookings); never stringify the object.
+        const furnText = window.PackZenBookingFormat.itemsSummaryText(b);
+        const furnLines = doc.splitTextToSize(furnText, 180);
+        const lineH = 4.5, bottom = doc.internal.pageSize.height - 26;
+        let y = yPos + 5;
+        for (const line of furnLines) {
+            if (y > bottom) { doc.addPage(); y = 20; }
+            doc.text(line, 14, y);
+            y += lineH;
         }
-        const furnLines = doc.splitTextToSize(furnText || "None specified", 180);
-        doc.text(furnLines, 14, yPos + 5);
     }
 
     // --- Footer ---

@@ -98,6 +98,27 @@ function cleanString(v, max) {
 }
 
 /**
+ * Optional, purely descriptive booking details sent with the paid move order
+ * (time slot, notes, add-on requests) — the same fields the pay-later form
+ * stores. Allow-listed and length-capped; anything else is dropped. None of
+ * these are used for pricing; the server quote remains authoritative.
+ */
+function sanitizeDetails(raw) {
+  const d = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const out = {};
+  const str = (k, max) => { const v = cleanString(d[k], max); if (v) out[k] = v; };
+  const bool = (k) => { if (d[k] === true) out[k] = true; };
+  const alt = typeof d.altPhone === "string" ? d.altPhone.trim() : "";
+  if (RE.phone.test(alt)) out.altPhone = alt; // exactly 10 digits, never truncated
+  str("shiftTime", 40); str("shiftTimeLabel", 60); str("house", 60);
+  str("fragileItems", 300); str("specialItems", 300); str("remarks", 500);
+  bool("unpackingService"); bool("dismantling"); bool("assembly"); bool("storageNeeded");
+  const days = Number(d.storageDays);
+  if (out.storageNeeded && Number.isInteger(days) && days > 0 && days <= 365) out.storageDays = days;
+  return out;
+}
+
+/**
  * Amounts from the server quote ONLY. grandTotal is the price of the move;
  * payNow is what this Razorpay order charges. Minimum-charge floors are
  * unchanged from the previous computePayAmount().
@@ -217,6 +238,7 @@ async function handleCreateOrder(req, deps) {
       pickup: details.pickup,
       drop: details.drop,
       date: details.date,
+      details: sanitizeDetails(body.details),
       status: "created",
       createdAt: deps.serverTimestamp(),
       expiresAt: new Date(nowMs + ORDER_TTL_MS),
@@ -282,7 +304,8 @@ async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expected
       const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: p.paymentType });
       const qi = p.quoteInput || {};
       const qb = p.quoteBreakdown || {};
-      const booking = Object.assign({
+      // Descriptive details first, so every authoritative field below wins.
+      const booking = Object.assign({}, sanitizeDetails(p.details), {
         bookingRef: bookingRefFromOrder(orderId),
         customerUid: p.uid,
         email: p.email || null,
@@ -414,5 +437,5 @@ module.exports = {
   BOOKING_COLLECTION,
   maskId,
   // exported for tests
-  _internal: { signatureMatches, expectedSignature, computeAmounts, bookingMoney, bookingRefFromOrder, maskId, PaymentError, MSG },
+  _internal: { sanitizeDetails, signatureMatches, expectedSignature, computeAmounts, bookingMoney, bookingRefFromOrder, maskId, PaymentError, MSG },
 };

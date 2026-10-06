@@ -16,6 +16,7 @@ let currentUser = null;
 let promoDiscount = 0;
 let selectedPayment = "at_drop";
 let isProcessingPayment = false;
+let paymentConfirmInFlight = false; // guards against a second Razorpay success callback
 let currentRating = 0;
 let trackingListener = null;
 let chatListener = null;
@@ -1620,6 +1621,7 @@ async function startPayment() {
       paymentType: selectedPayment, // "full" | "advance" — server derives the actual amount
       customerName: name, phone: phone, moveType: selectedMoveType,
       pickup: pickupField, drop: dropField, date: shiftDate,
+      details: _collectMoveDetails(), // descriptive only (time slot, notes, add-on requests) — never priced from here
       requestId: _newPaymentRequestId()
     });
     if (status !== 200 || !data.success || !data.orderId) {
@@ -1649,25 +1651,42 @@ async function startPayment() {
       prefill: { name, contact: phone }, theme: { color: "#ea580c" },
       handler: async function (response) {
         // Razorpay returning here does NOT mean the booking exists. Only a
-        // server bookingRef does (N-04).
-        if (payBtn) payBtn.innerText = "Confirming…";
-        const result = await _confirmMovePayment(response);
-        _resetPayBtn();
+        // server bookingRef does (N-04). The button ALWAYS leaves the busy
+        // state: confirmed → confirmation card; anything else → pending notice.
+        if (paymentConfirmInFlight) return;
+        paymentConfirmInFlight = true;
+        let result = { state: "pending", data: {} };
+        try {
+          if (payBtn) { payBtn.disabled = true; payBtn.innerText = "Payment received — confirming…"; }
+          result = await _confirmMovePayment(response, (attempt) => {
+            if (payBtn) payBtn.innerText = attempt > 1 ? "Still confirming your booking…" : "Payment received — confirming…";
+          });
+        } catch (e) {
+          result = { state: "pending", data: {} };
+        } finally {
+          paymentConfirmInFlight = false;
+          _resetPayBtn();
+        }
         if (result.state === "confirmed") {
           const d = result.data;
-          currentBookingId = d.bookingId || currentBookingId;
-          if (d.bookingId) { try { localStorage.setItem("packzen_active_booking", d.bookingId); } catch (e) {} }
-          showToast("✅ Booking confirmed!");
-          const balanceTxt = Number(d.balanceDue) > 0
-            ? "Balance ₹" + Number(d.balanceDue).toLocaleString("en-IN") + " payable on moving day."
-            : "Fully paid — nothing to pay on moving day.";
-          showConfirmationCard(Object.assign({}, confirmationBase, {
-            bookingRef: d.bookingRef,
-            total: d.total,
-            paymentLabel: d.paymentType === "full" ? "Paid Full Online" : "Advance Paid Online",
-            paymentNote: "Paid ₹" + Number(d.paid).toLocaleString("en-IN") + " online. " + balanceTxt,
-            source: "payment", showInvoice: true
-          }));
+          try {
+            currentBookingId = d.bookingId || currentBookingId;
+            if (d.bookingId) { try { localStorage.setItem("packzen_active_booking", d.bookingId); } catch (e) {} }
+            showToast("✅ Booking confirmed!");
+            const balanceTxt = Number(d.balanceDue) > 0
+              ? "Balance ₹" + Number(d.balanceDue).toLocaleString("en-IN") + " payable on moving day."
+              : "Fully paid — nothing to pay on moving day.";
+            showConfirmationCard(Object.assign({}, confirmationBase, {
+              bookingRef: d.bookingRef,
+              total: d.total,
+              paymentLabel: d.paymentType === "full" ? "Paid Full Online" : "Advance Paid Online",
+              paymentNote: "Paid ₹" + Number(d.paid).toLocaleString("en-IN") + " online. " + balanceTxt,
+              source: "payment", showInvoice: true
+            }));
+          } catch (e) {
+            // The booking exists server-side; never fall back to "pending" here.
+            showToast("✅ Booking confirmed! Ref: " + (d.bookingRef || "") + " — see My Bookings.");
+          }
         } else {
           _showPaymentPendingNotice(response && response.razorpay_payment_id);
         }
@@ -1701,50 +1720,114 @@ function _newPaymentRequestId() {
 // POST with the signed-in user's ID token. getIdToken() refreshes an expiring
 // token automatically; on a 401 we retry once with a forced refresh. Tokens are
 // never stored by this code.
+const PAYMENT_TOKEN_TIMEOUT_MS = 10000;
+const PAYMENT_REQUEST_TIMEOUT_MS = 25000;
+// Hard ceiling for the whole post-payment confirmation (all waits + all
+// verify calls). Every sleep and every request is bounded by what remains.
+const PAYMENT_CONFIRM_MAX_MS = 90000;
+
+function _withTimeout(promise, ms, code) {
+  let t;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { t = setTimeout(() => reject(Object.assign(new Error(code), { code })), ms); })
+  ]).finally(() => clearTimeout(t));
+}
+
+// POST with the signed-in user's ID token. getIdToken() refreshes an expiring
+// token automatically; on a 401 we retry once with a forced refresh. Tokens are
+// never stored by this code. Every step is time-bounded so a stalled network
+// or cold start can never leave the payment UI busy forever.
 async function _authedPaymentPost(path, body) {
   const user = (window._firebase && window._firebase.auth && window._firebase.auth.currentUser) || currentUser;
   if (!user || typeof user.getIdToken !== "function") return { status: 401, data: { success: false, code: "unauthenticated" } };
   const send = async (forceRefresh) => {
-    const token = await user.getIdToken(forceRefresh);
-    return fetch(MOVE_PAYMENT_API + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify(body)
-    });
+    const token = await _withTimeout(user.getIdToken(forceRefresh), PAYMENT_TOKEN_TIMEOUT_MS, "token_timeout");
+    const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), PAYMENT_REQUEST_TIMEOUT_MS) : null;
+    try {
+      return await fetch(MOVE_PAYMENT_API + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify(body),
+        signal: ctrl ? ctrl.signal : undefined
+      });
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   };
   let resp = await send(false);
   if (resp.status === 401) resp = await send(true);
   let data = {};
-  try { data = (await resp.json()) || {}; } catch (e) { data = {}; }
+  try { data = (await _withTimeout(resp.json(), PAYMENT_TOKEN_TIMEOUT_MS, "body_timeout")) || {}; } catch (e) { data = {}; }
   return { status: resp.status, data };
 }
 
-// Verification is idempotent server-side (booking id = order id), so it is
-// safe to retry. Returns {state:"confirmed", data} only with a server bookingRef;
+// Verification is idempotent server-side (booking id = order id): retrying is
+// safe, and if the R3 webhook created the booking first, verify returns that
+// same booking. Returns {state:"confirmed", data} only with a server bookingRef;
 // anything else is "pending" — the customer is never told it failed or succeeded
-// without proof, because money may already have been captured.
-async function _confirmMovePayment(response) {
+// without proof, because money may already have been captured. The schedule
+// (~45 s of waits, each call ≤ 25 s) covers verify cold starts and Razorpay
+// auto-capture lag (verify answers 202 while a payment is only authorized).
+// The whole operation never exceeds PAYMENT_CONFIRM_MAX_MS: a request still in
+// flight at the deadline is abandoned (verification is idempotent, so a late
+// server-side success is still picked up by My Bookings / the webhook).
+async function _confirmMovePayment(response, onProgress) {
   const body = {
     razorpay_order_id: response && response.razorpay_order_id,
     razorpay_payment_id: response && response.razorpay_payment_id,
     razorpay_signature: response && response.razorpay_signature
   };
-  const delays = [0, 2000, 5000, 10000];
+  const delays = [0, 2000, 3000, 5000, 8000, 12000, 15000];
+  const deadline = Date.now() + PAYMENT_CONFIRM_MAX_MS;
+  const remaining = () => deadline - Date.now();
   let last = { state: "pending", data: {} };
-  for (const d of delays) {
-    if (d) await new Promise(r => setTimeout(r, d));
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) {
+      const wait = Math.min(delays[i], remaining());
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    }
+    if (remaining() <= 0) break;
+    if (typeof onProgress === "function") { try { onProgress(i + 1); } catch (e) {} }
     try {
-      const { status, data } = await _authedPaymentPost("/verifyRazorpayPayment", body);
+      const { status, data } = await _withTimeout(
+        _authedPaymentPost("/verifyRazorpayPayment", body), remaining(), "confirm_deadline");
       if (status === 200 && data.success && data.bookingRef) return { state: "confirmed", data };
       last = { state: "pending", data };
       // Retry only transient states; definitive rejections stop retrying but
       // still leave the UI in the safe "pending" state.
       if (!(status === 202 || status === 503 || status >= 500 || status === 401)) break;
     } catch (e) {
+      // timeout / network: transient — keep trying until the schedule ends,
+      // unless the overall deadline itself was hit.
       last = { state: "pending", data: {} };
+      if (e && e.code === "confirm_deadline") break;
     }
   }
   return last;
+}
+
+// Descriptive booking details for the paid flow (same fields the pay-later
+// form sends). The server allow-lists and length-caps them; none affect price.
+function _collectMoveDetails() {
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const chk = (id) => !!document.getElementById(id)?.checked;
+  const houseEl = document.getElementById("house");
+  return {
+    altPhone: val("custAltPhone"),
+    shiftTime: val("shiftTime"),
+    shiftTimeLabel: val("shiftTimeLabel"),
+    house: (houseEl && houseEl.selectedIndex > 0) ? (houseEl.options[houseEl.selectedIndex]?.text || "") : "",
+    unpackingService: chk("unpackingService"),
+    dismantling: chk("dismantlingService"),
+    assembly: chk("assemblyService"),
+    storageNeeded: chk("storageService"),
+    storageDays: parseInt(document.getElementById("storageDays")?.value || 0, 10) || 0,
+    fragileItems: val("custFragileItems"),
+    specialItems: val("custSpecialItems"),
+    remarks: val("custRemarks")
+  };
 }
 
 function _showPaymentPendingNotice(paymentId) {
@@ -3756,9 +3839,9 @@ async function downloadInvoice(docId) {
     doc.text(dropLines, 14, yPos);
     yPos += (dropLines.length * 5);
 
-    doc.text(`Move Date: ${safe(b.date)} ${safe(b.shiftTimeLabel)}`, 14, yPos);
+    doc.text(`Move Date: ${safe(b.date)} ${window.PackZenBookingFormat.timeLabel(b)}`.trim(), 14, yPos);
     doc.text(`Distance: ${b.distance ? b.distance + ' km' : '—'}`, 14, yPos + 6);
-    doc.text(`Vehicle: ${safe(b.vehicle)}`, 14, yPos + 12);
+    doc.text(`Vehicle: ${safe(window.PackZenBookingFormat.vehicleLabel(b))}`, 14, yPos + 12);
 
     // Driver Info (Right side)
     doc.setFont("helvetica", "bold");
@@ -3858,15 +3941,17 @@ async function downloadInvoice(docId) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
 
-        let furnText = b.furniture || "";
-        if (!furnText && b.selectedFurniture) {
-            furnText = Object.entries(b.selectedFurniture)
-                .filter(([k,v]) => v > 0)
-                .map(([k,v]) => `${k} x${v}`)
-                .join(", ");
+        // furniture may be a readable string (pay-later/advisor) or an
+        // id → qty object (online-paid bookings); never stringify the object.
+        const furnText = window.PackZenBookingFormat.itemsSummaryText(b);
+        const furnLines = doc.splitTextToSize(furnText, 180);
+        const lineH = 4.5, bottom = doc.internal.pageSize.height - 26;
+        let y = yPos + 5;
+        for (const line of furnLines) {
+            if (y > bottom) { doc.addPage(); y = 20; }
+            doc.text(line, 14, y);
+            y += lineH;
         }
-        const furnLines = doc.splitTextToSize(furnText || "None specified", 180);
-        doc.text(furnLines, 14, yPos + 5);
     }
 
     // --- Footer ---
