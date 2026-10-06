@@ -258,6 +258,68 @@ function existingResponse(b, uid, paymentId) {
   };
 }
 
+/**
+ * Single authoritative "captured payment → booking" transition, used by
+ * browser verification (Phase 1), the Razorpay webhook and reconciliation (R3).
+ * Idempotent: booking id = orderId; if it already exists it is returned untouched.
+ * Callers MUST have already confirmed the payment is captured and that its
+ * amount/currency match the pending payment.
+ * Returns {existing} | {created} | {missing} | {legacy} | {forbidden}.
+ */
+async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expectedUid, via }) {
+  const db = deps.db;
+  const bookingRef = db.collection(BOOKING_COLLECTION).doc(orderId);
+  const pendingRef = db.collection(PENDING_COLLECTION).doc(orderId);
+  return db.runTransaction(async (tx) => {
+      const bSnap = await tx.get(bookingRef);
+      if (bSnap.exists) return { existing: bSnap.data() };
+      const pSnap = await tx.get(pendingRef);
+      if (!pSnap.exists) return { missing: true };
+      const p = pSnap.data();
+      if (!p.uid) return { legacy: true };
+      if (expectedUid && p.uid !== expectedUid) return { forbidden: true };
+
+      const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: p.paymentType });
+      const qi = p.quoteInput || {};
+      const qb = p.quoteBreakdown || {};
+      const booking = Object.assign({
+        bookingRef: bookingRefFromOrder(orderId),
+        customerUid: p.uid,
+        email: p.email || null,
+        customerName: p.customerName || "",
+        phone: p.phone || "",
+        pickup: p.pickup || "",
+        drop: p.drop || "",
+        date: p.date || "",
+        moveType: p.moveType || "",
+        paymentType: p.paymentType,
+        currency: p.currency || CURRENCY,
+        paymentId,
+        orderId,
+        requestId: p.requestId || null,
+        source: "payment",
+        confirmedVia: via || "verify",
+        status: "confirmed",
+        vehicleId: qi.vehicleId || "",
+        vehicleUsed: qb.vehicleUsed || "",
+        furniture: qi.furniture || {},
+        cartonQty: qi.cartonQty || 0,
+        pickupFloor: qi.pickupFloor || 0,
+        dropFloor: qi.dropFloor || 0,
+        liftAvailable: !!qi.liftAvailable,
+        packingService: !!qi.packingService,
+        distance: qi.km || 0,
+        quoteBreakdown: p.quoteBreakdown || null,
+        createdAt: deps.serverTimestamp(),
+        paidAt: deps.serverTimestamp(),
+      }, money);
+
+      if (typeof tx.create === "function") tx.create(bookingRef, booking); else tx.set(bookingRef, booking);
+      tx.update(pendingRef, { status: "consumed", bookingId: orderId, paymentId, consumedAt: deps.serverTimestamp() });
+      return { created: booking };
+      });
+}
+
 async function handleVerifyPayment(req, deps) {
   const logger = deps.logger || console;
   let ctx = {};
@@ -307,55 +369,14 @@ async function handleVerifyPayment(req, deps) {
     if (payment.status !== "captured") throw new PaymentError(400, "payment_not_successful", MSG.notSuccessful, "payment status " + String(payment.status).slice(0, 20));
 
     // R2-01: one transaction decides the outcome; booking id = order id.
-    const outcome = await db.runTransaction(async (tx) => {
-      const bSnap = await tx.get(bookingRef);
-      if (bSnap.exists) return { existing: bSnap.data() };
-      const pSnap = await tx.get(pendingRef);
-      if (!pSnap.exists) return { missing: true };
-      const p = pSnap.data();
-      if (p.uid !== user.uid) return { forbidden: true };
-
-      const money = bookingMoney({ grandTotal: p.grandTotal, paid: Number(payment.amount) / 100, paymentType: p.paymentType });
-      const qi = p.quoteInput || {};
-      const qb = p.quoteBreakdown || {};
-      const booking = Object.assign({
-        bookingRef: bookingRefFromOrder(orderId),
-        customerUid: p.uid,
-        email: p.email || null,
-        customerName: p.customerName || "",
-        phone: p.phone || "",
-        pickup: p.pickup || "",
-        drop: p.drop || "",
-        date: p.date || "",
-        moveType: p.moveType || "",
-        paymentType: p.paymentType,
-        currency: p.currency || CURRENCY,
-        paymentId,
-        orderId,
-        requestId: p.requestId || null,
-        source: "payment",
-        status: "confirmed",
-        vehicleId: qi.vehicleId || "",
-        vehicleUsed: qb.vehicleUsed || "",
-        furniture: qi.furniture || {},
-        cartonQty: qi.cartonQty || 0,
-        pickupFloor: qi.pickupFloor || 0,
-        dropFloor: qi.dropFloor || 0,
-        liftAvailable: !!qi.liftAvailable,
-        packingService: !!qi.packingService,
-        distance: qi.km || 0,
-        quoteBreakdown: p.quoteBreakdown || null,
-        createdAt: deps.serverTimestamp(),
-        paidAt: deps.serverTimestamp(),
-      }, money);
-
-      if (typeof tx.create === "function") tx.create(bookingRef, booking); else tx.set(bookingRef, booking);
-      tx.update(pendingRef, { status: "consumed", bookingId: orderId, paymentId, consumedAt: deps.serverTimestamp() });
-      return { created: booking };
+    // Shared with the R3 webhook/reconciliation path (finalizeCapture).
+    const outcome = await finalizeCapture(deps, {
+      orderId, paymentId, amountPaise: Number(payment.amount), expectedUid: user.uid, via: "verify",
     });
 
     if (outcome.existing) return existingResponse(outcome.existing, user.uid, paymentId);
     if (outcome.forbidden) throw new PaymentError(403, "forbidden", MSG.forbidden, "uid mismatch in txn");
+    if (outcome.legacy) throw new PaymentError(409, "legacy_order", MSG.verifyMismatch, "pending payment has no uid (txn)");
     if (outcome.missing) throw new PaymentError(409, "order_not_found", MSG.verifyMismatch, "pending vanished without booking");
 
     const b = outcome.created;
@@ -387,6 +408,11 @@ async function handleVerifyPayment(req, deps) {
 module.exports = {
   handleCreateOrder,
   handleVerifyPayment,
+  finalizeCapture,
+  bookingMoney,
+  PENDING_COLLECTION,
+  BOOKING_COLLECTION,
+  maskId,
   // exported for tests
   _internal: { signatureMatches, expectedSignature, computeAmounts, bookingMoney, bookingRefFromOrder, maskId, PaymentError, MSG },
 };
