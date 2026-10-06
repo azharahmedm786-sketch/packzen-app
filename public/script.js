@@ -3844,10 +3844,10 @@ async function downloadInvoice(docId) {
     else if (b.paymentType === "advance") paymentMethod = "Online (Advance Paid)";
 
     doc.text(`Payment Method: ${paymentMethod}`, 14, yPos);
-    doc.text(`Amount Paid: Rs. ${fmt(b.paid || 0)}`, 14, yPos + 6);
-    const balance = Math.max((b.total || 0) - (b.paid || 0), 0);
+    const _ps = window.PackZenPaymentState.summarize(b);
+    doc.text(`Amount Paid: Rs. ${fmt(_ps.paid || 0)}`, 14, yPos + 6);
     doc.setFont("helvetica", "bold");
-    doc.text(`Balance Due: Rs. ${fmt(balance)}`, 14, yPos + 12);
+    doc.text(_ps.known ? `Balance Due: Rs. ${fmt(_ps.balanceDue)}` : "Balance Due: being confirmed by PackZen", 14, yPos + 12);
 
     // Items / Furniture Summary (if any)
     yPos += 25;
