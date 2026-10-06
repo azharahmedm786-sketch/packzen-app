@@ -231,11 +231,6 @@ const cors = require("cors")({
   ]
 });
 
-// Mirrors the client's _getPayAmount() logic in public/script.js — kept in
-// one place so the "how much do we actually charge for this paymentType"
-// rule can't drift between client and server. This is the ONLY function
-// allowed to decide what gets charged; nothing else should read a total
-// off the request body.
 async function getGoogleMapsDistance(pickup, drop) {
   if (!pickup || !drop) return 0;
   try {
@@ -295,14 +290,6 @@ async function calculateServerQuote(quoteInput, pickup, drop) {
   return quote;
 }
 
-function computePayAmount(quote, paymentType) {
-  if (!quote || !quote.valid || !quote.paymentOptions) return null;
-  const opts = quote.paymentOptions;
-  if (paymentType === "full") return Math.max(opts.fullOnlineAmount, 500);
-  if (paymentType === "advance") return Math.max(opts.advanceAmount, 199);
-  if (paymentType === "at_drop") return null; // no online order for pay-at-drop
-  return null;
-}
 
 exports.createBooking = functions
   .region("asia-south1")
@@ -356,281 +343,60 @@ exports.createBooking = functions
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
     finalPayload.status = "confirmed"; // Enforce safe initial status
     finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
+    finalPayload.balanceDue = quote.finalTotal;
+    finalPayload.paymentStatus = "unpaid";
+    finalPayload.currency = "INR";
 
     const docRef = await admin.firestore().collection("bookings").add(finalPayload);
     return { docId: docRef.id, total: quote.finalTotal };
   });
 
+const movePayment = require("./move-payment");
+
+// Shared wiring for the two move-payment HTTPS endpoints. All logic lives in
+// move-payment.js (Phase 1 payment correctness); this only injects I/O.
+function movePaymentDeps(extra) {
+  return Object.assign({
+    verifyIdToken: (token) => admin.auth().verifyIdToken(token),
+    db: admin.firestore(),
+    serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    now: () => Date.now(),
+    logger: functions.logger,
+  }, extra);
+}
+
 exports.createRazorpayOrder = functions
   .region("asia-south1")
   .runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, GOOGLE_MAPS_KEY] })
-  .https.onRequest((req, res) => {
+  .https.onRequest((req, res) => cors(req, res, async () => {
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).json({ success: false, code: "method_not_allowed", error: "Method not allowed." });
+    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+    const out = await movePayment.handleCreateOrder(req, movePaymentDeps({
+      quote: (quoteInput, pickup, drop) => calculateServerQuote(quoteInput, pickup, drop),
+      normalize: (quoteInput) => {
+        const v = PackZenPricing.validateInput(quoteInput);
+        return v && v.data ? v.data : quoteInput;
+      },
+      createOrder: (o) => razorpay.orders.create(o),
+    }));
+    return res.status(out.status).json(out.body);
+  }));
 
-    return cors(req, res, async () => {
-
-      if (req.method === "OPTIONS") return res.status(204).send("");
-
-      try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-          return res.status(401).json({ error: "Unauthorized" });
-        }
-        const token = authHeader.split("Bearer ")[1];
-        try {
-          await admin.auth().verifyIdToken(token);
-        } catch (e) {
-          return res.status(401).json({ error: "Invalid or expired token" });
-        }
-
-        const razorpay = new Razorpay({
-          key_id: RAZORPAY_KEY_ID.value(),
-          key_secret: RAZORPAY_KEY_SECRET.value()
-        });
-
-        console.log("Request body received:", req.body);
-
-        const { quoteInput, paymentType, customerName, phone, moveType, pickup, drop, date } = req.body;
-
-        if (!quoteInput || typeof quoteInput !== "object") {
-          return res.status(400).json({ error: "quoteInput required" });
-        }
-        if (paymentType !== "full" && paymentType !== "advance") {
-          return res.status(400).json({ error: "paymentType must be 'full' or 'advance'" });
-        }
-        if (!customerName || !phone || !pickup || !drop || !date) {
-          return res.status(400).json({ error: "Missing booking details" });
-        }
-
-        // ── SERVER-SIDE PRICE OF RECORD ──────────────────────────────
-        // The client's displayed total is UI only. We recompute the
-        // quote here, from the same raw inputs (vehicle, distance,
-        // furniture, floors, etc.) using the same pricing engine, and
-        // that is the number that gets charged. A manipulated
-        // `amount`/`total` sent by the client is never used.
-
-        let quote;
-        try {
-          quote = await calculateServerQuote(quoteInput, pickup, drop);
-        } catch (e) {
-          return res.status(400).json({ error: e.message });
-        }
-
-        const safeAmount = computePayAmount(quote, paymentType);
-
-        if (!safeAmount || safeAmount <= 0 || safeAmount > 100000) {
-          return res.status(400).json({
-            error: "Invalid amount"
-          });
-        }
-
-        const order = await razorpay.orders.create({
-          amount: safeAmount * 100,
-          currency: "INR",
-          receipt: "receipt_" + Date.now()
-        });
-
-        console.log("Order created:", order.id, "server-priced amount:", safeAmount);
-
-        // Persist the server-computed amount + booking details keyed by
-        // orderId. verifyRazorpayPayment reads the total from HERE, not
-        // from whatever the client sends back after payment — so even if
-        // the client is fully compromised post-order, the stored price
-        // can't be altered.
-        await admin.firestore().collection("pendingPayments").doc(order.id).set({
-          amount: safeAmount,
-          paymentType,
-          quoteInput,
-          quoteBreakdown: quote.breakdown, // vehicleUsed, distanceCharge, floorCharge, etc. — so the confirmed booking isn't just a name/phone/total stub
-          customerName,
-          phone,
-          moveType: moveType || "",
-          pickup,
-          drop,
-          date,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        return res.status(200).json({
-          success: true,
-          orderId: order.id,
-          amount: order.amount,
-          currency: order.currency,
-          serverCalculatedTotal: safeAmount
-        });
-
-      } catch (err) {
-
-        console.error("Razorpay Full Error:", {
-          message: err.message,
-          description: err.description,
-          error: err.error,
-          stack: err.stack
-        });
-
-        return res.status(500).json({
-          error: err.message
-        });
-      }
-
-    });
-
-});
-const crypto = require("crypto");
 exports.verifyRazorpayPayment = functions
   .region("asia-south1")
   .runWith({ secrets: [...BREVO_SECRETS, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
-  .https.onRequest(async (req, res) => {
-    console.log("VERIFY VERSION 2");
-
-const allowedOrigins = ["https://packzenblr.in", "https://www.packzenblr.in", "http://localhost:5000"];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-      res.set("Access-Control-Allow-Origin", origin);
-    }
-    res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      return res.status(204).send("");
-    }
-
-   try {
-
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-    bookingData
-  } = req.body;
-
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-    return res.status(400).json({
-      success: false,
-      error: "Missing payment identifiers"
-    });
-  }
-
-      const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-       .createHmac("sha256", RAZORPAY_KEY_SECRET.value())
-        .update(body)
-        .digest("hex");
-
-      if (expectedSignature !== razorpay_signature) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid signature"
-        });
-      }
-      console.log("SIGNATURE VERIFIED SUCCESSFULLY");
-
-      // Prevent duplicate booking creation
-const existingBooking = await admin.firestore()
-  .collection("bookings")
-  .where("paymentId", "==", razorpay_payment_id)
-  .limit(1)
-  .get();
-
-if (!existingBooking.empty) {
-  const existingData = existingBooking.docs[0].data();
-
-  console.log("Duplicate payment verification request detected.");
-
-  return res.status(200).json({
-    success: true,
-    bookingRef: existingData.bookingRef,
-   message: "Payment already processed."
-  });
-}
-
-      // ── TRUSTED PRICE LOOKUP ──────────────────────────────────────
-      // The booking total NEVER comes from bookingData (client-supplied).
-      // It comes from the pendingPayments doc this same server wrote
-      // during createRazorpayOrder, keyed by the Razorpay order id that
-      // the signature above just proved this payment belongs to.
-      const pendingRef = admin.firestore().collection("pendingPayments").doc(razorpay_order_id);
-      const pendingSnap = await pendingRef.get();
-
-      if (!pendingSnap.exists) {
-        return res.status(400).json({
-          success: false,
-          error: "No matching order found for this payment"
-        });
-      }
-
-      const trusted = pendingSnap.data();
-      const verifiedTotal = Number(trusted.amount);
-
-      const bookingRef = "PKZ-" + Date.now().toString(36).toUpperCase();
-      console.log("ABOUT TO CREATE BOOKING");
-console.log("SERVER-TRUSTED TOTAL:", verifiedTotal);
-     await admin.firestore().collection("bookings").add({
-
-  customerName: trusted.customerName || "",
-  phone: trusted.phone || "",
-  pickup: trusted.pickup || "",
-  drop: trusted.drop || "",
-  date: trusted.date || "",
-  moveType: trusted.moveType || "",
-  paymentType: trusted.paymentType || "",
-
-  // Operational details the driver/advisor/admin dashboards need —
-  // previously this document only had name/phone/total, so a paid
-  // booking had no record of what to actually move or which vehicle
-  // to send. Sourced from the trusted server-side quote, not the client.
-  vehicleId: (trusted.quoteInput && trusted.quoteInput.vehicleId) || "",
-  vehicleUsed: (trusted.quoteBreakdown && trusted.quoteBreakdown.vehicleUsed) || "",
-  furniture: (trusted.quoteInput && trusted.quoteInput.furniture) || {},
-  cartonQty: (trusted.quoteInput && trusted.quoteInput.cartonQty) || 0,
-  pickupFloor: (trusted.quoteInput && trusted.quoteInput.pickupFloor) || 0,
-  dropFloor: (trusted.quoteInput && trusted.quoteInput.dropFloor) || 0,
-  liftAvailable: !!(trusted.quoteInput && trusted.quoteInput.liftAvailable),
-  packingService: !!(trusted.quoteInput && trusted.quoteInput.packingService),
-  distance: (trusted.quoteInput && trusted.quoteInput.km) || 0,
-  quoteBreakdown: trusted.quoteBreakdown || null,
-
- total: verifiedTotal,
-
-  bookingRef,
-  paymentId: razorpay_payment_id,
-  orderId: razorpay_order_id,
-  paymentStatus: "paid",
-  status: "confirmed",
-  createdAt: admin.firestore.FieldValue.serverTimestamp()
-});
-
-      // The pending doc has been consumed — clear it so the same order
-      // can't be used to mint a second booking.
-      await pendingRef.delete();
-
-       // Send booking confirmation email — never blocks or throws
-       await sendBookingConfirmationEmail({
-         bookingRef,
-         customerName: trusted.customerName || "Customer",
-         customerEmail: (bookingData && bookingData.email) || null,
-         pickup: trusted.pickup || "",
-         drop: trusted.drop || "",
-         date: trusted.date || "",
-         total: verifiedTotal,
-         paymentStatus: "paid"
-       }).catch(err => console.error("Booking confirmation email error (non-blocking):", err.message));
-
-console.log("BOOKING CREATED SUCCESSFULLY");
-      console.log("✅ Payment verified:", razorpay_payment_id);
-
-      return res.status(200).json({
-        success: true,
-        bookingRef
-      });
-
-         } catch (err) {
-      console.error("Verify error:", err.message);
-      return res.status(500).json({
-        success: false,
-        error: err.message
-      });
-    }
-  });
+  .https.onRequest((req, res) => cors(req, res, async () => {
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).json({ success: false, code: "method_not_allowed", error: "Method not allowed." });
+    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+    const out = await movePayment.handleVerifyPayment(req, movePaymentDeps({
+      keySecret: RAZORPAY_KEY_SECRET.value(),
+      fetchPayment: (paymentId) => razorpay.payments.fetch(paymentId),
+      sendConfirmation: (data) => sendBookingConfirmationEmail(data),
+    }));
+    return res.status(out.status).json(out.body);
+  }));
 
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)

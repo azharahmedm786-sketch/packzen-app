@@ -421,6 +421,7 @@
 <!-- 2. Firebase config second -->
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
 <script src="firebase-config.js"></script>
+<script src="payment-state.js"></script>
 
 <!-- 3. Google Maps - loaded dynamically using key from env-config.js -->
 <script>
@@ -712,16 +713,19 @@ function showBookingUI(b) {
   document.getElementById("chatCustomerName").textContent = b.customerName || "Customer";
 
   // Payment summary
-  const total    = b.total || 0;
-  const paid     = b.paid  || 0;
-  const due      = Math.max(0, total - paid);
-  const paidFull = paid >= total;
+  // Phase 1: balance comes from PackZenPaymentState (balanceDue first). Legacy
+  // online-paid bookings without `paid` have an unknown balance — never guess.
+  const ps       = window.PackZenPaymentState.summarize(b);
+  const total    = ps.known ? ps.total : 0;
+  const paid     = ps.paid || 0;
+  const due      = ps.known ? ps.balanceDue : 0;
+  const paidFull = ps.known && ps.fullyPaid;
 
   // Payment type label
   const typeMap = { full: "Paid in Full", advance: "Advance Paid", pay_later: "Pay on Delivery", whatsapp: "Pay on Delivery" };
   const payTypeLabel = typeMap[b.paymentType] || typeMap[b.source] || (paid > 0 ? "Partial Paid" : "Pay on Delivery");
 
-  document.getElementById("payTotal").textContent    = "₹" + total.toLocaleString();
+  document.getElementById("payTotal").textContent    = ps.known ? "₹" + total.toLocaleString() : "—";
   document.getElementById("payReceived").textContent = "₹" + paid.toLocaleString();
   document.getElementById("payType").textContent     = payTypeLabel;
 
@@ -730,7 +734,11 @@ function showBookingUI(b) {
   const collectLabel  = document.getElementById("collectLabel");
   const collectAmount = document.getElementById("collectAmount");
 
-  if (paidFull) {
+  if (!ps.known) {
+    banner.className = "collect-banner";
+    collectLabel.textContent  = "⚠️ Payment record incomplete — do NOT collect. Call the office first.";
+    collectAmount.textContent = "—";
+  } else if (paidFull) {
     banner.className = "collect-banner paid-full";
     collectLabel.textContent  = "✅ Fully Paid — Nothing to Collect";
     collectAmount.textContent = "₹0";
@@ -1114,10 +1122,11 @@ function renderHistory(bookings) {
     const date    = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : (b.date || "—");
     const pickup  = (b.pickup || "").split(",")[0] || "—";
     const drop    = (b.drop   || "").split(",")[0] || "—";
-    const total   = Number(raw.total) || 0;
-    const paid    = Number(raw.paid)  || 0;
-    const due     = Math.max(0, total - paid);
-    const paidFull = paid >= total;
+    const ps      = window.PackZenPaymentState.summarize(raw);
+    const total   = ps.known ? ps.total : (Number(raw.total) || 0);
+    const paid    = ps.paid || 0;
+    const due     = ps.known ? ps.balanceDue : 0;
+    const paidFull = ps.known && ps.fullyPaid;
     return `
       <div class="hist-card">
         <div class="hist-header">
@@ -1172,9 +1181,10 @@ function loadEarnings(period) {
       }
 
       // Calculate stats
-      const total    = bookings.reduce((s, b) => s + (b.total || 0), 0);
-      const received = bookings.reduce((s, b) => s + (b.paid  || 0), 0);
-      const cash     = bookings.reduce((s, b) => s + Math.max(0, (b.total||0) - (b.paid||0)), 0);
+      const _ps      = bookings.map((b) => window.PackZenPaymentState.summarize(b));
+      const total    = _ps.reduce((s, p, i) => s + (p.known ? p.total : (Number(bookings[i].total) || 0)), 0);
+      const received = _ps.reduce((s, p) => s + (p.paid || 0), 0);
+      const cash     = _ps.reduce((s, p) => s + (p.known ? p.balanceDue : 0), 0);
       const count    = bookings.length;
       const avg      = count ? Math.round(total / count) : 0;
 
@@ -1212,10 +1222,11 @@ function loadEarnings(period) {
         const date    = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : (b.date || "—");
         const pickup  = (b.pickup || "").split(",")[0] || "—";
         const drop    = (b.drop   || "").split(",")[0] || "—";
-        const total   = Number(raw.total) || 0;
-        const paid    = Number(raw.paid)  || 0;
-        const cash    = Math.max(0, total - paid);
-        const paidFull = paid >= total;
+        const ps      = window.PackZenPaymentState.summarize(raw);
+        const total   = ps.known ? ps.total : (Number(raw.total) || 0);
+        const paid    = ps.paid || 0;
+        const cash    = ps.known ? ps.balanceDue : 0;
+        const paidFull = ps.known && ps.fullyPaid;
         return `
           <div class="hist-card">
             <div class="hist-header">
