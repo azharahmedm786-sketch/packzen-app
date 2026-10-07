@@ -777,6 +777,7 @@ function buildShell(adminName) {
       <div class="assign-title">🚚 Assign Driver to Booking</div>
       <div class="assign-info" id="assignInfo">Loading...</div>
       <label class="field-label">Select Driver</label>
+      <div id="assignRecommendation" style="margin:8px 0 12px;font-size:.82rem;color:var(--text-muted)"></div>
       <select class="field-input" id="assignSelect"><option value="">-- Select a driver --</option></select>
       <div class="btn-row">
         <button class="btn-cancel" onclick="closeAssignModal()">Cancel</button>
@@ -1306,7 +1307,26 @@ function renderDrivers() {
         </div>
       </div>
       <span class="badge ${d.isOnline?"badge-delivered":"badge-pending"}">${d.isOnline?"🟢 Active":"⚫ Offline"}</span>
+      <button type="button" class="btn-cancel" style="margin-left:8px;padding:4px 10px" onclick="editDriverProfile('${escapeHTML(raw.id)}')">Profile</button>
     </div>`; }).join("");
+}
+// Phase 2A: driver profile (vehicles, skills, status, capacity) via the validated callable.
+const PZ_VEHICLES = ["tata_ace", "truck_14ft", "truck_17ft", "truck_22ft"];
+const PZ_SKILLS = ["moving", "packing", "assembly", "vehicle_transport", "parcel", "ac", "appliances", "plumbing", "electrical", "carpentry", "painting", "cleaning", "pest_control"];
+function editDriverProfile(uid) {
+  requireAdmin(() => {
+    window._firebase.db.collection("driverProfiles").doc(uid).get().then(snap => {
+      const p = snap.exists ? snap.data() : { status: "onboarding", vehicleIds: [], skills: ["moving"], maxJobsPerDay: 3 };
+      const status = prompt("Status (active / suspended / onboarding):", p.status || "onboarding"); if (status === null) return;
+      const vehicles = prompt("Vehicles, comma-separated (" + PZ_VEHICLES.join(", ") + "):", (p.vehicleIds || []).join(", ")); if (vehicles === null) return;
+      const skills = prompt("Skills, comma-separated (" + PZ_SKILLS.join(", ") + "):", (p.skills || []).join(", ")); if (skills === null) return;
+      const maxJobs = prompt("Max jobs per day (1–10):", String(p.maxJobsPerDay || 3)); if (maxJobs === null) return;
+      const list = v => v.split(",").map(x => x.trim()).filter(Boolean);
+      _adminCallable("adminUpsertDriverProfile")({ uid, profile: { status: status.trim(), vehicleIds: list(vehicles), skills: list(skills), maxJobsPerDay: parseInt(maxJobs, 10), serviceAreas: ["bangalore"] } })
+        .then(r => toast(r.data && r.data.created ? "✅ Driver profile created" : "✅ Driver profile updated"))
+        .catch(e => toast("❌ " + (e && e.message ? e.message : "Could not save profile")));
+    }).catch(e => toast("❌ " + e.message));
+  });
 }
 
 /* ── CUSTOMERS ── */
@@ -1405,6 +1425,26 @@ function openAssignModal(id) {
     `<strong>Route:</strong> ${escapeHTML((b.pickup||"").split(",")[0])} → ${escapeHTML((b.drop||"").split(",")[0])}<br>` +
     `<strong>Date:</strong> ${escapeHTML(b.date)||"—"}`;
   document.getElementById("assignModal").style.display = "flex";
+  loadAssignRecommendation(id);
+}
+function _adminCallable(name) { return firebase.app().functions("asia-south1").httpsCallable(name); }
+// Phase 2B shadow mode: show the engine's recommendation; the admin still chooses.
+function loadAssignRecommendation(id) {
+  const box = document.getElementById("assignRecommendation");
+  if (!box) return;
+  box.textContent = "Finding the best driver…";
+  _adminCallable("adminGetAssignmentRecommendation")({ bookingId: id }).then(r => {
+    if (assigningId !== id) return;
+    const rec = r.data || {}; const top = (rec.top || [])[0];
+    if (!top) {
+      const why = Object.entries(rec.excludedCounts || {}).map(([k, v]) => k.replace(/_/g, " ") + " ×" + v).join(", ");
+      box.innerHTML = "🤖 <strong>No eligible driver</strong>" + (why ? " — " + escapeHTML(why) : "");
+      return;
+    }
+    box.innerHTML = `🤖 Recommended: <strong>${escapeHTML(top.name || "Driver")}</strong> (score ${Number(top.score).toFixed(2)}) — ${escapeHTML((top.reasons || []).join(" · "))}` +
+      ` <button type="button" class="btn-cancel" style="padding:2px 8px;margin-left:6px" onclick="document.getElementById('assignSelect').value='${escapeHTML(top.uid)}'">Use</button>` +
+      `<div style="margin-top:3px">${rec.eligibleCount} eligible of ${rec.candidates} drivers · shadow mode (nothing is assigned automatically)</div>`;
+  }).catch(() => { if (assigningId === id) box.textContent = "Recommendation unavailable — assign manually."; });
 }
 function closeAssignModal() { document.getElementById("assignModal").style.display = "none"; assigningId = null; }
 function populateAssignSelect() {
@@ -1416,12 +1456,24 @@ function confirmAssign() {
   requireAdmin(() => {
     const driverUid = document.getElementById("assignSelect").value;
     if (!driverUid) { toast("⚠️ Select a driver"); return; }
-    const driver = allDrivers.find(d => d.id === driverUid);
-    const db = window._firebase.db;
-    db.collection("bookings").doc(assigningId).update({ driverUid, driverName:driver?.name||"Driver", driverPhone:driver?.phone||"", status:"assigned" })
-      .then(()=>db.collection("users").doc(driverUid).update({ currentBooking:assigningId }))
-      .then(()=>{ toast("✅ Driver assigned!"); closeAssignModal(); })
-      .catch(e=>toast("❌ "+e.message));
+    // Server-side assignment (Phase 2B): one transaction over the booking, the
+    // driver's schedule lock and users.currentBooking; eligibility + conflict checks.
+    const b = allBookings.find(x => x.id === assigningId) || {};
+    const call = (overrideReason) => _adminCallable("adminAssignDriver")({ bookingId: assigningId, driverUid, expectedDriverUid: b.driverUid || null, overrideReason });
+    call().catch(e => {
+      const reasons = e && e.details && e.details.reasons;
+      if (reasons && reasons.length) {
+        const why = prompt("This driver isn't eligible (" + reasons.join(", ") + ").\nTo assign anyway, enter a reason (at least 10 characters):");
+        if (why && why.trim().length >= 10) return call(why.trim());
+        throw new Error("Assignment cancelled.");
+      }
+      throw e;
+    }).then(r => {
+      if (!r) return;
+      const w = (r.data && r.data.warnings) || [];
+      toast(w.length ? "✅ Driver assigned (note: " + w.join(", ") + ")" : "✅ Driver assigned!");
+      closeAssignModal();
+    }).catch(e => toast("❌ " + (e && e.message ? e.message : "Could not assign")));
   });
 }
 

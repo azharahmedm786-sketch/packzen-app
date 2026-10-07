@@ -522,7 +522,7 @@ function driverLogin() {
 function driverSignOut() {
   stopLocationSharing();
   waitFB(() => {
-    if (driverUser) window._firebase.db.collection("users").doc(driverUser.uid).update({ isOnline: false });
+    if (driverUser) { window._firebase.db.collection("users").doc(driverUser.uid).update({ isOnline: false }); _writePresence({ online: false }); }
     window._firebase.auth.signOut().then(() => {
       document.getElementById("driverApp").classList.remove("active");
       document.getElementById("bottomNav").classList.remove("active"); // hide bottom nav
@@ -568,11 +568,32 @@ waitFB(() => {
   });
 });
 
+/* PRESENCE (Phase 2A dual-write): users/{uid} stays the source the current
+   screens read; driverPresence/{uid} is the new model. Best-effort — a failed
+   presence write never interrupts the driver. */
+const PZ_DRIVER_APP_VERSION = "driver-web-2a";
+function _geohash(lat, lng, precision) {
+  const B = "0123456789bcdefghjkmnpqrstuvwxyz"; let idx = 0, bit = 0, even = true, h = "";
+  let la0 = -90, la1 = 90, ln0 = -180, ln1 = 180;
+  while (h.length < (precision || 7)) {
+    if (even) { const m = (ln0 + ln1) / 2; if (lng >= m) { idx = idx * 2 + 1; ln0 = m; } else { idx *= 2; ln1 = m; } }
+    else { const m = (la0 + la1) / 2; if (lat >= m) { idx = idx * 2 + 1; la0 = m; } else { idx *= 2; la1 = m; } }
+    even = !even; if (++bit === 5) { h += B[idx]; bit = 0; idx = 0; }
+  }
+  return h;
+}
+function _writePresence(fields) {
+  if (!driverUser) return;
+  const data = Object.assign({}, fields, { updatedAt: firebase.firestore.FieldValue.serverTimestamp(), appVersion: PZ_DRIVER_APP_VERSION });
+  window._firebase.db.collection("driverPresence").doc(driverUser.uid).set(data, { merge: true }).catch(() => {});
+}
+
 /* ONLINE TOGGLE */
 function toggleOnline(online) {
   if (!driverUser) return;
   setOnlineUI(online);
   window._firebase.db.collection("users").doc(driverUser.uid).update({ isOnline: online });
+  _writePresence({ online: !!online });
   if (online) startLocationSharing();
   else stopLocationSharing();
 }
@@ -877,6 +898,7 @@ function shareLocation() {
       if (driverUser) {
         const db = window._firebase.db;
         db.collection("users").doc(driverUser.uid).update({ lat, lng, locationUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        _writePresence({ lat, lng, geohash: _geohash(lat, lng, 7) });
         if (currentBookingId) db.collection("bookings").doc(currentBookingId).update({ driverLat: lat, driverLng: lng, locationUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       }
       updateDriverMap(lat, lng);

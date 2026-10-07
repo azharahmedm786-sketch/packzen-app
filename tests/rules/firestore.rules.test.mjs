@@ -13,7 +13,7 @@
  */
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { readFileSync } from "fs";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 
 const RULES_PATH = new URL("../../firestore.rules", import.meta.url);
 
@@ -123,6 +123,44 @@ await t("A23", "Driver reads completion secrets", false, () => getDoc(doc(drv, "
 // Supported path: verifyCompletionOtp / adminCompleteBooking run with the Admin SDK (rules bypassed).
 await t("A24", "Server (Admin SDK, as adminCompleteBooking) completes a booking", true, () => env.withSecurityRulesDisabled((ctx) =>
   updateDoc(doc(ctx.firestore(), "bookings/s_complete"), { status: "delivered", completionMethod: "admin_override", completionOverride: { by: "admin1", reason: "customer unreachable after delivery" } })));
+
+/* ── Phase 2A/2B: driver profiles, presence, recommendations, legacy drivers ── */
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const f = ctx.firestore();
+  await setDoc(doc(f, "driverProfiles/drv1"), { status: "active", serviceAreas: ["bangalore"], vehicleIds: ["tata_ace"], skills: ["moving"], maxJobsPerDay: 3 });
+  await setDoc(doc(f, "driverProfiles/drv2"), { status: "active", serviceAreas: ["bangalore"], vehicleIds: [], skills: ["moving"], maxJobsPerDay: 3 });
+  await setDoc(doc(f, "drivers/drv1"), { name: "Legacy" });
+  await setDoc(doc(f, "assignmentRecommendations/bk_rec"), { bookingId: "bk_rec", top: [] });
+});
+await t("P1", "Driver reads own driverProfile", true, () => getDoc(doc(drv, "driverProfiles/drv1")));
+await t("P2", "Driver reads another driver's profile", false, () => getDoc(doc(drv, "driverProfiles/drv2")));
+await t("P3", "Customer reads a driverProfile", false, () => getDoc(doc(cust, "driverProfiles/drv1")));
+await t("P4", "Advisor reads a driverProfile", true, () => getDoc(doc(adv, "driverProfiles/drv1")));
+await t("P5", "Verified admin reads a driverProfile", true, () => getDoc(doc(admin, "driverProfiles/drv1")));
+await t("P6", "Driver edits own profile (vehicles)", false, () => updateDoc(doc(drv, "driverProfiles/drv1"), { vehicleIds: ["truck_22ft"] }));
+await t("P7", "Admin client writes a profile directly (callable only)", false, () => setDoc(doc(admin, "driverProfiles/drv2"), { status: "active" }));
+await t("P8", "Advisor writes a profile", false, () => updateDoc(doc(adv, "driverProfiles/drv1"), { status: "suspended" }));
+await t("PR1", "Driver creates own presence (allowed fields, server time)", true, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, updatedAt: serverTimestamp(), appVersion: "driver-web-2a" }));
+await t("PR2", "Driver updates own presence location (merge)", true, () => setDoc(doc(drv, "driverPresence/drv1"), { lat: 12.97, lng: 77.59, geohash: "tdr1v9q", updatedAt: serverTimestamp(), appVersion: "driver-web-2a" }, { merge: true }));
+await t("PR3", "Driver writes another driver's presence", false, () => setDoc(doc(drv, "driverPresence/drv2"), { online: true, updatedAt: serverTimestamp() }));
+await t("PR4", "Driver adds a non-allowed field to presence", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, rating: 5, updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR5", "Driver sets a client-chosen updatedAt", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, updatedAt: new Date(0) }, { merge: true }));
+await t("PR6", "Driver writes out-of-range latitude", false, () => setDoc(doc(drv, "driverPresence/drv1"), { lat: 123, updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR7", "Driver writes non-boolean online", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: "yes", updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR8", "Customer writes a presence doc", false, () => setDoc(doc(cust, "driverPresence/cust1"), { online: true, updatedAt: serverTimestamp() }));
+await t("PR9", "Customer reads driver presence", false, () => getDoc(doc(cust, "driverPresence/drv1")));
+await t("PR10", "Advisor reads driver presence", true, () => getDoc(doc(adv, "driverPresence/drv1")));
+await t("PR11", "Driver deletes own presence", false, () => deleteDoc(doc(drv, "driverPresence/drv1")));
+await t("R1", "Advisor reads a shadow recommendation", true, () => getDoc(doc(adv, "assignmentRecommendations/bk_rec")));
+await t("R2", "Driver reads a shadow recommendation", false, () => getDoc(doc(drv, "assignmentRecommendations/bk_rec")));
+await t("R3", "Customer reads a shadow recommendation", false, () => getDoc(doc(cust, "assignmentRecommendations/bk_rec")));
+await t("R4", "Admin client writes a recommendation", false, () => setDoc(doc(admin, "assignmentRecommendations/bk_rec"), { top: ["x"] }));
+await t("L1", "Customer reads legacy drivers/{uid} (R2-22 fixed)", false, () => getDoc(doc(cust, "drivers/drv1")));
+await t("L2", "Other driver reads legacy drivers/{uid}", false, () => getDoc(doc(drv2, "drivers/drv1")));
+await t("L3", "Driver reads own legacy drivers/{uid}", true, () => getDoc(doc(drv, "drivers/drv1")));
+await t("L4", "Advisor reads legacy drivers/{uid}", true, () => getDoc(doc(adv, "drivers/drv1")));
+await t("S1x", "Driver reads a driverSchedule lock (server-only)", false, () => getDoc(doc(drv, "driverSchedule/drv1_2026-10-10")));
+await t("S2x", "Admin client writes appConfig (server-only)", false, () => setDoc(doc(admin, "appConfig/assignment"), { shadowEnabled: false }));
 
 /* ── SMS / WhatsApp queues (I-04) ───────────────────────────────────── */
 await t("Q1", "Customer queues an SMS", false, () => addDoc(collection(cust, "smsQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
