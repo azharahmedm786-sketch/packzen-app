@@ -1,0 +1,287 @@
+{
+ "now": 1791603000000,
+ "booking": {
+  "id": "bkGolden001",
+  "bookingType": "move",
+  "vehicleUsed": "truck_17ft",
+  "date": "2026-10-11",
+  "shiftTime": "09:00",
+  "pickupCoords": {
+   "lat": 12.9352,
+   "lng": 77.6245
+  }
+ },
+ "drivers": [
+  {
+   "uid": "drvAlpha01",
+   "name": "Alpha",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "truck_17ft"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": {
+     "lat": 12.935,
+     "lng": 77.624
+    },
+    "rating": {
+     "avg": 4.8,
+     "count": 20
+    },
+    "acceptance": {
+     "offered": 10,
+     "accepted": 9
+    },
+    "lastOfferedAt": 1791495000000
+   },
+   "presence": null,
+   "jobsOnDate": []
+  },
+  {
+   "uid": "drvBravo02",
+   "name": "Bravo",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "truck_22ft"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": {
+     "lat": 13.03,
+     "lng": 77.59
+    },
+    "rating": {
+     "avg": 4.2,
+     "count": 8
+    },
+    "acceptance": {
+     "offered": 5,
+     "accepted": 3
+    },
+    "lastOfferedAt": 1791595800000
+   },
+   "presence": null,
+   "jobsOnDate": [
+    {
+     "bookingId": "other1",
+     "startMin": 420
+    }
+   ]
+  },
+  {
+   "uid": "drvCharlie3",
+   "name": "Charlie",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "tata_ace"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": null,
+    "rating": {
+     "avg": null,
+     "count": 0
+    },
+    "acceptance": {
+     "offered": 0,
+     "accepted": 0
+    },
+    "lastOfferedAt": null
+   },
+   "presence": null,
+   "jobsOnDate": []
+  },
+  {
+   "uid": "drvDelta004",
+   "name": "Delta",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "truck_17ft",
+     "tata_ace"
+    ],
+    "skills": [
+     "moving",
+     "packing"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": {
+     "lat": 12.97,
+     "lng": 77.75
+    },
+    "rating": {
+     "avg": null,
+     "count": 0
+    },
+    "acceptance": {
+     "offered": 0,
+     "accepted": 0
+    },
+    "lastOfferedAt": null
+   },
+   "presence": null,
+   "jobsOnDate": []
+  },
+  {
+   "uid": "drvEcho0005",
+   "name": "Echo",
+   "profile": {
+    "status": "suspended",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "truck_22ft"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": null,
+    "rating": {
+     "avg": null,
+     "count": 0
+    },
+    "acceptance": {
+     "offered": 0,
+     "accepted": 0
+    },
+    "lastOfferedAt": null
+   },
+   "presence": null,
+   "jobsOnDate": []
+  },
+  {
+   "uid": "drvFoxtrot6",
+   "name": "Foxtrot",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [],
+    "vehicleIds": [
+     "truck_17ft"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 3,
+    "homeBase": {
+     "lat": 12.9,
+     "lng": 77.6
+    },
+    "rating": {
+     "avg": null,
+     "count": 0
+    },
+    "acceptance": {
+     "offered": 0,
+     "accepted": 0
+    },
+    "lastOfferedAt": null
+   },
+   "presence": null,
+   "jobsOnDate": []
+  },
+  {
+   "uid": "drvGolf0007",
+   "name": "Golf",
+   "profile": {
+    "status": "active",
+    "serviceAreas": [
+     "bangalore"
+    ],
+    "vehicleIds": [
+     "truck_17ft"
+    ],
+    "skills": [
+     "moving"
+    ],
+    "maxJobsPerDay": 1,
+    "homeBase": null,
+    "rating": {
+     "avg": null,
+     "count": 0
+    },
+    "acceptance": {
+     "offered": 0,
+     "accepted": 0
+    },
+    "lastOfferedAt": null
+   },
+   "presence": null,
+   "jobsOnDate": [
+    {
+     "bookingId": "other2",
+     "startMin": 1080
+    }
+   ]
+  }
+ ],
+ "expected": {
+  "ranked": [
+   {
+    "uid": "drvDelta004",
+    "score": 0.844,
+    "distanceKm": 14.1
+   },
+   {
+    "uid": "drvAlpha01",
+    "score": 0.8193,
+    "distanceKm": 0.1
+   }
+  ],
+  "excluded": [
+   {
+    "uid": "drvBravo02",
+    "reasons": [
+     "schedule_conflict"
+    ]
+   },
+   {
+    "uid": "drvCharlie3",
+    "reasons": [
+     "vehicle_too_small"
+    ]
+   },
+   {
+    "uid": "drvEcho0005",
+    "reasons": [
+     "status_suspended"
+    ]
+   },
+   {
+    "uid": "drvFoxtrot6",
+    "reasons": [
+     "area_mismatch"
+    ]
+   },
+   {
+    "uid": "drvGolf0007",
+    "reasons": [
+     "at_capacity"
+    ]
+   }
+  ]
+ }
+}

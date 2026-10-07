@@ -293,10 +293,42 @@ service cloud.firestore {
     }
 
     // DRIVERS
+    // Legacy collection (not read by the current admin/advisor/driver/partner apps;
+    // partners use partners/{uid}/drivers). No longer readable by every signed-in
+    // user (R2-22) — staff and the driver themself only. Kept until confirmed unused.
     match /drivers/{driverUid} {
-      allow read: if isAuth();
+      allow read: if isAdmin() || isAdvisor() || (isDriver() && request.auth.uid == driverUid);
       allow write: if isAdmin() || (isDriver() && request.auth.uid == driverUid);
     }
+
+    // Phase 2A — unified driver profile. Written ONLY by the adminUpsertDriverProfile
+    // callable (Admin SDK); no client may write it.
+    match /driverProfiles/{uid} {
+      allow read: if isAdmin() || isAdvisor() || (isDriver() && request.auth.uid == uid);
+      allow write: if false;
+    }
+
+    // Phase 2A — live driver presence (dual-written with users/{uid} by driver.html).
+    // Only the driver, only their own doc, only these fields; updatedAt must be the server time.
+    match /driverPresence/{uid} {
+      allow read: if isAdmin() || isAdvisor() || (isDriver() && request.auth.uid == uid);
+      allow create, update: if isDriver() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['online', 'lat', 'lng', 'geohash', 'updatedAt', 'appVersion'])
+        && request.resource.data.updatedAt == request.time
+        && (!('online' in request.resource.data) || request.resource.data.online is bool)
+        && (!('lat' in request.resource.data) || (request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90))
+        && (!('lng' in request.resource.data) || (request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180))
+        && (!('geohash' in request.resource.data) || (request.resource.data.geohash is string && request.resource.data.geohash.size() <= 12))
+        && (!('appVersion' in request.resource.data) || (request.resource.data.appVersion is string && request.resource.data.appVersion.size() <= 32));
+      allow delete: if false;
+    }
+
+    // Phase 2B — shadow-mode recommendations (server-written; staff read only).
+    match /assignmentRecommendations/{bookingId} {
+      allow read: if isAdmin() || isAdvisor();
+      allow write: if false;
+    }
+    // driverSchedule/* and appConfig/* stay server-only via the catch-all deny.
 
     // DAMAGE CLAIMS
     match /damageClaims/{claimId} {
