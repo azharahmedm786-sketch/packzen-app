@@ -177,6 +177,7 @@
 <div class="toast" id="adminToast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
@@ -1237,7 +1238,18 @@ function filterBookings(q) {
 
   renderBookingsTable(filteredBookings);
 }
+// "Delivered" can't be written from the browser (firestore.rules). Normally the
+// driver completes with the customer's code; this admin-only emergency
+// override goes through the server and records a reason.
+function adminEmergencyComplete(id) {
+  const reason = (prompt("Emergency completion without the customer's code.\nEnter the reason (at least 10 characters):") || "").trim();
+  if (reason.length < 10) { toast("Completion cancelled — a reason of at least 10 characters is required."); return; }
+  firebase.app().functions("asia-south1").httpsCallable("adminCompleteBooking")({ bookingId: id, reason })
+    .then(() => toast("✅ Booking marked delivered (admin override recorded)"))
+    .catch(e => toast("❌ " + (e && e.message ? e.message : "Could not complete the booking")));
+}
 function updateStatus(id, status) {
+  if (status === "delivered") { requireAdmin(() => adminEmergencyComplete(id)); return; }
   requireAdmin(() => {
     window._firebase.db.collection("bookings").doc(id).update({ status })
       .then(() => toast("✅ Status → " + cap(status)))

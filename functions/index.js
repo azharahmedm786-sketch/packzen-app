@@ -503,6 +503,10 @@ exports.sendCompletionOtp = functions.region("asia-south1").runWith({ secrets: [
 exports.verifyCompletionOtp = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
   .https.onCall(completionOtp.callable(completionOtp.handleVerifyOtp, completionOtpDeps, toHttpsError));
 
+// Admin-only emergency completion without the customer's code (reason recorded).
+exports.adminCompleteBooking = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
+  .https.onCall(completionOtp.callable(completionOtp.handleAdminOverride, completionOtpDeps, toHttpsError));
+
 // Hourly exception digest -> admin email only when something new needs attention.
 exports.opsDigest = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })
   .pubsub.schedule("every 60 minutes").timeZone("Asia/Kolkata")

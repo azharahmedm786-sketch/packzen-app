@@ -20,7 +20,9 @@ const crypto = require("crypto");
 
 const SECRETS = "bookingSecrets";
 const BOOKINGS = "bookings";
-const OTP_STATUSES = ["assigned", "packing", "transit"];
+// The code is shown/sent only while the job is in transit (awaiting completion).
+const OTP_STATUSES = ["transit"];
+const OVERRIDE_FROM = ["confirmed", "assigned", "packing", "transit"];
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60 * 1000;
 
@@ -130,7 +132,7 @@ async function handleVerifyOtp(data, context, deps) {
     }
     tx.update(sRef, { verifiedAt: now, attempts: 0, lockedUntil: 0 });
     tx.update(bRef, { status: "delivered", deliveredAt: deps.serverTimestamp(), completionVerifiedAt: deps.serverTimestamp(),
-                      completionVerifiedBy: isAdmin && b.driverUid !== uid ? "admin" : "driver" });
+                      completionMethod: "otp", completionVerifiedBy: isAdmin && b.driverUid !== uid ? "admin" : "driver" });
     return { ok: true };
   });
   if (result.error) {
@@ -138,6 +140,36 @@ async function handleVerifyOtp(data, context, deps) {
     throw new OtpError(result.error[0], result.error[1]);
   }
   (deps.logger || console).info("completion_otp_verified", { bookingId, already: !!result.already });
+  return { ok: true, status: "delivered", already: !!result.already };
+}
+
+/**
+ * Admin EMERGENCY completion without the customer's code (e.g. customer
+ * unreachable after a verified delivery). Admin only, reason required,
+ * recorded on the booking. This is the ONLY way to set "delivered" without
+ * the code; firestore.rules block direct "delivered" writes for every role.
+ */
+async function handleAdminOverride(data, context, deps) {
+  const uid = context && context.auth && context.auth.uid;
+  if (!uid) throw new OtpError("unauthenticated", "Please sign in.");
+  if (!(await deps.isAdmin(context))) throw new OtpError("permission-denied", "Only admins can complete a job without the customer's code.");
+  const bookingId = data && data.bookingId;
+  const reason = data && typeof data.reason === "string" ? data.reason.trim() : "";
+  if (!validBookingId(bookingId)) throw new OtpError("invalid-argument", "Invalid booking.");
+  if (reason.length < 10 || reason.length > 300) throw new OtpError("invalid-argument", "Enter a reason (10–300 characters) for the emergency completion.");
+  const bRef = deps.db.collection(BOOKINGS).doc(bookingId);
+  const result = await deps.db.runTransaction(async (tx) => {
+    const snap = await tx.get(bRef);
+    if (!snap.exists) return { error: ["not-found", "Booking not found."] };
+    const b = snap.data();
+    if (b.status === "delivered") return { already: true };
+    if (!OVERRIDE_FROM.includes(b.status)) return { error: ["failed-precondition", "Only an active booking can be completed."] };
+    tx.update(bRef, { status: "delivered", deliveredAt: deps.serverTimestamp(), completionMethod: "admin_override",
+                      completionOverride: { by: uid, reason, at: deps.now(), fromStatus: b.status } });
+    return { ok: true };
+  });
+  if (result.error) throw new OtpError(result.error[0], result.error[1]);
+  (deps.logger || console).warn("completion_admin_override", { bookingId, by: uid, already: !!result.already });
   return { ok: true, status: "delivered", already: !!result.already };
 }
 
@@ -153,4 +185,4 @@ function callable(handler, depsFactory, toHttpsError) {
   };
 }
 
-module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, sendOtpEmail, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };
+module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, handleAdminOverride, sendOtpEmail, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };

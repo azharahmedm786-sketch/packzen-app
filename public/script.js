@@ -2160,7 +2160,7 @@ function updateTrackBanner(b) {
   });
   const otpRow = document.getElementById("tobOtpRow");
   const otpVal = document.getElementById("tobOtpValue");
-  const showOtp = ["assigned","packing","transit"].includes(b.status);
+  const showOtp = b.status === "transit"; // completion stage only
   if (otpRow) {
     otpRow.style.display = showOtp ? "block" : "none";
     if (showOtp && otpVal) {
@@ -3214,7 +3214,7 @@ const canClaim = b.status === "delivered" && !b.damageClaimed;
         // The card's action row (buttons, delivery OTP, invoice) keeps its previous
         // visibility; it used to be gated through the wider canReschedule condition.
         const showActionRow = !["transit","delivered","cancelled"].includes(b.status) || canRate || canClaim;
-const showOtp = ["assigned", "packing", "transit"].includes(b.status);
+const showOtp = b.status === "transit"; // completion stage only
         return `<div class="bk-card"> <div class="bk-card-top"><div class="bk-route">${escapeHTML((b.pickup||"?").split(",")[0])} → ${escapeHTML((b.drop||"?").split(",")[0])}</div><div class="bk-status" style="color:${color}">${icon} ${escapeHTML(capitalize(b.status||"confirmed"))}</div></div> <div class="bk-meta"><span>₹${(b.total||0).toLocaleString("en-IN")}</span><span>${escapeHTML(b.date)||"Date TBD"}</span><span style="font-size:.72rem;color:#5a6a8a">${escapeHTML(b.bookingRef)||""}</span></div> ${showActionRow?`
 ${canReschedule?`<button class="bk-btn reschedule" data-action="reschedule" data-id="${id}" data-ref="${b.bookingRef||id}" data-date="${b.date||""}">📅 Reschedule</button>`:""}
 ${showOtp ? `

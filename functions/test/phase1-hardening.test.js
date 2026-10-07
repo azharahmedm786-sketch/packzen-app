@@ -102,8 +102,8 @@ test("OTP: other driver, non-driver, customer and wrong status are rejected; adm
   await rejects(otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: code }, ctx("drv2"), deps), "permission-denied");
   await rejects(otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: code }, ctx("cust1"), deps), "permission-denied");
   await rejects(otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: "12a4" }, ctx("drv1"), deps), "invalid-argument");
-  const p = otpEnv("packing"); const c2 = (await otp.handleGetOtp({ bookingId: "bookingAA1" }, ctx("cust1"), p.deps)).otp;
-  await rejects(otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: c2 }, ctx("drv1"), p.deps), "failed-precondition");
+  const p = otpEnv("packing");
+  await rejects(otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: "1234" }, ctx("drv1"), p.deps), "failed-precondition");
   const r = await otp.handleVerifyOtp({ bookingId: "bookingAA1", otp: code }, ctx("adm"), deps);
   assert.ok(r.ok);
 });
@@ -127,6 +127,61 @@ test("OTP: no browser-generated OTP or driver-writable OTP/delivered left", () =
   const driver = fs.readFileSync(path.join(ROOT, "public/driver.html"), "utf8");
   assert.ok(driver.includes('_driverCallable("verifyCompletionOtp")') && !/Math\.random\(\) \* 9000/.test(driver) && !driver.includes("currentBookingData.deliveryOtp"));
   assert.ok(!/"deliveryOtp"/.test(fs.readFileSync(path.join(ROOT, "functions/index.js"), "utf8")));
+});
+
+/* ── completion-stage visibility + who may set "delivered" (review corrections) ── */
+test("code is exposed ONLY while the booking is in transit (not assigned/packing/delivered/cancelled/other)", async () => {
+  for (const st of ["pending", "confirmed", "assigned", "packing", "delivered", "completed", "cancelled"]) {
+    const e = otpEnv(st);
+    const r = await otp.handleGetOtp({ bookingId: "bookingAA1" }, ctx("cust1"), e.deps);
+    assert.deepStrictEqual(r, { available: false, status: st }, st);
+    assert.ok(!e.db.col("bookingSecrets").bookingAA1, "no code issued for " + st);
+    await rejects(otp.handleSendOtp({ bookingId: "bookingAA1" }, ctx("drv1"), e.deps), "failed-precondition");
+  }
+  const t = otpEnv("transit"); assert.ok((await otp.handleGetOtp({ bookingId: "bookingAA1" }, ctx("cust1"), t.deps)).available);
+  await rejects(otp.handleGetOtp({ bookingId: "bookingAA1" }, ctx("otherCustomer"), t.deps), "permission-denied");
+  const script = fs.readFileSync(path.join(ROOT, "public/script.js"), "utf8");
+  assert.strictEqual((script.match(/const showOtp = b\.status === "transit";/g) || []).length, 2, "UI shows the code only in transit");
+});
+test("admin emergency completion: admin only, reason required, recorded; others rejected", async () => {
+  const { db, deps } = otpEnv("packing");
+  for (const who of ["drv1", "cust1", "advisor1"]) await rejects(otp.handleAdminOverride({ bookingId: "bookingAA1", reason: "customer unreachable after delivery" }, ctx(who), deps), "permission-denied");
+  await rejects(otp.handleAdminOverride({ bookingId: "bookingAA1", reason: "short" }, ctx("adm"), deps), "invalid-argument");
+  const r = await otp.handleAdminOverride({ bookingId: "bookingAA1", reason: "customer unreachable after delivery" }, ctx("adm"), deps);
+  assert.ok(r.ok); const b = db.col("bookings").bookingAA1;
+  assert.strictEqual(b.status, "delivered"); assert.strictEqual(b.completionMethod, "admin_override");
+  assert.deepStrictEqual(b.completionOverride, { by: "adm", reason: "customer unreachable after delivery", at: 1760000000000, fromStatus: "packing" });
+  assert.strictEqual((await otp.handleAdminOverride({ bookingId: "bookingAA1", reason: "customer unreachable after delivery" }, ctx("adm"), deps)).already, true);
+  const c = otpEnv("cancelled");
+  await rejects(otp.handleAdminOverride({ bookingId: "bookingAA1", reason: "customer unreachable after delivery" }, ctx("adm"), c.deps), "failed-precondition");
+  assert.strictEqual(c.db.col("bookings").bookingAA1.status, "cancelled");
+});
+test("rules: no client role can write 'delivered' (driver, customer, advisor, admin); create can't start delivered", () => {
+  const rules = fs.readFileSync(path.join(ROOT, "firestore.rules"), "utf8");
+  const start = rules.indexOf("match /bookings/{bookingId}");
+  const b = rules.slice(start, rules.indexOf("    match /", start + 10));
+  assert.ok(b.length > 500, "bookings block found");
+  // driver: delivered is not a permitted step
+  assert.ok(!/to == 'delivered'/.test(rules), "driver step to delivered");
+  assert.ok(/\(from == 'packing' && to == 'transit'\);/.test(rules));
+  // customer: only cancel/reschedule/rating/damage field sets; status may only become 'cancelled'
+  assert.ok(/request\.resource\.data\.status == 'cancelled'/.test(b));
+  assert.ok(!/customerUid == request\.auth\.uid[\s\S]{0,400}'delivered'/.test(b.replace(/!= 'delivered'/g, "")), "customer path mentions delivered");
+  // advisor and admin updates exclude moving into delivered; create excludes delivered
+  assert.ok(/isAdvisor\(\)\s*&& onlyFields\(\['driverUid', 'driverName', 'driverPhone', 'status'\]\)\s*&& request\.resource\.data\.status != 'delivered';/.test(b));
+  assert.ok(/allow update: if isAdmin\(\)\s*&& \(request\.resource\.data\.status != 'delivered' \|\| resource\.data\.status == 'delivered'\);/.test(b));
+  assert.ok(/\(isAdvisor\(\) \|\| isAdmin\(\)\)\s*&& request\.resource\.data\.status != 'delivered';/.test(b));
+  assert.ok(!/allow read, update, delete: if isAdmin\(\);/.test(b), "unrestricted admin update remains");
+  // every other 'allow update' in the bookings block either excludes delivered or can't touch status
+  const updates = b.match(/allow update:[\s\S]*?;/g) || [];
+  for (const u of updates) assert.ok(/!= 'delivered'|status == 'cancelled'|isAllowedDriverStep|onlyFields\(\['(date|driverRating|damageClaimed)/.test(u) || /status/.test(u) === false, "unchecked update path: " + u.slice(0, 80));
+});
+test("UIs route completion through the server (driver OTP callable, admin override callable)", () => {
+  const admin = fs.readFileSync(path.join(ROOT, "public/admin.html"), "utf8");
+  assert.ok(/if \(status === "delivered"\) \{ requireAdmin\(\(\) => adminEmergencyComplete\(id\)\); return; \}/.test(admin));
+  assert.ok(admin.includes('httpsCallable("adminCompleteBooking")') && admin.includes("firebase-functions-compat.js"));
+  const idx = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
+  assert.ok(/exports\.adminCompleteBooking = /.test(idx));
 });
 
 /* ── rate limits ── */
