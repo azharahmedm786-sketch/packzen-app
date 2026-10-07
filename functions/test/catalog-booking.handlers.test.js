@@ -18,7 +18,9 @@ function makeDb(){
     getAll: async (...refs)=> refs.map(r=>({exists:!!col(r._n)[r.id], id:r.id, data:()=>col(r._n)[r.id]})),
     runTransaction: async fn => fn({
       get: async ref=>({exists:!!col(ref._n)[ref.id], data:()=>col(ref._n)[ref.id]}),
-      set: (ref,d)=>{ col(ref._n)[ref.id]=d; }, delete: ref=>{ delete col(ref._n)[ref.id]; } })
+      set: (ref,d)=>{ col(ref._n)[ref.id]=d; }, delete: ref=>{ delete col(ref._n)[ref.id]; },
+      update: (ref,d)=>{ Object.assign(col(ref._n)[ref.id],d); },
+      create: (ref,d)=>{ if (col(ref._n)[ref.id]) throw new Error("ALREADY_EXISTS"); col(ref._n)[ref.id]=d; } })
   };
   return db;
 }
@@ -29,7 +31,8 @@ let tokenUid = "uid1";
 Object.defineProperty(admin, "auth", { value: () => ({ verifyIdToken: async t => { if(t!=="good") throw new Error("bad"); return {uid:tokenUid}; } }), configurable:true });
 
 // fake Razorpay
-require.cache[require.resolve("razorpay")] = { exports: function(){ this.orders={ create: async o=>({id:"order_1",amount:o.amount,currency:o.currency}) }; }, loaded:true, id:"x", filename:"x", children:[], paths:[] };
+const PAYMENTS = {};
+require.cache[require.resolve("razorpay")] = { exports: function(){ this.orders={ create: async o=>({id:"order_TEST0001",amount:o.amount,currency:o.currency}) }; this.payments={ fetch: async id=>{ if(!PAYMENTS[id]) throw new Error("not found"); return PAYMENTS[id]; } }; }, loaded:true, id:"x", filename:"x", children:[], paths:[] };
 
 col("serviceCategories")["ac-services"]={isActive:true,name:"AC"}; col("serviceCategories")["moving"]={isActive:true};
 col("addons")["ac-installation"]={isActive:true,categoryId:"ac-services",name:"AC Install",basePrice:1400,pricingUnit:"per_item"};
@@ -60,26 +63,47 @@ const call = async (fn, body, token="good") => { const r=res(); await fn({method
   assert.strictEqual((await call(fns.createServiceRazorpayOrder,{},"nope")).code,401);
   // estimate item not payable online
   let r = await call(fns.createServiceRazorpayOrder,{requestId:"req-00004",items:[{type:"services",id:"local"}],details}); assert.strictEqual(r.code,400); assert(/Pay on service/.test(r.body.error));
-  // good order → amount from server, pending stored
+  // good order -> amount from server, pending stored in the SHARED pendingPayments (flow:"service")
   r = await call(fns.createServiceRazorpayOrder,{requestId:"req-00005",items:[{type:"addons",id:"ac-installation",qty:2}],details,amount:1,total:1});
-  assert.strictEqual(r.code,200); assert.strictEqual(r.body.amount,280000); assert.strictEqual(r.body.orderId,"order_1");
-  assert.strictEqual(col("pendingServicePayments")["order_1"].amount,2800);
+  assert.strictEqual(r.code,200,JSON.stringify(r.body)); assert.strictEqual(r.body.amount,280000); assert.strictEqual(r.body.orderId,"order_TEST0001");
+  const pend = col("pendingPayments")["order_TEST0001"];
+  assert.strictEqual(pend.flow,"service"); assert.strictEqual(pend.payNow,2800); assert.strictEqual(pend.grandTotal,2800);
+  assert.strictEqual(pend.uid,"uid1"); assert.strictEqual(pend.status,"created"); assert(!("email" in (pend.details||{})),"typed email not trusted");
+  assert(!col("pendingServicePayments")["order_TEST0001"],"no new legacy pending docs");
 
-  // verify: bad signature
-  const sig = id => crypto.createHmac("sha256","sekret").update("order_1|"+id).digest("hex");
-  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_1",razorpay_payment_id:"pay_1",razorpay_signature:"deadbeef"}); assert.strictEqual(r.code,400);
-  // verify: other user's account blocked, and pending survives
-  tokenUid="uid2"; r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_1",razorpay_payment_id:"pay_1",razorpay_signature:sig("pay_1")}); assert.strictEqual(r.code,403); assert(col("pendingServicePayments")["order_1"]);
+  const sig = id => crypto.createHmac("sha256","sekret").update("order_TEST0001|"+id).digest("hex");
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:"0".repeat(64)}); assert.strictEqual(r.code,400);
+  PAYMENTS["pay_1abcdef"]={id:"pay_1abcdef",order_id:"order_TEST0001",amount:280000,currency:"INR",status:"captured"};
+  tokenUid="uid2"; r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:sig("pay_1abcdef")}); assert.strictEqual(r.code,403); assert(col("pendingPayments")["order_TEST0001"]);
   tokenUid="uid1";
-  // verify: success creates a paid booking once; retry returns same ref
-  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_1",razorpay_payment_id:"pay_1",razorpay_signature:sig("pay_1")});
+  PAYMENTS["pay_1abcdef"].status="authorized";
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:sig("pay_1abcdef")});
+  assert.strictEqual(r.code,202); assert(!col("bookings")["order_TEST0001"]);
+  PAYMENTS["pay_1abcdef"].status="captured"; PAYMENTS["pay_1abcdef"].amount=100;
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:sig("pay_1abcdef")});
+  assert.strictEqual(r.code,400); assert(!col("bookings")["order_TEST0001"]);
+  PAYMENTS["pay_1abcdef"].amount=280000;
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:sig("pay_1abcdef")});
   assert.strictEqual(r.code,200,JSON.stringify(r.body)); const ref1=r.body.bookingRef;
-  const paid = Object.values(col("bookings")).find(b=>b.paymentId==="pay_1"); assert.strictEqual(paid.paid,2800); assert.strictEqual(paid.paymentStatus,"paid"); assert.strictEqual(paid.status,"confirmed"); assert(!col("pendingServicePayments")["order_1"]);
-  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_1",razorpay_payment_id:"pay_1",razorpay_signature:sig("pay_1")});
-  assert.strictEqual(r.code,200); assert.strictEqual(r.body.bookingRef,ref1);
-  assert.strictEqual(Object.values(col("bookings")).filter(b=>b.paymentId==="pay_1").length,1);
-  // unknown order with valid signature
-  const sig2 = crypto.createHmac("sha256","sekret").update("order_9|pay_9").digest("hex");
-  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_9",razorpay_payment_id:"pay_9",razorpay_signature:sig2}); assert.strictEqual(r.code,400);
+  const paid = col("bookings")["order_TEST0001"];
+  assert.strictEqual(paid.bookingType,"service"); assert.strictEqual(paid.paid,2800); assert.strictEqual(paid.total,2800); assert.strictEqual(paid.balanceDue,0);
+  assert.strictEqual(paid.paymentStatus,"paid"); assert.strictEqual(paid.status,"confirmed"); assert.strictEqual(paid.customerUid,"uid1"); assert.strictEqual(paid.orderId,"order_TEST0001");
+  assert.strictEqual(col("pendingPayments")["order_TEST0001"].status,"consumed");
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_TEST0001",razorpay_payment_id:"pay_1abcdef",razorpay_signature:sig("pay_1abcdef")});
+  assert.strictEqual(r.code,200); assert.strictEqual(r.body.bookingRef,ref1); assert.strictEqual(r.body.duplicate,true);
+  assert.strictEqual(Object.values(col("bookings")).filter(b=>b.paymentId==="pay_1abcdef").length,1);
+  const sig2 = crypto.createHmac("sha256","sekret").update("order_9zzzzz|pay_9zzzzzz").digest("hex");
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_9zzzzz",razorpay_payment_id:"pay_9zzzzzz",razorpay_signature:sig2}); assert(r.code>=400 && r.code<500);
+
+  // legacy drain: orders created before this release (pendingServicePayments) are now capture-checked
+  col("pendingServicePayments")["order_LEGACY1"]={uid:"uid1",amount:1400,requestId:"req-legacy",details,lines:[{type:"addons",id:"ac-installation",name:"AC Install",qty:1,unitPrice:1400,lineTotal:1400}],estimatedTotal:1400};
+  const sigL = crypto.createHmac("sha256","sekret").update("order_LEGACY1|pay_LEGACY01").digest("hex");
+  PAYMENTS["pay_LEGACY01"]={id:"pay_LEGACY01",order_id:"order_LEGACY1",amount:140000,currency:"INR",status:"authorized"};
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_LEGACY1",razorpay_payment_id:"pay_LEGACY01",razorpay_signature:sigL});
+  assert.strictEqual(r.code,202); assert(col("pendingServicePayments")["order_LEGACY1"]);
+  PAYMENTS["pay_LEGACY01"].status="captured";
+  r = await call(fns.verifyServiceRazorpayPayment,{razorpay_order_id:"order_LEGACY1",razorpay_payment_id:"pay_LEGACY01",razorpay_signature:sigL});
+  assert.strictEqual(r.code,200,JSON.stringify(r.body)); assert(col("bookings")["order_LEGACY1"],"legacy booking id = order id");
+  assert.strictEqual(col("bookings")["order_LEGACY1"].balanceDue,0);
   console.log("ALL HANDLER TESTS PASSED");
 })().catch(e=>{console.error("FAIL:",e);process.exit(1)});

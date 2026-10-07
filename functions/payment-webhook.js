@@ -184,6 +184,7 @@ async function handleWebhook(req, deps) {
   } catch (e) {
     // Transient (Firestore/network): leave event "processing" so Razorpay's retry re-runs it.
     logger.error("rzp_webhook_error", { event: evt.event, eventId, message: String(e && e.message).slice(0, 120) });
+    if (deps.recordFailure) await deps.recordFailure("razorpayWebhook", "processing_error");
     return { status: 500, body: { ok: false } };
   }
   return finish(200, result);
@@ -240,6 +241,7 @@ async function reconcilePendingPayments(deps, opts) {
     } catch (e) {
       summary.errors++;
       logger.warn("rzp_reconcile_order_error", { orderId: doc.id, message: String(e && e.message).slice(0, 120) });
+      if (deps.recordFailure) await deps.recordFailure("reconcileRazorpayPayments", "order_error");
     }
   }
   logger.info("rzp_reconcile_summary", summary);

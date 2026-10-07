@@ -18,6 +18,12 @@ const MSG91_AUTHKEY       = defineSecret("MSG91_AUTHKEY");
 const GOOGLE_MAPS_KEY     = defineSecret("GOOGLE_MAPS_KEY");
 const RAZORPAY_KEY_ID     = defineSecret("RAZORPAY_KEY_ID");
 const RAZORPAY_KEY_SECRET = defineSecret("RAZORPAY_KEY_SECRET");
+// Pepper for deriving delivery-completion OTPs (completion-otp.js). Set before deploy:
+//   firebase functions:secrets:set COMPLETION_OTP_PEPPER   (>= 32 random bytes)
+const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
+const rateLimit = require("./rate-limit");
+const opsAlerts = require("./ops-alerts");
+const completionOtp = require("./completion-otp");
 /* ============================================================
    SEND SMS VIA MSG91
    Triggered whenever a new doc is added to /smsQueue
@@ -298,6 +304,11 @@ exports.createBooking = functions
     if (!context.auth) {
       throw new functions.https.HttpsError("unauthenticated", "Must be logged in to create a booking.");
     }
+    const rl = await rateLimit.consumeAll(admin.firestore(), [
+      Object.assign({ scope: "bookingUid", subject: context.auth.uid }, rateLimit.LIMITS.bookingUid),
+      Object.assign({ scope: "bookingIp", subject: rateLimit.clientIp(context.rawRequest) }, rateLimit.LIMITS.bookingIp),
+    ], functions.logger);
+    if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many bookings in a short time. Please wait a few minutes.");
 
     const { quoteInput, bookingDetails } = data;
     if (!quoteInput || !bookingDetails || !bookingDetails.pickup || !bookingDetails.drop) {
@@ -326,7 +337,7 @@ exports.createBooking = functions
       "date", "shiftTime", "shiftTimeLabel", "moveType", "house", "vehicle", "furniture",
       "pickupFloor", "dropFloor", "liftAvailable", "packingService", "unpackingService",
       "dismantling", "assembly", "storageNeeded", "storageDays", "fragileItems",
-      "specialItems", "remarks", "paymentType", "source", "isIntercity", "deliveryOtp",
+      "specialItems", "remarks", "paymentType", "source", "isIntercity",
       "photos"
     ];
 
@@ -362,6 +373,7 @@ function movePaymentDeps(extra) {
     serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
     now: () => Date.now(),
     logger: functions.logger,
+    recordFailure: (source, code) => opsAlerts.recordFailure(admin.firestore(), source, code),
   }, extra);
 }
 
@@ -373,6 +385,10 @@ exports.createRazorpayOrder = functions
     if (req.method !== "POST") return res.status(405).json({ success: false, code: "method_not_allowed", error: "Method not allowed." });
     const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
     const out = await movePayment.handleCreateOrder(req, movePaymentDeps({
+      rateLimit: (uid, r) => rateLimit.consumeAll(admin.firestore(), [
+        Object.assign({ scope: "moveOrderUid", subject: uid }, rateLimit.LIMITS.moveOrderUid),
+        Object.assign({ scope: "moveOrderIp", subject: rateLimit.clientIp(r) }, rateLimit.LIMITS.moveOrderIp),
+      ], functions.logger),
       quote: (quoteInput, pickup, drop) => calculateServerQuote(quoteInput, pickup, drop),
       normalize: (quoteInput) => {
         const v = PackZenPricing.validateInput(quoteInput);
@@ -453,6 +469,48 @@ exports.adminRefundPayment = functions
       createRefund: (paymentId, opts) => razorpay.payments.refund(paymentId, opts),
       toClientError: (code, message) => new functions.https.HttpsError(code, message),
     }));
+  });
+
+/* === Phase 1 automation: completion OTP + exception alerting === */
+async function staffRole(context) {
+  if (!context || !context.auth) return null;
+  const u = await admin.firestore().collection("users").doc(context.auth.uid).get();
+  return u.exists ? u.data().role || null : null;
+}
+function completionOtpDeps() {
+  const { sendCustomerEmail } = require("./notification-service");
+  return {
+    db: admin.firestore(),
+    now: () => Date.now(),
+    serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    pepper: COMPLETION_OTP_PEPPER.value(),
+    logger: functions.logger,
+    sendCustomerEmail,
+    isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
+    isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
+    rateLimit: (scope, subject) => rateLimit.consume(admin.firestore(), Object.assign({ scope, subject }, rateLimit.LIMITS[scope])),
+  };
+}
+const toHttpsError = (code, message) => new functions.https.HttpsError(code, message);
+
+// Customer (booking owner) reads the 4-digit completion code for an active job.
+exports.getCompletionOtp = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
+  .https.onCall(completionOtp.callable(completionOtp.handleGetOtp, completionOtpDeps, toHttpsError));
+// Assigned driver (or admin) asks for the code to be emailed to the customer.
+exports.sendCompletionOtp = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS, COMPLETION_OTP_PEPPER] })
+  .https.onCall(completionOtp.callable(completionOtp.handleSendOtp, completionOtpDeps, toHttpsError));
+// Assigned driver (or admin) submits the code; only success marks the booking delivered.
+exports.verifyCompletionOtp = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
+  .https.onCall(completionOtp.callable(completionOtp.handleVerifyOtp, completionOtpDeps, toHttpsError));
+
+// Hourly exception digest -> admin email only when something new needs attention.
+exports.opsDigest = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })
+  .pubsub.schedule("every 60 minutes").timeZone("Asia/Kolkata")
+  .onRun(async () => {
+    const { sendAdminEmail } = require("./notification-service");
+    await opsAlerts.runOpsDigest({ db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
+      sendAdminEmail: (subject, rows) => sendAdminEmail(subject, rows, null) });
+    return null;
   });
 
 // Notification system (additive — booking-notifications.js, notifications.js, scheduled-notifications.js)

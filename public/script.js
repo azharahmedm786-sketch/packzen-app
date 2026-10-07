@@ -1959,7 +1959,6 @@ function bookWithoutPayment() {
     paymentType: "pay_later",
     source: "direct",
     isIntercity: !!isIntercityMove,
-    deliveryOtp: generateDeliveryOtp(),
     photos: uploadedPhotos.slice(0, 3)
   };
 
@@ -2161,10 +2160,13 @@ function updateTrackBanner(b) {
   });
   const otpRow = document.getElementById("tobOtpRow");
   const otpVal = document.getElementById("tobOtpValue");
-  const showOtp = ["assigned","packing","transit","delivered"].includes(b.status) && b.deliveryOtp;
+  const showOtp = ["assigned","packing","transit"].includes(b.status);
   if (otpRow) {
     otpRow.style.display = showOtp ? "block" : "none";
-    if (showOtp && otpVal) otpVal.textContent = b.deliveryOtp;
+    if (showOtp && otpVal) {
+      otpVal.textContent = "••••";
+      _fetchCompletionOtp(b.id || currentBookingId).then(otp => { otpVal.textContent = otp || "Check your email"; });
+    }
   }
   const banner = document.getElementById("trackOrderBanner");
   if (b.status === "delivered" && banner) {
@@ -3212,7 +3214,7 @@ const canClaim = b.status === "delivered" && !b.damageClaimed;
         // The card's action row (buttons, delivery OTP, invoice) keeps its previous
         // visibility; it used to be gated through the wider canReschedule condition.
         const showActionRow = !["transit","delivered","cancelled"].includes(b.status) || canRate || canClaim;
-const showOtp = ["assigned", "packing", "transit", "delivered"].includes(b.status) && b.deliveryOtp;
+const showOtp = ["assigned", "packing", "transit"].includes(b.status);
         return `<div class="bk-card"> <div class="bk-card-top"><div class="bk-route">${escapeHTML((b.pickup||"?").split(",")[0])} → ${escapeHTML((b.drop||"?").split(",")[0])}</div><div class="bk-status" style="color:${color}">${icon} ${escapeHTML(capitalize(b.status||"confirmed"))}</div></div> <div class="bk-meta"><span>₹${(b.total||0).toLocaleString("en-IN")}</span><span>${escapeHTML(b.date)||"Date TBD"}</span><span style="font-size:.72rem;color:#5a6a8a">${escapeHTML(b.bookingRef)||""}</span></div> ${showActionRow?`
 ${canReschedule?`<button class="bk-btn reschedule" data-action="reschedule" data-id="${id}" data-ref="${b.bookingRef||id}" data-date="${b.date||""}">📅 Reschedule</button>`:""}
 ${showOtp ? `
@@ -3225,7 +3227,7 @@ ${showOtp ? `
     text-align:center;
 ">
     <div style="font-size:12px;color:#666;">
-        Delivery OTP
+        Completion code
     </div>
 
     <div style="
@@ -3234,11 +3236,11 @@ ${showOtp ? `
         letter-spacing:8px;
         color:#16a34a;
     ">
-        ${b.deliveryOtp}
+        <span data-completion-otp="${escapeHTML(id)}">••••</span>
     </div>
 
     <div style="font-size:13px;color:#666;">
-        Give this OTP to the driver only after delivery.
+        Give this code to the driver only after delivery.
     </div>
 </div>
 ` : ""}
@@ -3252,6 +3254,7 @@ ${canClaim?`<button class="bk-btn claim" data-action="claim" data-id="${id}" dat
 </div>`;
       }).join("");
       attachBookingButtonListeners();
+      _hydrateCompletionOtps(list);
 }).catch((err) => {
       console.error("loadUserBookings failed:", err);
       if (list) list.innerHTML = `<div class="dash-empty">Error loading bookings: ${escapeHTML(err.message)}</div>`;
@@ -3646,8 +3649,21 @@ function subscribeToBookingNotifications(bookingDocId) {
   setupStatusSMS(bookingDocId, "", "", "");
 }
 
-function generateDeliveryOtp() {
-  return String(Math.floor(1000 + Math.random() * 9000)); // 4-digit OTP
+// Completion (delivery) code: generated and checked on the server
+// (functions/completion-otp.js). Only the booking owner can read it.
+async function _fetchCompletionOtp(bookingId) {
+  try {
+    const fn = window._firebase && window._firebase.functions && window._firebase.functions.httpsCallable("getCompletionOtp");
+    if (!fn || !bookingId) return null;
+    const r = await fn({ bookingId });
+    return r && r.data && r.data.available && /^\d{4}$/.test(r.data.otp) ? r.data.otp : null;
+  } catch (e) { return null; }
+}
+function _hydrateCompletionOtps(root) {
+  (root || document).querySelectorAll("[data-completion-otp]").forEach(async (el) => {
+    const otp = await _fetchCompletionOtp(el.getAttribute("data-completion-otp"));
+    el.textContent = otp || "Unavailable — check your email";
+  });
 }
 /* ============================================
 HELPERS

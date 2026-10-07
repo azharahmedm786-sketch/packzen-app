@@ -329,6 +329,7 @@
       <input type="text" id="deliveryOtpInput" inputmode="numeric" maxlength="4" style="width:100%;padding:12px;text-align:center;font-size:1.5rem;font-weight:800;letter-spacing:12px;border:1.5px solid var(--border);border-radius:10px;outline:none;background:var(--surface);color:var(--text);margin-bottom:12px" placeholder="••••">
       <div id="otpError" style="font-size:.8rem;color:#e53e3e;margin-bottom:12px;display:none;text-align:center;font-weight:600"></div>
       <button class="btn-update" style="background:var(--accent);box-shadow:0 5px 16px rgba(0,201,110,.3)" onclick="verifyDeliveryOtp()">Confirm Delivery ✓</button>
+      <button type="button" class="btn-update" style="background:transparent;color:var(--primary);box-shadow:none;margin-top:4px;padding:8px" onclick="sendCodeToCustomer()">Send code to customer</button>
       <button class="btn-update" style="background:transparent;color:var(--text-muted);box-shadow:none;margin-top:4px;padding:8px" onclick="cancelOtpEntry()">Cancel</button>
     </div>
   </div>
@@ -415,6 +416,7 @@
 <!-- 1. Env config first (provides GOOGLE_MAPS_KEY and FIREBASE_AUTH_KEY) -->
 <script src="env-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
@@ -795,14 +797,9 @@ function updateJobStatus() {
     return;
   }
 
+  // The completion code is generated on the server (functions/completion-otp.js)
+  // and emailed to the customer when the job goes in transit.
   let updatePayload = { status: nextStatus };
-
-  // Generate OTP when transitioning to transit
-  if (nextStatus === "transit") {
-    const otp = String(Math.floor(1000 + Math.random() * 9000));
-    updatePayload.deliveryOtp = otp;
-    currentBookingData.deliveryOtp = otp;
-  }
 
   window._firebase.db.collection("bookings").doc(currentBookingId).update(updatePayload)
     .then(() => {
@@ -813,39 +810,44 @@ function updateJobStatus() {
     .catch(e => toast("❌ Error: " + e.message));
 }
 
-function verifyDeliveryOtp() {
+function _driverCallable(name) {
+  return firebase.app().functions("asia-south1").httpsCallable(name);
+}
+
+// Server-verified completion: only a correct customer code marks the job delivered.
+async function verifyDeliveryOtp() {
   const entered = document.getElementById("deliveryOtpInput").value.trim();
   const errBox = document.getElementById("otpError");
-  if (entered.length !== 4) {
-    errBox.textContent = "Please enter 4 digits.";
+  if (!/^\d{4}$/.test(entered)) {
+    errBox.textContent = "Please enter the 4-digit code.";
     errBox.style.display = "block";
     return;
   }
-
-  const correctOtp = currentBookingData.deliveryOtp;
-  if (correctOtp && entered !== String(correctOtp)) {
-    errBox.textContent = "Incorrect OTP. Please check with customer.";
-    errBox.style.display = "block";
-    return;
-  }
-
-  // OTP Correct
   errBox.style.display = "none";
+  try {
+    await _driverCallable("verifyCompletionOtp")({ bookingId: currentBookingId, otp: entered });
+  } catch (e) {
+    errBox.textContent = (e && e.message) ? e.message : "Could not verify the code. Please try again.";
+    errBox.style.display = "block";
+    return;
+  }
   document.getElementById("otpSection").style.display = "none";
+  currentBookingData.status = "delivered";
+  buildStatusSteps("delivered");
+  toast("✅ Job delivered! Upload proof photos.", 4000);
+  document.getElementById("photoCard").style.display = "block";
+  document.getElementById("btnUpdateStatus").style.display = "block";
+}
 
-  window._firebase.db.collection("bookings").doc(currentBookingId).update({ status: "delivered" })
-    .then(() => {
-      currentBookingData.status = "delivered";
-      buildStatusSteps("delivered");
-      toast("✅ Status updated: delivered");
-      document.getElementById("photoCard").style.display = "block";
-      toast("🎉 Job delivered! Upload proof photos.", 4000);
-      document.getElementById("btnUpdateStatus").style.display = "block";
-    })
-    .catch(e => {
-      toast("❌ Error: " + e.message);
-      document.getElementById("btnUpdateStatus").style.display = "block";
-    });
+async function sendCodeToCustomer() {
+  const errBox = document.getElementById("otpError");
+  try {
+    const r = await _driverCallable("sendCompletionOtp")({ bookingId: currentBookingId });
+    toast(r && r.data && r.data.sent ? "📧 Code sent to the customer's email" : "Customer has no email on file — ask them to open My Bookings", 4000);
+  } catch (e) {
+    errBox.textContent = (e && e.message) ? e.message : "Could not send the code.";
+    errBox.style.display = "block";
+  }
 }
 
 function cancelOtpEntry() {

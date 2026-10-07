@@ -104,6 +104,21 @@ const result = await sendBrevoEmail({
  * feedback received, etc). Uses a lightweight inline template
  * rather than the customer-facing branded ones.
  */
+/* N-08: every admin-email value is HTML-escaped (values can come from public,
+   unauthenticated forms). Trusted markup must be passed explicitly as
+   { href, label } and is rendered as a fixed https link. */
+function escapeHtml(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function renderAdminValue(v) {
+  if (v && typeof v === "object" && typeof v.href === "string" && /^https:\/\/[a-z0-9.-]+\//i.test(v.href)) {
+    return `<a href="${escapeHtml(v.href)}">${escapeHtml(v.label || v.href)}</a>`;
+  }
+  if (v && typeof v === "object") return escapeHtml(v.label || "—"); // untrusted/invalid link → plain text
+  const t = v == null || v === "" ? "—" : String(v);
+  return escapeHtml(t.length > 500 ? t.slice(0, 500) + "…" : t);
+}
+
 async function sendAdminEmail(subjectPrefix, bodyLines, bookingRef) {
   const functions = require("firebase-functions");
   const cfg = functions.config().admin || {};
@@ -111,9 +126,9 @@ async function sendAdminEmail(subjectPrefix, bodyLines, bookingRef) {
     .split(",").map(e => e.trim()).filter(Boolean);
 
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1a2744;line-height:1.6;">
-    <h2 style="color:#ea580c;">${subjectPrefix}</h2>
+    <h2 style="color:#ea580c;">${escapeHtml(subjectPrefix)}</h2>
     <table role="presentation" style="border-collapse:collapse;">
-      ${bodyLines.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6a8a;">${k}</td><td style="padding:4px 0;font-weight:600;">${v ?? "—"}</td></tr>`).join("")}
+      ${bodyLines.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6a8a;">${escapeHtml(k)}</td><td style="padding:4px 0;font-weight:600;">${renderAdminValue(v)}</td></tr>`).join("")}
     </table>
     <p style="color:#94a3b8;font-size:12px;margin-top:16px;">PackZen Admin Notification System</p>
   </div>`;
@@ -188,6 +203,8 @@ const result = await sendBrevoEmail({
 }
 
 module.exports = {
+  escapeHtml,
+  renderAdminValue,
   logNotification,
   sendCustomerEmail,
   sendAdminEmail,
