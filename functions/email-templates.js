@@ -280,7 +280,26 @@ function feedbackRequest(d) {
   };
 }
 
+/* -- COMPLETION CODE (delivery OTP) --------------------------- */
+function completionOtp(d) {
+  return {
+    subject: `Your PackZen completion code — ${d.bookingRef}`,
+    html: renderShell({
+      headerEmoji: "🔐",
+      headerTitle: "Your completion code",
+      headerSubtitle: "Share it only when the job is done",
+      bodyHtml: `<p>Hi ${esc(d.customerName)},</p>
+        <p>Your completion code for booking <strong>${esc(d.bookingRef)}</strong> is:</p>
+        <p style="font-size:32px;font-weight:800;letter-spacing:8px;text-align:center;margin:16px 0;">${esc(d.otp)}</p>
+        <p>Give this code to your PackZen driver <strong>only after</strong> your items have been delivered and checked. PackZen staff will never ask for it earlier.</p>`,
+      ctaLabel: "View Booking",
+      ctaUrl: BRAND.website
+    })
+  };
+}
+
 const TEMPLATES = {
+  completion_otp: completionOtp,
   booking_confirmed: bookingConfirmed,
   payment_successful: paymentSuccessful,
   driver_assigned: driverAssigned,

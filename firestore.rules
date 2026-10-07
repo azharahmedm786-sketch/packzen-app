@@ -63,8 +63,8 @@ service cloud.firestore {
     function isAllowedDriverStep(from, to) {
       return to == from
         || (from == 'assigned' && to == 'packing')
-        || (from == 'packing' && to == 'transit')
-        || (from == 'transit' && to == 'delivered');
+        || (from == 'packing' && to == 'transit');
+      // transit → delivered is server-only: verifyCompletionOtp (Phase 1).
     }
 
     // USERS
@@ -157,8 +157,10 @@ service cloud.firestore {
       // customerUid matching request.auth.uid (there's no logged-in
       // customer), so the New Booking module in
       // advisor-dashboard-patch.js needs its own create path.
+      // No client may create a booking that is already "delivered".
       allow create: if isAuth()
-        && (isAdvisor() || isAdmin());
+        && (isAdvisor() || isAdmin())
+        && request.resource.data.status != 'delivered';
 
       // 🔒 Release 1: customers may cancel only before the move starts, and
       // may reschedule only without changing status (previously a customer
@@ -183,16 +185,24 @@ service cloud.firestore {
       // assigned → packing → transit → delivered. Money, ownership and
       // assignment fields are no longer driver-writable.
       allow update: if isDriver() && isAssignedDriver(resource.data)
-        && onlyFields(['status', 'deliveryOtp', 'driverLat', 'driverLng', 'locationUpdatedAt',
+        && onlyFields(['status', 'driverLat', 'driverLng', 'locationUpdatedAt',
                        'deliveryPhotos', 'deliveryUploadedAt'])
         && isAllowedDriverStep(resource.data.status, request.resource.data.status);
 
       // 🔒 Release 1: advisors assign drivers / set status (what
       // advisor-dashboard-patch.js writes); totals, payments and ownership
       // are no longer advisor-writable. Advisor create is unchanged.
+      // Advisors may never set "delivered" (completion needs the customer's
+      // code via verifyCompletionOtp).
       allow update: if isAdvisor()
-        && onlyFields(['driverUid', 'driverName', 'driverPhone', 'status']);
-      allow read, update, delete: if isAdmin();
+        && onlyFields(['driverUid', 'driverName', 'driverPhone', 'status'])
+        && request.resource.data.status != 'delivered';
+      allow read, delete: if isAdmin();
+      // Admins keep full edit rights EXCEPT moving a booking into "delivered":
+      // that happens only server-side (verifyCompletionOtp, or the explicit
+      // admin-only emergency override adminCompleteBooking, which records a reason).
+      allow update: if isAdmin()
+        && (request.resource.data.status != 'delivered' || resource.data.status == 'delivered');
     }
 
     // CHATS

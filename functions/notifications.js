@@ -18,6 +18,10 @@ const admin = require("firebase-admin");
  
 const { sendCustomerEmail, sendAdminEmail } = require("./notification-service");
 const { BREVO_SECRETS } = require("./brevo-client");
+const { defineSecret } = require("firebase-functions/params");
+const rateLimit = require("./rate-limit");
+const completionOtp = require("./completion-otp");
+const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
 /* ────────────────────────────────────────────────────────────
    HELPERS: queue SMS and WhatsApp messages directly to Firestore
    ──────────────────────────────────────────────────────────── */
@@ -147,7 +151,7 @@ exports.onBookingCreatedNotify = functions
    ════════════════════════════════════════════════════════════ */
 exports.onBookingUpdatedNotify = functions
   .region("asia-south1")
-  .runWith({ secrets: BREVO_SECRETS })
+  .runWith({ secrets: [...BREVO_SECRETS, COMPLETION_OTP_PEPPER] })
   .firestore.document("bookings/{bookingId}")
   .onUpdate(async (change, context) => {
     const before = change.before.data();
@@ -203,6 +207,17 @@ exports.onBookingUpdatedNotify = functions
           ["Customer", after.customerName],
           ["Amount", "₹" + (after.total || 0).toLocaleString("en-IN")]
         ], after.bookingRef);
+      }
+
+      // Completion code: email it to the customer when the job goes in transit
+      // (server-derived; never stored in plaintext — see completion-otp.js).
+      if (statusChanged && after.status === "transit" && email) {
+        try {
+          await completionOtp.sendOtpEmail({
+            db: admin.firestore(), now: () => Date.now(), pepper: COMPLETION_OTP_PEPPER.value(),
+            sendCustomerEmail,
+          }, context.params.bookingId, Object.assign({}, after, { email }));
+        } catch (e) { functions.logger.warn("completion_otp_email_failed", { bookingId: context.params.bookingId }); }
       }
 
       if (statusChanged) {
@@ -336,6 +351,14 @@ exports.onAccountDeletionRequestCreatedNotify = functions
     if (!change.after.exists) return null;
 
     const req = change.after.data();
+    // N-08: the form is public, so the admin email is throttled (one per email
+    // address per day, 30 per hour overall). The request itself is always kept
+    // in Firestore for the admin dashboard.
+    const rl = await rateLimit.consumeAll(admin.firestore(), [
+      { scope: "deletionAlertEmail", subject: String(req.email || "").toLowerCase(), limit: 1, windowMs: 24 * 3600 * 1000 },
+      { scope: "deletionAlertGlobal", subject: "all", limit: 30, windowMs: 3600 * 1000 },
+    ], functions.logger);
+    if (!rl.ok) { functions.logger.warn("deletion_alert_throttled", { scope: rl.scope }); return null; }
     try {
       await sendAdminEmail("New Account Deletion Request", [
         ["Request ID", req.requestId],
@@ -344,7 +367,7 @@ exports.onAccountDeletionRequestCreatedNotify = functions
         ["Phone", req.phone],
         ["Reason", req.reason || "None provided"],
         ["Date", new Date().toLocaleString("en-IN")],
-        ["Action", "<a href='https://packzenblr.in/admin.html'>View in Admin Dashboard -> Deletion Requests</a>"]
+        ["Action", { href: "https://packzenblr.in/admin.html", label: "View in Admin Dashboard -> Deletion Requests" }]
       ], null);
     } catch (e) {
       console.error("onAccountDeletionRequestCreatedNotify error:", e.message);

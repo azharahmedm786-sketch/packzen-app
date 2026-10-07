@@ -49,6 +49,7 @@ const MSG = {
   input: "Some booking details are missing or invalid. Please check the form and try again.",
   quote: "We couldn't price this move. Please check the addresses and details, then recalculate.",
   server: "Something went wrong on our side. Please try again in a moment.",
+  rateLimited: "Too many attempts. Please wait a few minutes and try again.",
   verifyMismatch: "We couldn't verify this payment. If money was deducted, don't pay again — contact us with your payment ID.",
   verifyPending: "Your payment was received and is being confirmed. Please don't pay again.",
   verifyUnavailable: "We're confirming your payment. Please don't pay again.",
@@ -177,6 +178,10 @@ async function handleCreateOrder(req, deps) {
   try {
     const user = await authenticate(req, deps.verifyIdToken);
     ctx = { uid: user.uid };
+    if (deps.rateLimit) {
+      const rl = await deps.rateLimit(user.uid, req);
+      if (!rl.ok) throw new PaymentError(429, "rate_limited", MSG.rateLimited, "rate limit " + (rl.scope || ""));
+    }
     const body = req.body || {};
 
     const paymentType = body.paymentType;
@@ -259,6 +264,7 @@ async function handleCreateOrder(req, deps) {
       },
     };
   } catch (err) {
+    if (!(err instanceof PaymentError) && deps.recordFailure) await deps.recordFailure("createRazorpayOrder", "server_error");
     return respondError(err, logger, "move_order", ctx);
   }
 }
@@ -281,6 +287,43 @@ function existingResponse(b, uid, paymentId) {
 }
 
 /**
+ * Booking document for a captured catalog (service) payment. Same field names
+ * the existing dashboards read; money fields follow bookingMoney().
+ */
+function buildServiceBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp }) {
+  const d = p.details || {};
+  const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: "full" });
+  return Object.assign({
+    bookingType: "service",
+    bookingRef: bookingRefFromOrder(orderId),
+    requestId: p.requestId || null,
+    customerUid: p.uid,
+    customerName: d.customerName || "",
+    phone: d.phone || "",
+    email: p.email || null,
+    pickup: d.address || "",
+    drop: "",
+    date: d.date || "",
+    shiftTime: d.timeSlot || "",
+    shiftTimeLabel: d.timeSlotLabel || "",
+    moveType: "service",
+    remarks: d.notes || "",
+    items: Array.isArray(p.lines) ? p.lines : [],
+    totalIsEstimate: false,
+    needsQuote: false,
+    paymentType: "full",
+    currency: p.currency || CURRENCY,
+    paymentId,
+    orderId,
+    source: "services-page",
+    status: "confirmed",
+    confirmedVia: via || "verify",
+    createdAt: serverTimestamp(),
+    paidAt: serverTimestamp(),
+  }, money);
+}
+
+/**
  * Single authoritative "captured payment → booking" transition, used by
  * browser verification (Phase 1), the Razorpay webhook and reconciliation (R3).
  * Idempotent: booking id = orderId; if it already exists it is returned untouched.
@@ -300,6 +343,15 @@ async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expected
       const p = pSnap.data();
       if (!p.uid) return { legacy: true };
       if (expectedUid && p.uid !== expectedUid) return { forbidden: true };
+
+      // Catalog (service) payments share this exact transition: same idempotency,
+      // same booking id = order id, same pending → consumed state machine.
+      if (p.flow === "service") {
+        const svc = buildServiceBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp: deps.serverTimestamp });
+        if (typeof tx.create === "function") tx.create(bookingRef, svc); else tx.set(bookingRef, svc);
+        tx.update(pendingRef, { status: "consumed", bookingId: orderId, paymentId, consumedAt: deps.serverTimestamp() });
+        return { created: svc };
+      }
 
       const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: p.paymentType });
       const qi = p.quoteInput || {};
@@ -424,6 +476,9 @@ async function handleVerifyPayment(req, deps) {
       },
     };
   } catch (err) {
+    if (deps.recordFailure && (!(err instanceof PaymentError) || err.code === "verification_unavailable")) {
+      await deps.recordFailure("verifyRazorpayPayment", err instanceof PaymentError ? err.code : "server_error");
+    }
     return respondError(err, logger, "move_verify", ctx);
   }
 }
@@ -432,6 +487,12 @@ module.exports = {
   handleCreateOrder,
   handleVerifyPayment,
   finalizeCapture,
+  buildServiceBooking,
+  authenticate,
+  PaymentError,
+  MSG,
+  CURRENCY,
+  MAX_ONLINE_AMOUNT,
   bookingMoney,
   PENDING_COLLECTION,
   BOOKING_COLLECTION,

@@ -6,6 +6,7 @@
    verifySignupOtpBrevo succeeds — see that function below for
    the full server-side signup flow.
    ============================================================ */
+const rateLimit = require("./rate-limit");
 const functions = require("firebase-functions/v1");
 const admin     = require("firebase-admin");
 const { defineString } = require("firebase-functions/params");
@@ -145,6 +146,14 @@ exports.sendSignupOtpBrevo = functions
     if (!EMAIL_REGEX.test(email)) throw new functions.https.HttpsError("invalid-argument", "A valid email is required.");
     if (phone && !PHONE_REGEX.test(phone)) throw new functions.https.HttpsError("invalid-argument", "A valid 10-digit phone number is required.");
 
+    // R2-16: besides the existing per-email limit, cap OTP emails per client IP
+    // and globally, so one caller can't spray codes at many addresses.
+    const rl = await rateLimit.consumeAll(admin.firestore(), [
+      Object.assign({ scope: "signupOtpIp", subject: rateLimit.clientIp(context.rawRequest) }, rateLimit.LIMITS.signupOtpIp),
+      Object.assign({ scope: "signupOtpGlobal", subject: "all" }, rateLimit.LIMITS.signupOtpGlobal),
+    ], functions.logger);
+    if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again later.");
+
     try {
       await admin.auth().getUserByEmail(email);
       throw new functions.https.HttpsError("already-exists", "auth/email-already-in-use");
@@ -212,16 +221,35 @@ exports.verifySignupOtpBrevo = functions
     const db = admin.firestore();
     const otpRef = db.collection("signupOtps").doc(email);
 
+    // Per-IP brute-force guard (in addition to the per-code attempt limit).
+    const ipRl = await rateLimit.consume(db, Object.assign({ scope: "signupVerifyIp", subject: rateLimit.clientIp(context.rawRequest) }, rateLimit.LIMITS.signupVerifyIp))
+      .catch(() => ({ ok: true }));
+    if (!ipRl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many attempts. Please try again later.");
+
     // Step 1 — validate + single-use consume, atomically.
-    await db.runTransaction(async (tx) => {
+    // N-06: the transaction RETURNS the outcome instead of throwing, so the
+    // failed-attempt counter (and expiry/lockout deletes) are actually
+    // committed. Throwing inside runTransaction discarded those writes, which
+    // made the 5-attempt lockout ineffective.
+    const step1 = await db.runTransaction(async (tx) => {
       const snap = await tx.get(otpRef);
-      if (!snap.exists) throw new functions.https.HttpsError("not-found", "No OTP request found. Please request a new code.");
+      if (!snap.exists) return { error: ["not-found", "No OTP request found. Please request a new code."] };
       const record = snap.data();
-      if (Date.now() > record.expiresAt) { tx.delete(otpRef); throw new functions.https.HttpsError("deadline-exceeded", "OTP expired. Please request a new code."); }
-      if ((record.attempts || 0) >= 5) { tx.delete(otpRef); throw new functions.https.HttpsError("resource-exhausted", "Too many incorrect attempts. Please request a new code."); }
-      if (record.otp !== otp) { tx.update(otpRef, { attempts: (record.attempts || 0) + 1 }); throw new functions.https.HttpsError("invalid-argument", "Incorrect code. Please try again."); }
+      if (Date.now() > record.expiresAt) { tx.delete(otpRef); return { error: ["deadline-exceeded", "OTP expired. Please request a new code."] }; }
+      const attempts = record.attempts || 0;
+      if (attempts >= 5) { tx.delete(otpRef); return { error: ["resource-exhausted", "Too many incorrect attempts. Please request a new code."] }; }
+      const a = Buffer.from(String(record.otp)), b = Buffer.from(String(otp));
+      const match = a.length === b.length && crypto.timingSafeEqual(a, b);
+      if (!match) {
+        if (attempts + 1 >= 5) tx.delete(otpRef); else tx.update(otpRef, { attempts: attempts + 1 });
+        return { error: attempts + 1 >= 5
+          ? ["resource-exhausted", "Too many incorrect attempts. Please request a new code."]
+          : ["invalid-argument", "Incorrect code. Please try again."] };
+      }
       tx.delete(otpRef);
+      return { ok: true };
     });
+    if (step1.error) throw new functions.https.HttpsError(step1.error[0], step1.error[1]);
 
     const fullName = `${firstName} ${lastName}`;
     const phoneKey = "+91" + phone;
