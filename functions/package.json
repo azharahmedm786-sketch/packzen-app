@@ -5,7 +5,7 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "node test/catalog-pricing.test.js && node test/catalog-booking.handlers.test.js && node test/move-payment.test.js && node test/r3-payments.test.js && node test/post-r3-fixes.test.js && node test/phase1-hardening.test.js && node test/auth-abuse.test.js"
+    "test": "node test/catalog-pricing.test.js && node test/catalog-booking.handlers.test.js && node test/move-payment.test.js && node test/r3-payments.test.js && node test/post-r3-fixes.test.js && node test/phase1-hardening.test.js && node test/auth-abuse.test.js && node test/refund-flow.test.js"
   },
   "engines": {
     "node": "22"

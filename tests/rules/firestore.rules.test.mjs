@@ -49,6 +49,15 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   for (const id of ["d_pack", "d_total", "d_reassign", "d_skip", "d_read", "d_otp", "d_unassigned"]) await seed(`bookings/${id}`, assigned());
   for (const id of ["d_transit", "d_back"]) await seed(`bookings/${id}`, assigned({ status: "packing" }));
   for (const id of ["d_deliver", "d_loc", "d_photos", "d_back2"]) await seed(`bookings/${id}`, assigned({ status: "transit" }));
+  // Phase 1 completion rules: who may move a booking INTO "delivered".
+  await seed("bookings/d_transit_otpfield", assigned({ status: "packing" }));
+  await seed("bookings/d_otp_write", assigned({ status: "transit" }));
+  await seed("bookings/c_deliver", booking({ status: "transit", driverUid: "drv1" }));
+  await seed("bookings/v_deliver", booking({ customerUid: "cust2", status: "transit", driverUid: "drv1" }));
+  await seed("bookings/a_deliver", booking({ customerUid: "cust2", status: "transit", driverUid: "drv1" }));
+  await seed("bookings/a_edit_delivered", booking({ customerUid: "cust2", status: "delivered" }));
+  await seed("bookings/s_complete", booking({ customerUid: "cust2", status: "transit", driverUid: "drv1" }));
+  await seed("bookingSecrets/s_complete", { nonce: "n", attempts: 0, lockedUntil: 0 });
   // Advisor / partner / misc.
   for (const id of ["v_assign", "v_total", "v_owner"]) await seed(`bookings/${id}`, booking({ customerUid: "cust2" }));
   await seed("bookings/partnerJob", booking({ customerUid: "cust2", assignedPartnerId: "ptr1", partnerStatus: "offered" }));
@@ -103,6 +112,18 @@ await t("A14", "Verified admin sets own role to admin (admin.html login auto-fix
 await t("A15", "Verified admin deletes a booking", true, () => deleteDoc(doc(admin, "bookings/a_delete")));
 await t("A16", "Verified admin reads/updates smsQueue (retry)", true, () => updateDoc(doc(admin, "smsQueue/sms1"), { status: "pending", retries: 0 }));
 
+/* ── Completion: admin direct writes vs the server path (Phase 1) ────── */
+await t("A17", "Verified admin sets delivered by direct Firestore write (must use adminCompleteBooking)", false, () => updateDoc(doc(admin, "bookings/a_deliver"), { status: "delivered" }));
+await t("A18", "Verified admin edits other fields of an in-transit booking", true, () => updateDoc(doc(admin, "bookings/a_deliver"), { remarks: "admin note" }));
+await t("A19", "Verified admin edits an already-delivered booking (status unchanged)", true, () => updateDoc(doc(admin, "bookings/a_edit_delivered"), { remarks: "post-job note" }));
+await t("A20", "Verified admin creates a booking already marked delivered", false, () => addDoc(collection(admin, "bookings"), booking({ customerUid: "cust2", status: "delivered" })));
+await t("A21", "Verified admin creates a normal booking", true, () => addDoc(collection(admin, "bookings"), booking({ customerUid: "cust2", status: "confirmed" })));
+await t("A22", "Verified admin client reads completion secrets (server-only)", false, () => getDoc(doc(admin, "bookingSecrets/s_complete")));
+await t("A23", "Driver reads completion secrets", false, () => getDoc(doc(drv, "bookingSecrets/s_complete")));
+// Supported path: verifyCompletionOtp / adminCompleteBooking run with the Admin SDK (rules bypassed).
+await t("A24", "Server (Admin SDK, as adminCompleteBooking) completes a booking", true, () => env.withSecurityRulesDisabled((ctx) =>
+  updateDoc(doc(ctx.firestore(), "bookings/s_complete"), { status: "delivered", completionMethod: "admin_override", completionOverride: { by: "admin1", reason: "customer unreachable after delivery" } })));
+
 /* ── SMS / WhatsApp queues (I-04) ───────────────────────────────────── */
 await t("Q1", "Customer queues an SMS", false, () => addDoc(collection(cust, "smsQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
 await t("Q2", "Customer queues a WhatsApp message", false, () => addDoc(collection(cust, "whatsappQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
@@ -134,12 +155,18 @@ await t("B12", "Customer changes own booking total", false, () => updateDoc(doc(
 await t("B13", "Customer reads own booking", true, () => getDoc(doc(cust, "bookings/c_read")));
 await t("B14", "Customer reads another customer's booking", false, () => getDoc(doc(cust, "bookings/other")));
 await t("B15", "Customer lists own bookings (My Bookings query)", true, () => getDocs(query(collection(cust, "bookings"), where("customerUid", "==", "cust1"))));
+await t("B17", "Customer sets own in-transit booking to delivered", false, () => updateDoc(doc(cust, "bookings/c_deliver"), { status: "delivered" }));
+await t("B18", "Customer creates a booking already marked delivered", false, () => addDoc(collection(cust, "bookings"), booking({ status: "delivered" })));
+await t("B19", "Customer reads completion secrets", false, () => getDoc(doc(cust, "bookingSecrets/s_complete")));
 await t("B16", "Customer reads a paid booking stored without customerUid (I-06, Release 2)", false, () => getDoc(doc(cust, "bookings/paidNoUid")), { knownOpen: true });
 
 /* ── Bookings: driver (I-08) ────────────────────────────────────────── */
 await t("D1", "Driver starts job: assigned → packing", true, () => updateDoc(doc(drv, "bookings/d_pack"), { status: "packing" }));
-await t("D2", "Driver packing → transit with deliveryOtp (driver.html payload)", true, () => updateDoc(doc(drv, "bookings/d_transit"), { status: "transit", deliveryOtp: "4321" }));
-await t("D3", "Driver transit → delivered", true, () => updateDoc(doc(drv, "bookings/d_deliver"), { status: "delivered" }));
+// Phase 1: the completion code is server-side; driver.html no longer writes deliveryOtp.
+await t("D2", "Driver packing → transit without an OTP field (driver.html payload)", true, () => updateDoc(doc(drv, "bookings/d_transit"), { status: "transit" }));
+await t("D2b", "Driver packing → transit writing deliveryOtp (old payload)", false, () => updateDoc(doc(drv, "bookings/d_transit_otpfield"), { status: "transit", deliveryOtp: "4321" }));
+await t("D3", "Driver transit → delivered by direct write (must use verifyCompletionOtp)", false, () => updateDoc(doc(drv, "bookings/d_deliver"), { status: "delivered" }));
+await t("D3b", "Driver writes deliveryOtp without changing status", false, () => updateDoc(doc(drv, "bookings/d_otp_write"), { deliveryOtp: "0000" }));
 await t("D4", "Driver location update (status unchanged)", true, () => updateDoc(doc(drv, "bookings/d_loc"), { driverLat: 12.9, driverLng: 77.6, locationUpdatedAt: now }));
 await t("D5", "Driver saves delivery photos", true, () => updateDoc(doc(drv, "bookings/d_photos"), { deliveryPhotos: ["data:x"], deliveryUploadedAt: now }));
 await t("D6", "Driver changes total/paid", false, () => updateDoc(doc(drv, "bookings/d_total"), { total: 1, paid: 1 }));
@@ -158,6 +185,9 @@ await t("V1", "Advisor assigns driver (advisor-dashboard-patch.js payload)", tru
 await t("V2", "Advisor changes total/paid", false, () => updateDoc(doc(adv, "bookings/v_total"), { total: 1, paid: 99999 }));
 await t("V3", "Advisor changes customerUid/paymentId", false, () => updateDoc(doc(adv, "bookings/v_owner"), { customerUid: "cust1", paymentId: "pay_x" }));
 await t("V4", "Advisor creates a walk-in booking", true, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "confirmed", source: "advisor" }));
+await t("V8", "Advisor sets a booking to delivered", false, () => updateDoc(doc(adv, "bookings/v_deliver"), { status: "delivered" }));
+await t("V9", "Advisor creates a booking already marked delivered", false, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "delivered", source: "advisor" }));
+await t("V10", "Advisor reads completion secrets", false, () => getDoc(doc(adv, "bookingSecrets/s_complete")));
 await t("V5", "Advisor reads all bookings", true, () => getDocs(collection(adv, "bookings")));
 await t("V6", "Advisor reads all users", true, () => getDocs(collection(adv, "users")));
 await t("V7", "Advisor sets driver currentBooking", true, () => updateDoc(doc(adv, "users/drv1"), { currentBooking: "v_assign" }));
