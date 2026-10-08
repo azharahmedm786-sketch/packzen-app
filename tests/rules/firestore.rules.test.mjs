@@ -59,7 +59,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await seed("bookings/s_complete", booking({ customerUid: "cust2", status: "transit", driverUid: "drv1" }));
   await seed("bookingSecrets/s_complete", { nonce: "n", attempts: 0, lockedUntil: 0 });
   // Advisor / partner / misc.
-  for (const id of ["v_assign", "v_total", "v_owner"]) await seed(`bookings/${id}`, booking({ customerUid: "cust2" }));
+  for (const id of ["v_assign", "v_total", "v_owner", "v_bad_assign", "v_unassign"]) await seed(`bookings/${id}`, booking({ customerUid: "cust2" }));
   await seed("bookings/partnerJob", booking({ customerUid: "cust2", assignedPartnerId: "ptr1", partnerStatus: "offered" }));
   await seed("bookings/a_total", booking({ customerUid: "cust2" }));
   await seed("bookings/a_delete", booking({ customerUid: "cust2" }));
@@ -221,6 +221,9 @@ await t("D15", "Driver can read deliveryOtp on assigned booking (I-16, later rel
 /* ── Bookings: advisor ──────────────────────────────────────────────── */
 await t("V1", "Advisor assigns driver (advisor-dashboard-patch.js payload)", true, () => updateDoc(doc(adv, "bookings/v_assign"), { driverUid: "drv1", driverName: "D1", driverPhone: "", status: "assigned" }));
 await t("V2", "Advisor changes total/paid", false, () => updateDoc(doc(adv, "bookings/v_total"), { total: 1, paid: 99999 }));
+await t("V11", "Advisor assigns a booking to a NON-driver uid (would grant isAssignedDriver read)", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "cust1", driverName: "X", driverPhone: "", status: "assigned" }));
+await t("V12", "Advisor assigns to a uid with no users doc", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "ghost_uid_01", status: "assigned" }));
+await t("V13", "Advisor status-only update (driver unchanged)", true, () => updateDoc(doc(adv, "bookings/v_unassign"), { status: "confirmed" }));
 await t("V3", "Advisor changes customerUid/paymentId", false, () => updateDoc(doc(adv, "bookings/v_owner"), { customerUid: "cust1", paymentId: "pay_x" }));
 await t("V4", "Advisor creates a walk-in booking", true, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "confirmed", source: "advisor" }));
 await t("V8", "Advisor sets a booking to delivered", false, () => updateDoc(doc(adv, "bookings/v_deliver"), { status: "delivered" }));

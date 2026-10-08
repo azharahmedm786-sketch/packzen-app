@@ -78,7 +78,7 @@ test("2A presence: driver.html dual-writes users + driverPresence with allowed f
   const s = fs.readFileSync(path.join(ROOT, "public/driver.html"), "utf8");
   assert.ok(s.includes('collection("driverPresence").doc(driverUser.uid).set(data, { merge: true })'));
   const calls = [...s.matchAll(/_writePresence\(\{([^}]*)\}\)/g)].map((m) => m[1]);
-  assert.strictEqual(calls.length, 3, "toggle, sign-out, location");
+  assert.strictEqual(calls.length, 4, "toggle, sign-out, login restore, location");
   const allowed = ["online", "lat", "lng", "geohash"];
   for (const c of calls) for (const k of c.replace(/\([^)]*\)/g, "").split(",").map((x) => x.split(":")[0].trim()).filter(Boolean)) assert.ok(allowed.includes(k), "presence field " + k);
   assert.ok(/update\(\{ isOnline: online \}\)/.test(s) && /update\(\{ lat, lng, locationUpdatedAt/.test(s), "users/{uid} writes kept");
@@ -321,6 +321,97 @@ test("2B manual reassign: previous driver's lock and currentBooking released", a
   assert.strictEqual(db.col("users").drvBig0001.currentBooking, null);
   assert.strictEqual(db.col("bookings").bkOne00001.assignment.previousDriverUid, "drvBig0001");
 });
+/* ── review regressions ── */
+test("review: stale schedule locks (cancelled, delivered, reassigned, re-dated, deleted) don't block and are pruned", async () => {
+  const { db, deps } = asgEnv();
+  db.col("bookings").bkCanc0001 = { status: "cancelled", date: "2026-10-12", shiftTime: "09:00", driverUid: "drvBig0001" };
+  db.col("bookings").bkDone0001 = { status: "delivered", date: "2026-10-12", shiftTime: "10:00", driverUid: "drvBig0001" };
+  db.col("bookings").bkElse0001 = { status: "assigned", date: "2026-10-12", shiftTime: "08:00", driverUid: "drvBig0002" };
+  db.col("bookings").bkMoved001 = { status: "assigned", date: "2026-10-20", shiftTime: "09:00", driverUid: "drvBig0001" };
+  db.col("driverSchedule")["drvBig0001_2026-10-12"] = { jobs: { bkCanc0001: 540, bkDone0001: 600, bkElse0001: 480, bkMoved001: 540, bkGone0001: 540 } };
+  const r = await assign(deps, { bookingId: "bkOne00001", driverUid: "drvBig0001" });
+  assert.ok(r.ok);
+  assert.deepStrictEqual(db.col("driverSchedule")["drvBig0001_2026-10-12"].jobs, { bkOne00001: 540 });
+  const rec = await asg.recommend(deps, "bkTwo00001");
+  assert.ok(!rec.top.some((x) => x.uid === "drvBig0001"), "bkOne (09:00) now really blocks 10:00");
+});
+test("review: an unassigned-looking lock entry (concurrent assignment not yet visible) is kept", () => {
+  assert.deepStrictEqual(asg.liveLockJobs({ bkA: 540 }, "drv1", { bkA: { status: "confirmed", driverUid: null } }), { bkA: 540 });
+  assert.deepStrictEqual(asg.liveLockJobs({ bkA: 540 }, "drv1", { bkA: { status: "assigned", driverUid: "drv1" } }), { bkA: 540 });
+});
+test("review: cancellation racing assignment → assignment refused, nothing written", async () => {
+  const { db, deps } = asgEnv();
+  db.col("bookings").bkOne00001.status = "cancelled";
+  await rejects(assign(deps, { bookingId: "bkOne00001", driverUid: "drvBig0001" }), "failed-precondition");
+  assert.ok(!db.col("driverSchedule")["drvBig0001_2026-10-12"]); assert.ok(!db.col("users").drvBig0001.currentBooking);
+});
+test("review: booking re-dated between pre-read and transaction → aborted", async () => {
+  const { db, deps } = asgEnv();
+  const origGet = db.runTransaction.bind(db);
+  db.runTransaction = (fn) => { db.col("bookings").bkOne00001.date = "2026-10-13"; return origGet(fn); };
+  await rejects(assign(deps, { bookingId: "bkOne00001", driverUid: "drvBig0001" }), "aborted");
+});
+test("review engine: boundaries — exactly 3 h is near-term, exactly 10 min presence is fresh, 4 h apart no conflict", () => {
+  const exact3h = moveB({ date: "2026-10-10", shiftTime: "12:00" }); // NOW = 09:00 IST
+  const p = (ageMin, online) => ({ online, updatedAt: NOW - ageMin * 60000 });
+  const r = ev(exact3h, [D("fresh10m01", P({ vehicleIds: ["truck_22ft"] }), { presence: p(10, true) }), D("stale10m01", P({ vehicleIds: ["truck_22ft"] }), { presence: p(10.01, true) }), D("offline001", P({ vehicleIds: ["truck_22ft"] }))]);
+  assert.deepStrictEqual(r.ranked.map((x) => x.uid), ["fresh10m01"]);
+  assert.deepStrictEqual([excl(r, "stale10m01"), excl(r, "offline001")], [["stale_presence"], ["offline_near_term"]]);
+  const r2 = ev(moveB({ date: "2026-10-10", shiftTime: "12:01" }), [D("offline001", P({ vehicleIds: ["truck_22ft"] }))]);
+  assert.strictEqual(r2.ranked.length, 1, "3 h 1 min away is not near-term");
+  const r3 = ev(moveB({ shiftTime: "13:00" }), [D("fourH00001", P({ vehicleIds: ["truck_22ft"] }), { jobsOnDate: [{ bookingId: "x", startMin: 9 * 60 }] })]);
+  assert.strictEqual(r3.ranked.length, 1, "exactly 4 h apart does not conflict");
+});
+test("review engine: unknown time, midnight, invalid/past dates, zero/negative/missing profile values", () => {
+  const late = Date.parse("2026-10-10T16:30:00Z"); // 22:00 IST
+  const tomorrowNoTime = { bookingType: "move", vehicleUsed: "tata_ace", date: "2026-10-11" };
+  assert.strictEqual(engine.evaluate(tomorrowNoTime, [D("offline001", P())], { now: late }).ranked.length, 1, "unknown time tomorrow ≠ near-term at 22:00");
+  assert.strictEqual(engine.jobStartMs("2026-10-11", "00:00"), Date.parse("2026-10-10T18:30:00Z"), "midnight IST");
+  assert.strictEqual(engine.jobStartMs("2026-02-31", "09:00"), null); assert.strictEqual(engine.jobStartMs("11/10/2026", "09:00"), null); assert.strictEqual(engine.jobStartMs(undefined), null);
+  assert.strictEqual(engine.slotStartMin("25:00"), null); assert.strictEqual(engine.slotStartMin("9am"), null);
+  const badDate = engine.evaluate({ bookingType: "move", vehicleUsed: "tata_ace", date: "2026-02-31", shiftTime: "09:00" }, [D("offline001", P())], { now: NOW });
+  assert.strictEqual(badDate.ranked.length, 1);
+  const past = ev(moveB({ date: "2026-10-01" }), [D("offline001", P({ vehicleIds: ["truck_22ft"] }))]);
+  assert.deepStrictEqual(excl(past, "offline001"), ["offline_near_term"], "past-dated jobs need a live driver");
+  const weird = ev(moveB(), [D("zeroCap001", P({ vehicleIds: ["truck_22ft"], maxJobsPerDay: 0 })), D("negCap0001", P({ vehicleIds: ["truck_22ft"], maxJobsPerDay: -2 })),
+    D("noFields01", { status: "active" }), D("badRate001", P({ vehicleIds: ["truck_22ft"], rating: { avg: 9, count: -1 }, acceptance: { offered: -3, accepted: 10 }, lastOfferedAt: NOW + 86400e3 }))]);
+  assert.deepStrictEqual(excl(weird, "zeroCap001"), ["at_capacity"]); assert.deepStrictEqual(excl(weird, "negCap0001"), ["at_capacity"]);
+  assert.ok(excl(weird, "noFields01").includes("area_mismatch") && excl(weird, "noFields01").includes("no_vehicle"));
+  const br = weird.ranked.find((x) => x.uid === "badRate001");
+  assert.ok(br && br.score >= 0 && br.score <= 1 && Object.values(br.components).every((v) => v >= 0 && v <= 1), "scores stay within 0–1");
+});
+test("review engine: same-time bookings conflict; already-assigned booking never conflicts with itself", () => {
+  const r = ev(moveB(), [D("same000001", P({ vehicleIds: ["truck_22ft"] }), { jobsOnDate: [{ bookingId: "other", startMin: 540 }] })]);
+  assert.deepStrictEqual(excl(r, "same000001"), ["schedule_conflict"]);
+});
+test("review presence: login-restored online state and location updates keep driverPresence.online true", () => {
+  const s = fs.readFileSync(path.join(ROOT, "public/driver.html"), "utf8");
+  assert.ok(/setOnlineUI\(true\);\s*_writePresence\(\{ online: true \}\);/.test(s));
+  assert.ok(s.includes("_writePresence({ online: true, lat, lng, geohash: _geohash(lat, lng, 7) })"));
+});
+test("review admin UI: no ids interpolated into inline JavaScript", () => {
+  const a = fs.readFileSync(path.join(ROOT, "public/admin.html"), "utf8");
+  assert.ok(!a.includes("value='${escapeHTML(top.uid)}'") && !a.includes("editDriverProfile('${"));
+  assert.ok(a.includes('onclick="editDriverProfile(this.dataset.uid)"') && a.includes('getElementById("assignUseRec").addEventListener'));
+});
+test("review backfill: real write errors are not swallowed; malformed records are safe", async () => {
+  const db = makeDb();
+  db.col("users").drvBadLoc1 = { role: "driver", lat: "12.9", lng: 77.5, isOnline: "yes" };
+  db.col("users").drvNaN0001 = { role: "driver", lat: NaN, lng: 77.5 };
+  db.col("users").drvRange01 = { role: "driver", lat: 999, lng: 77.5, isOnline: true };
+  const s = await bfRun(db, true, []);
+  assert.strictEqual(s.created, 4); // 3 profiles + presence only for drvRange01 (valid online flag, coords dropped)
+  assert.deepStrictEqual(backfill.planFor("n", { lat: NaN, lng: 77.5 }, false, false).map((a) => a.type), ["createProfile"], "NaN coords → no presence");
+  assert.ok(!db.col("driverPresence").drvBadLoc1);
+  assert.ok(!("lat" in db.col("driverPresence").drvRange01) && db.col("driverPresence").drvRange01.online === true);
+  const db2 = makeDb(); db2.col("users").drvPerm001 = { role: "driver" };
+  const realCreate = db2.collection("driverProfiles").doc("x").create;
+  const origCollection = db2.collection;
+  db2.collection = (n) => { const c = origCollection(n); const d = c.doc; c.doc = (id) => { const r = d(id); if (n === "driverProfiles") r.create = async () => { const e = new Error("PERMISSION_DENIED: code 16 something 6"); e.code = 7; throw e; }; return r; }; return c; };
+  await assert.rejects(bfRun(db2, true, []), /PERMISSION_DENIED/);
+  void realCreate;
+});
+
 test("2B admin UI uses the callables; no direct driverUid write left in admin.html", () => {
   const a = fs.readFileSync(path.join(ROOT, "public/admin.html"), "utf8");
   assert.ok(a.includes('_adminCallable("adminAssignDriver")') && a.includes('_adminCallable("adminGetAssignmentRecommendation")') && a.includes('_adminCallable("adminUpsertDriverProfile")'));

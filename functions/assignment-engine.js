@@ -22,6 +22,7 @@ const DEFAULT_CONFIG = Object.freeze({
   jobDurationHours: 4,       // two jobs closer than this on the same day conflict
   maxDistanceKm: 40,
   fairnessFullDays: 7,
+  unknownTimeStartMin: 420,  // a job with no/unknown time is assumed to start 07:00 IST (availability only; conflicts stay whole-day)
   neutral: 0.5,              // score used when data is missing (no coordinates, new driver)
   unratedScore: 0.8,
   noHistoryAcceptance: 0.8,
@@ -52,11 +53,13 @@ function slotStartMin(shiftTime) {
   const h = Number(m[1]), mi = Number(m[2]);
   return h < 24 && mi < 60 ? h * 60 + mi : null;
 }
-/** IST wall-clock job start in epoch ms (date "YYYY-MM-DD"; unknown time → 00:00 IST). */
-function jobStartMs(date, shiftTime) {
+/** IST wall-clock job start in epoch ms (date "YYYY-MM-DD"); null for missing/invalid dates. */
+function jobStartMs(date, shiftTime, unknownTimeStartMin) {
   if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const mins = slotStartMin(shiftTime) || 0;
-  return Date.parse(date + "T00:00:00+05:30") + mins * 60000;
+  const day = Date.parse(date + "T00:00:00+05:30");
+  if (!Number.isFinite(day) || new Date(day + 5.5 * 3600e3).toISOString().slice(0, 10) !== date) return null; // e.g. 2026-02-31
+  const s = slotStartMin(shiftTime);
+  return day + (s === null ? (unknownTimeStartMin || 0) : s) * 60000;
 }
 function haversineKm(a, b) {
   const R = 6371, rad = (x) => (x * Math.PI) / 180;
@@ -80,7 +83,7 @@ function requirementFor(booking, cfg) {
     req.minCapacity = req.vehicleId ? VEHICLE_CAPACITY[req.vehicleId] : 0;
     req.skills = ["moving"];
   }
-  req.startMs = jobStartMs(booking.date, booking.shiftTime);
+  req.startMs = jobStartMs(booking.date, booking.shiftTime, cfg.unknownTimeStartMin);
   req.startMin = slotStartMin(booking.shiftTime);
   req.point = validPoint(booking.pickupCoords) ? booking.pickupCoords : null;
   return req;

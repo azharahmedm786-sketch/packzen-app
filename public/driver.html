@@ -554,6 +554,7 @@ function showApp(data) {
   if (data.isOnline) {
     document.getElementById("onlineToggle").checked = true;
     setOnlineUI(true);
+    _writePresence({ online: true }); // keep driverPresence in step with the restored state
     startLocationSharing();
   }
   listenForBooking();
@@ -899,7 +900,7 @@ function shareLocation() {
       if (driverUser) {
         const db = window._firebase.db;
         db.collection("users").doc(driverUser.uid).update({ lat, lng, locationUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        _writePresence({ lat, lng, geohash: _geohash(lat, lng, 7) });
+        _writePresence({ online: true, lat, lng, geohash: _geohash(lat, lng, 7) });
         if (currentBookingId) db.collection("bookings").doc(currentBookingId).update({ driverLat: lat, driverLng: lng, locationUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       }
       updateDriverMap(lat, lng);
