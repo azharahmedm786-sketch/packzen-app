@@ -13,7 +13,8 @@ let paymentReceiptId = "";
 let confirmationResult = null;
 let pendingSignupData = null;
 let currentUser = null;
-let promoDiscount = 0;
+let promoDiscount = 0;      // display estimate only — the server recomputes it
+let appliedPromoCode = null; // the ONLY promo value the server trusts (P0)
 let selectedPayment = "at_drop";
 let isProcessingPayment = false;
 let paymentConfirmInFlight = false; // guards against a second Razorpay success callback
@@ -1295,7 +1296,8 @@ function buildQuoteRawPayload(km) {
     packingService: !!document.getElementById("packingService")?.checked,
     extraHelpers: parseInt(document.getElementById("extraHelpers")?.value || "0", 10),
     isInterstate: !!isIntercityMove,
-    promoDiscount: promoDiscount || 0
+    promoCode: appliedPromoCode || null,
+    promoDiscount: promoDiscount || 0 // ignored by the server; kept for older backends during rollout
   };
 }
 
@@ -2108,6 +2110,7 @@ function resetBookingForm() {
   if (map) google.maps.event.trigger(map, "resize");
   if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
   promoDiscount = 0;
+  appliedPromoCode = null;
   lastCalculatedTotal = 0;
   // Clear v2 result cache
   window._lastQuoteResult = null;
@@ -3087,6 +3090,8 @@ async function applyPromoCode() {
   const code = document.getElementById("promoInput").value.trim().toUpperCase();
   const msgEl = document.getElementById("promoMsg");
   if (!code) { msgEl.textContent = "Enter a promo code."; msgEl.className = "promo-msg promo-error"; return; }
+  // A new attempt replaces any previously applied code (success sets it again below).
+  appliedPromoCode = null; promoDiscount = 0;
   waitForFirebase(async () => {
     const { db } = window._firebase;
     try {
@@ -3095,6 +3100,7 @@ async function applyPromoCode() {
         const refSnap = await db.collection("users").where("referralCode","==",code).get();
         if (!refSnap.empty && currentUser && refSnap.docs[0].id !== currentUser.uid) {
           promoDiscount = window.PackZenPricing?.config?.discounts?.referralAmount || 100;
+          appliedPromoCode = code;
           msgEl.textContent = "🎉 Referral code applied! ₹" + promoDiscount + " discount.";
           msgEl.className = "promo-msg promo-success";
           // Re-run the pricing engine with the updated promoDiscount
@@ -3115,6 +3121,7 @@ async function applyPromoCode() {
       const maxFraction = window.PackZenPricing?.config?.discounts?.maxPromoFraction || 0.5;
       const rawDiscount = promo.type === "percent" ? Math.round(baseTotal * promo.value / 100) : promo.value;
       promoDiscount = Math.min(rawDiscount, Math.floor(baseTotal * maxFraction));
+      appliedPromoCode = code;
 
       msgEl.textContent = `🎉 Code applied! ₹${promoDiscount} off.`;
       msgEl.className = "promo-msg promo-success";

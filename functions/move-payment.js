@@ -206,7 +206,9 @@ async function handleCreateOrder(req, deps) {
     // from the client (total, amount, email, uid) is read.
     const quoteInput = JSON.parse(JSON.stringify(body.quoteInput));
     let quote;
-    try { quote = await deps.quote(quoteInput, details.pickup, details.drop); } catch (e) {
+    try { quote = await deps.quote(quoteInput, details.pickup, details.drop, { uid: user.uid }); } catch (e) {
+      // A rejected promo code gets its own clear message (P0 server-side promos).
+      if (e && e.code === "invalid_promo") throw new PaymentError(400, "invalid_promo", e.publicMessage || "That promo code isn't valid.", "promo rejected");
       throw new PaymentError(400, "invalid_quote", MSG.quote, "quote failed: " + String(e && e.message).slice(0, 120));
     }
     const { grandTotal, payNow } = computeAmounts(quote, paymentType);
