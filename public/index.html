@@ -6,8 +6,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://apis.google.com https://accounts.google.com https://www.google.com; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://packzen-e7539.firebaseapp.com;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
-  <title>Packers & Movers in Bangalore | House Shifting | PackZen</title>
-  <meta name="description" content="PackZen — trusted packers & movers in Bangalore. Affordable house shifting, office relocation & bike transport. Live GPS tracking, fully insured. Starting ₹1,999. Free instant quote!">
+  <title>PackZen — Packers & Movers, AC & Home Services in Bangalore</title>
+  <meta name="description" content="PackZen — Bangalore's moving and home services marketplace. Packers &amp; movers, house shifting, office relocation, AC service and repair, appliance repair, plumbing, electrical, cleaning and same-city delivery. Instant moving quotes, secure online payment.">
   <meta name="theme-color" content="#0f172a">
   <meta name="geo.region" content="IN-KA">
   <meta name="geo.placename" content="Bangalore, Karnataka, India">
@@ -28,8 +28,8 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PackZen Packers &amp; Movers">
-  <meta property="og:title" content="PackZen Packers &amp; Movers Bangalore">
-  <meta property="og:description" content="Affordable house shifting & office relocation in Bangalore. Live GPS tracking, zero damage guarantee, transparent pricing. Starting ₹1,999. Book online in 60 seconds!">
+  <meta property="og:title" content="PackZen — Moving, Home &amp; Service Solutions in Bangalore">
+  <meta property="og:description" content="Affordable house shifting & office relocation in Bangalore. Live GPS tracking, careful handling, transparent pricing. Starting ₹1,999. Book online in 60 seconds!">
   <meta property="og:url" content="https://packzenblr.in/">
   <meta property="og:image" content="https://packzenblr.in/assets/logo/packzen-og.png">
   <meta property="og:image:width" content="1200">
@@ -39,7 +39,7 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="PackZen Packers &amp; Movers Bangalore">
-  <meta name="twitter:description" content="Affordable, insured house shifting & office relocation in Bangalore. Starting from ₹1,999. Live tracking included. Get a free instant quote!">
+  <meta name="twitter:description" content="Moving, AC, appliance and home services in Bangalore. Instant moving quotes, verified professionals and secure online payment.">
   <meta name="twitter:image" content="https://packzenblr.in/assets/logo/packzen-og.png">
 
   <meta name="mobile-web-app-capable" content="yes">
@@ -129,8 +129,8 @@
       },
       {
         "@type": "Question",
-        "name": "Are my belongings insured during the move?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Yes. All moves are fully insured. In the rare event of damage, we cover the cost — no questions asked." }
+        "name": "Is my move covered if something gets damaged?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Damage caused during a PackZen move is covered as set out in our Refund Policy — up to ₹10,000 per booking, unless you buy additional insurance. Report any damage from My Bookings and we'll review it promptly." }
       },
       {
         "@type": "Question",
@@ -153,8 +153,9 @@
   <link rel="stylesheet" href="desktop.css">
   <link rel="stylesheet" href="theme-purple.css">
   <link rel="stylesheet" href="catalog.css">
+  <link rel="stylesheet" href="pz-ui.css?v=2">
 
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
 </head>
 
 <body class="app-body">
@@ -236,12 +237,12 @@
 
    <div class="hero-premium-section">
      <div class="hero-premium-content">
-       <div class="hero-badge">⭐ Bangalore's Most Trusted Packers & Movers</div>
-       <h1 class="hero-premium-title">Move Smarter.<br><span class="purple-gradient">Move Safer.</span></h1>
-       <p class="hero-premium-desc">Instant Pricing • Live GPS Tracking • Insured Transport • Verified Professionals</p>
+       <div class="hero-badge">📍 Now serving Bangalore</div>
+       <h1 class="hero-premium-title">Moving, Home &amp; Service Solutions <span class="purple-gradient">in Bangalore</span></h1>
+       <p class="hero-premium-desc">Packers &amp; movers, AC and appliance repair, home services and same-city delivery — verified professionals, transparent pricing and secure payments.</p>
        <div class="hero-premium-actions">
-         <button class="hero-cta-btn primary" onclick="openBookingSheet()">Get Instant Quote</button>
-         <a href="#services" class="hero-cta-btn secondary">View Services</a>
+         <button class="hero-cta-btn primary" onclick="openBookingSheet()">Get Moving Quote</button>
+         <a href="#marketplace" class="hero-cta-btn secondary">Explore Services</a>
        </div>
      </div>
    <div class="hero-premium-illustration">
@@ -260,6 +261,19 @@
      <div class="trust-divider"></div>
      <div class="trust-item"><i data-lucide="award"></i> Trusted Across Bangalore</div>
    </div>
+
+    <!-- Service marketplace (all categories, Bangalore only) -->
+    <section class="pz-section" id="marketplace" aria-labelledby="pzMarketTitle">
+      <div class="pz-container">
+        <div class="pz-section-head">
+          <div class="pz-eyebrow">All services</div>
+          <h2 class="pz-h2" id="pzMarketTitle">What do you need help with?</h2>
+          <p class="pz-lead">Moving, AC, appliances, home services and delivery — one place, one account, one secure checkout.</p>
+        </div>
+        <p class="pz-notice" role="note"><span aria-hidden="true">📍</span><span>PackZen services are currently available in Bangalore. Moves start from Bangalore and can go anywhere in India.</span></p>
+        <div data-pz-marketplace></div>
+      </div>
+    </section>
 
     <!-- Quick Actions -->
     <div class="home-section">
@@ -427,9 +441,9 @@
         </div>
 
         <div class="wcs-card">
-          <div class="wcs-icon-circle"><img src="images/why/insured-safe.png" alt="Insured & Safe" loading="lazy"></div>
-          <div class="wcs-title">Insured & Safe</div>
-          <div class="wcs-desc">Your belongings are 100% insured for complete peace of mind</div>
+          <div class="wcs-icon-circle"><img src="images/why/insured-safe.png" alt="Careful handling" loading="lazy"></div>
+          <div class="wcs-title">Careful Handling</div>
+          <div class="wcs-desc">Trained crews, quality packing and damage cover as per our policy</div>
         </div>
 
         <div class="wcs-card">
@@ -480,62 +494,62 @@
     </div>
 
     <!-- How It Works -->
-    <div class="home-section" id="how-it-works">
-      <div class="section-label">How It Works</div>
-      <div class="hiw-app-list">
-        <div class="hiw-app-item">
-          <div class="hiw-app-num">1</div>
-          <div class="hiw-app-content">
-            <div class="hiw-app-title">Get Instant Quote</div>
-            <div class="hiw-app-sub">Enter pickup & drop — get price in seconds</div>
-          </div>
-          <div class="hiw-app-icon"><i data-lucide="clipboard"></i></div>
-        </div>
-        <div class="hiw-app-item">
-          <div class="hiw-app-num">2</div>
-          <div class="hiw-app-content">
-            <div class="hiw-app-title">Confirm Booking</div>
-            <div class="hiw-app-sub">Choose date, slot — confirmed in 30 min</div>
-          </div>
-          <div class="hiw-app-icon"><i data-lucide="calendar"></i></div>
-        </div>
-        <div class="hiw-app-item">
-          <div class="hiw-app-num">3</div>
-          <div class="hiw-app-content">
-            <div class="hiw-app-title">Pack & Load</div>
-            <div class="hiw-app-sub">Trained team, premium materials</div>
-          </div>
-          <div class="hiw-app-icon"></div>
-        </div>
-        <div class="hiw-app-item last">
-          <div class="hiw-app-num">4</div>
-          <div class="hiw-app-content">
-            <div class="hiw-app-title">Safe Delivery</div>
-            <div class="hiw-app-sub">Live tracking · On-time every time</div>
-          </div>
-          <div class="hiw-app-icon"><i data-lucide="party-popper"></i></div>
-        </div>
-      </div>
-    </div>
+    <!-- "How it works" moved to the marketplace section below (#how-it-works) -->
 
     <!-- Reviews -->
+  <section class="pz-section" id="how-it-works" aria-labelledby="pzHowTitle">
+    <div class="pz-container">
+      <div class="pz-section-head">
+        <div class="pz-eyebrow">How it works</div>
+        <h2 class="pz-h2" id="pzHowTitle">Booked in minutes, done right</h2>
+      </div>
+      <ol class="pz-steps">
+        <li><h3>Choose a service</h3><p>Pick a move or a home service and tell us what you need.</p></li>
+        <li><h3>Get your price</h3><p>Prices are calculated on our servers — what you see at checkout is what you pay.</p></li>
+        <li><h3>Book &amp; pay securely</h3><p>Pay online with Razorpay or choose an eligible pay-later option.</p></li>
+        <li><h3>Track to completion</h3><p>See your booking status, assigned professional and invoice in My Bookings.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="pz-section" id="service-areas" aria-labelledby="pzAreasTitle">
+    <div class="pz-container">
+      <div class="pz-section-head">
+        <div class="pz-eyebrow">Service areas</div>
+        <h2 class="pz-h2" id="pzAreasTitle">Serving neighbourhoods across Bangalore</h2>
+        <p class="pz-lead">We currently serve Bangalore only. Moving and transport start from Bangalore and can go to any city.</p>
+      </div>
+      <div class="pz-chips">
+        <a class="pz-chip" href="packers-and-movers-koramangala.html">Koramangala</a>
+        <a class="pz-chip" href="packers-and-movers-hsr-layout.html">HSR Layout</a>
+        <a class="pz-chip" href="packers-and-movers-indiranagar.html">Indiranagar</a>
+        <a class="pz-chip" href="packers-and-movers-whitefield.html">Whitefield</a>
+        <a class="pz-chip" href="packers-and-movers-marathahalli.html">Marathahalli</a>
+        <a class="pz-chip" href="packers-and-movers-electronic-city.html">Electronic City</a>
+        <a class="pz-chip" href="packers-and-movers-bellandur.html">Bellandur</a>
+        <a class="pz-chip" href="packers-and-movers-sarjapur-road.html">Sarjapur Road</a>
+        <a class="pz-chip" href="packers-and-movers-bangalore-areas.html">All Bangalore areas →</a>
+      </div>
+    </div>
+  </section>
+
   <div class="home-section" id="reviews">
   <div class="section-label-row">
     <div class="section-label">Google Reviews</div>
   </div>
 
-  <!-- Elfsight Google Reviews -->
-  <script src="https://elfsightcdn.com/platform.js" async></script>
-  <div class="elfsight-app-ab2e31b5-aa18-4d6d-9c8f-1fcbf8141f01"
-       data-elfsight-app-lazy>
+  <!-- Google reviews: the third-party reviews widget was blocked by this page's
+       CSP, so the section rendered empty. Link to the real Google reviews instead. -->
+  <div class="pz-card pz-review-card">
+    <p class="pz-lead">Read genuine, unedited reviews from PackZen customers on our Google Business profile.</p>
   </div>
 
-  <div style="text-align:center; margin-top:20px;">
+<div style="text-align:center; margin-top:20px;">
     <a href="https://g.page/r/CR_hUMH7jJOvEBM/review"
        target="_blank"
        rel="noopener noreferrer"
        class="review-leave-btn">
-       <i data-lucide="star"></i> Leave a Google Review
+       <i data-lucide="star" aria-hidden="true"></i> Read &amp; leave Google reviews
     </a>
   </div>
 </div>
@@ -552,8 +566,8 @@
           <div class="faq-a">Yes. Our team brings high-quality packing materials including bubble wrap, carton boxes, and protective sheets.</div>
         </div>
         <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">Are my belongings insured?<span class="faq-arrow">▾</span></button>
-          <div class="faq-a">Yes. All moves are fully insured. In the rare event of damage, we cover the cost — no questions asked.</div>
+          <button class="faq-q" onclick="toggleFaq(this)">Is my move covered if something gets damaged?<span class="faq-arrow">▾</span></button>
+          <div class="faq-a">Damage caused during a PackZen move is covered as set out in our <a href="legal/refund.html">Refund Policy</a> — up to ₹10,000 per booking, unless you buy additional insurance. Report any damage from My Bookings and we'll review it promptly.</div>
         </div>
         <div class="faq-item">
           <button class="faq-q" onclick="toggleFaq(this)">Can I reschedule my booking?<span class="faq-arrow">▾</span></button>
@@ -728,11 +742,11 @@
           <div class="step-counter"><span id="stepCurrent">1</span><span class="step-of">/5</span></div>
           <div class="step-header-label" id="stepLabel">What type of move?</div>
         </div>
-        <div class="step-progress-track">
+        <div class="step-progress-track" role="progressbar" aria-label="Booking progress" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-valuetext="Step 1 of 5">
           <div class="step-progress-fill" id="progressBar" style="width:20%"></div>
         </div>
         <div class="step-indicators">
-    <div class="step-dot active" id="dot0"><span class="dot-icon">1</span><div class="dot-label">Type</div></div>
+    <div class="step-dot active" id="dot0" aria-current="step"><span class="dot-icon">1</span><div class="dot-label">Type</div></div>
           <div class="step-line" id="line0"></div>
           <div class="step-dot" id="dot1"><span class="dot-icon">2</span><div class="dot-label">Location</div></div>
           <div class="step-line" id="line1"></div>
@@ -761,9 +775,9 @@
           <div class="quote-trust-box">
             <h3>Why PackZen?</h3>
             <div class="trust-features">
-              <div class="trust-item"><span><i data-lucide="shield-check"></i></span><p>Fully Insured</p></div>
+              <div class="trust-item"><span><i data-lucide="shield-check"></i></span><p>Damage Cover (T&amp;C)</p></div>
               <div class="trust-item"><span><i data-lucide="map-pin"></i></span><p>Live Tracking</p></div>
-              <div class="trust-item"><span><i data-lucide="check-circle"></i></span><p>Zero Damage</p></div>
+              <div class="trust-item"><span><i data-lucide="check-circle"></i></span><p>Careful Handling</p></div>
               <div class="trust-item"><span>☎️</span><p>24/7 Support</p></div>
             </div>
             <div class="google-trust"><i data-lucide="star"></i> Trusted by Bangalore customers</div>
@@ -924,7 +938,7 @@
             <div class="trust-strip-inline">
               <span>📍 GPS tracked</span>
               <span>🛡️ Verified drivers &amp; helpers</span>
-              <span>✅ Insured &amp; safe delivery</span>
+              <span>✅ Careful handling &amp; safe delivery</span>
               <span>⏱️ On-time guarantee</span>
             </div>
           </div>
@@ -1260,12 +1274,12 @@
       <div class="dashboard-avatar" id="dashAvatar">U</div>
       <div><div class="dashboard-name" id="dashName">User</div><div class="dashboard-email" id="dashEmail"></div></div>
     </div>
-    <div class="dash-tabs">
-<button class="dash-tab active" onclick="switchDashTab('bookings',this)">Bookings</button>
-      <button class="dash-tab" onclick="switchDashTab('addresses',this)"><i data-lucide="map-pin"></i> Addresses</button>
-      <button class="dash-tab" onclick="switchDashTab('referral',this)">🎁 Referral</button>
-      <button class="dash-tab" onclick="switchDashTab('profile',this)"><i data-lucide="user"></i> Profile</button>
-      <button class="dash-tab" id="adminTabBtn" style="display:none;" onclick="switchDashTab('admin',this)">🛠 Admin</button>
+    <div class="dash-tabs" role="tablist" aria-label="My account">
+<button type="button" role="tab" aria-selected="true" class="dash-tab active" onclick="switchDashTab('bookings',this)">Bookings</button>
+      <button type="button" role="tab" aria-selected="false" class="dash-tab" onclick="switchDashTab('addresses',this)"><i data-lucide="map-pin"></i> Addresses</button>
+      <button type="button" role="tab" aria-selected="false" class="dash-tab" onclick="switchDashTab('referral',this)">🎁 Referral</button>
+      <button type="button" role="tab" aria-selected="false" class="dash-tab" onclick="switchDashTab('profile',this)"><i data-lucide="user"></i> Profile</button>
+      <button type="button" role="tab" aria-selected="false" class="dash-tab" id="adminTabBtn" style="display:none;" onclick="switchDashTab('admin',this)">🛠 Admin</button>
     </div>
     <div class="dash-content" id="dashBookings"><div id="bookingsList" class="quotes-list"><div class="dash-empty">No bookings yet.</div></div></div>
     <div class="dash-content" id="dashAddresses" style="display:none;">
@@ -1652,7 +1666,7 @@
 <script src="env-config.js?v=2"></script>
   <script src="firebase-config.js"></script>
 <script src="https://packzen-config.azharahmedm786.workers.dev"></script>
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js" integrity="sha384-91xU8aqqhiXDWyGdT9UafmQiFFtK+Utp9IXVnNe5jYTL+8mM2WowIPQT3GWFJUdY" crossorigin="anonymous"></script>
 <script>emailjs.init("y2TDPrqIRH-YMJ29_");</script>
 <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
@@ -1680,7 +1694,9 @@
 <script src="pricing-engine-v2.js?v=4.2.0"></script>
   <script src="payment-state.js?v=1"></script>
   <script src="booking-format.js?v=1"></script>
-  <script src="script.js?v=11"></script>
+  <script src="marketplace.js?v=1"></script>
+  <script src="script.js?v=12"></script>
+  <script src="pz-a11y.js?v=1" defer></script>
 
 
 <!-- App UI logic (booking sheet, bottom nav, etc.) -->
@@ -1798,14 +1814,7 @@ function loadGoogleMaps() {
 window.addEventListener('load', loadGoogleMaps);
 </script>
 
-<!-- Service Worker (unchanged) -->
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').catch(function() {});
-  });
-}
-</script>
+<!-- Service worker registration removed: /sw.js does not exist in the deployed site (404 on every visit). -->
 
 <!-- Offline banner — additive, does not touch existing booking/payment logic.
      handleBookingAction() in script.js independently blocks the actual

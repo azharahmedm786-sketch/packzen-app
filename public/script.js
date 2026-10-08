@@ -347,7 +347,6 @@ SIZE CARDS RENDERER
 SIZE CARDS RENDERER (FIXED)
 ============================================ */
 function renderSizeCards(type) {
-  console.log("renderSizeCards", type);
   const container = document.getElementById("houseCards");
   const select = document.getElementById("house");
   const labelText = document.getElementById("sizeLabelText");
@@ -590,9 +589,25 @@ function updateStepDots(n) {
   if (label) label.textContent = STEP_LABELS[n] || "";
 }
 
+// Inline, screen-reader-announced validation message inside the current step
+// (the toast still shows, so existing behaviour is unchanged).
+function _stepError(msg) {
+  showToast(msg);
+  const step = getSteps()[currentStep];
+  const body = step && (step.querySelector(".step-body") || step);
+  if (!body) return;
+  let box = body.querySelector(".pz-step-error");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "pz-step-error";
+    box.setAttribute("role", "alert");
+    body.insertBefore(box, body.firstChild);
+  }
+  box.textContent = String(msg).replace(/^[^\p{L}\p{N}]+/u, "");
+}
+
 function showStep(n) {
-  console.log("showStep", n);
-  getSteps().forEach(s => s.classList.remove("active"));
+  getSteps().forEach(s => { s.classList.remove("active"); s.querySelectorAll(".pz-step-error").forEach(e => e.remove()); });
   const steps = getSteps();
   if (steps[n]) steps[n].classList.add("active");
   setTimeout(() => {
@@ -604,8 +619,22 @@ function showStep(n) {
     }
   }, 300);
   const pb = document.getElementById("progressBar");
-  if (pb) pb.style.width = ((n + 1) / 5) * 100 + "%";
+  if (pb) {
+    pb.style.width = ((n + 1) / 5) * 100 + "%";
+    const track = pb.parentElement;
+    if (track) {
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("aria-label", "Booking progress");
+      track.setAttribute("aria-valuemin", "1");
+      track.setAttribute("aria-valuemax", String(steps.length || 5));
+      track.setAttribute("aria-valuenow", String(n + 1));
+      track.setAttribute("aria-valuetext", "Step " + (n + 1) + " of " + (steps.length || 5));
+    }
+  }
   updateStepDots(n);
+  document.querySelectorAll(".step-indicators .step-dot").forEach((d, i) => {
+    if (i === n) d.setAttribute("aria-current", "step"); else d.removeAttribute("aria-current");
+  });
 setTimeout(() => {
     const sheetWrap = document.querySelector(".sheet-form-wrap");
     if (sheetWrap) {
@@ -624,21 +653,21 @@ setTimeout(() => {
 
 function nextStep() {
   if (currentStep === 0 && !document.getElementById("moveType")?.value) {
-    showToast("👆 Please select your move type"); return;
+    _stepError("👆 Please select your move type"); return;
   }
   if (currentStep === 1) {
-    if (!document.getElementById("pickup")?.value.trim()) { showToast("📍 Please enter a pickup location"); return; }
-    if (!pickupPlace || !pickupPlace.geometry) { showToast("⚠️ Please select pickup address from dropdown"); return; }
-    if (!document.getElementById("drop")?.value.trim()) { showToast("🏁 Please enter a drop location"); return; }
-    if (!dropPlace || !dropPlace.geometry) { showToast("⚠️ Please select drop address from dropdown"); return; }
+    if (!document.getElementById("pickup")?.value.trim()) { _stepError("📍 Please enter a pickup location"); return; }
+    if (!pickupPlace || !pickupPlace.geometry) { _stepError("⚠️ Please select the pickup address from the suggestions"); return; }
+    if (!document.getElementById("drop")?.value.trim()) { _stepError("🏁 Please enter a drop location"); return; }
+    if (!dropPlace || !dropPlace.geometry) { _stepError("⚠️ Please select the drop address from the suggestions"); return; }
   }
   if (currentStep === 2) {
-    if (!document.getElementById("shiftDate")?.value) { showToast("📅 Please select a moving date"); return; }
-    if (!document.getElementById("shiftTime")?.value) { showToast("🕐 Please select a time slot"); return; }
-    if (!document.getElementById("house")?.value) { showToast("🏠 Please select your house type"); return; }
+    if (!document.getElementById("shiftDate")?.value) { _stepError("📅 Please select a moving date"); return; }
+    if (!document.getElementById("shiftTime")?.value) { _stepError("🕐 Please select a time slot"); return; }
+    if (!document.getElementById("house")?.value) { _stepError("🏠 Please select your house type"); return; }
   }
   if (currentStep === 3) {
-    if (!isIntercityMove && !document.getElementById("vehicle")?.value) { showToast("🚚 Please select a vehicle type"); return; }
+    if (!isIntercityMove && !document.getElementById("vehicle")?.value) { _stepError("🚚 Please select a vehicle type"); return; }
   }
   if (currentStep < getSteps().length - 1) { currentStep++; showStep(currentStep); }
 }
@@ -693,7 +722,7 @@ function syncQuoteSummary() {
     const b = q.breakdown;
     const rupee = n => "₹" + Math.round(n || 0).toLocaleString("en-IN");
 
-    set("qsumVehicleName", b.vehicleUsed ? ` (${b.vehicleUsed})` : "");
+    set("qsumVehicleName", b.vehicleUsed ? ` (${(window.PackZenBookingFormat && window.PackZenBookingFormat.vehicleLabel({ vehicleUsed: b.vehicleUsed })) || b.vehicleUsed})` : "");
     set("qsumBaseFare", rupee(b.baseFare));
     set("qsumDistanceCharge", rupee(b.distanceCharge));
 
@@ -870,7 +899,6 @@ setTimeout(() => {
     getCurrentLocationAutomatically();
 }, 1000);
 
-console.log("✅ Map initialized");
 };
 
 function initAutocomplete() {
@@ -923,8 +951,6 @@ function showLocation(type) {
       directionsRenderer.setDirections(result);
       const route = result.routes[0];
       const leg = route.legs[0];
-      console.log("Distance:", leg.distance.text);
-      console.log("Duration:", leg.duration.text);
 
       if (pickupMarker) pickupMarker.setMap(null);
       if (dropMarker) dropMarker.setMap(null);
@@ -997,10 +1023,8 @@ function showLocation(type) {
       bounds.extend(dropPlace.geometry.location);
       map.fitBounds(bounds);
       pickupMarker.addListener("dragend", function(event) {
-        console.log("Pickup moved:", event.latLng.lat(), event.latLng.lng());
       });
       dropMarker.addListener("dragend", function(event) {
-        console.log("Drop moved:", event.latLng.lat(), event.latLng.lng());
       });
     }
   });
@@ -1219,7 +1243,6 @@ async function getCurrentLocationAutomatically() {
         );
 
     } catch (e) {
-        console.log("Location permission denied.");
     }
 
     isLocating = false;
@@ -1879,7 +1902,6 @@ function notifyOwner(bookingRef, name, phone, pickup, drop, date, total, payment
   const payLbl = paymentType === "pay_later" ? "Cash on delivery" : paymentType === "full" ? "Paid Full" : "Advance Paid";
   const emoji = source === "whatsapp" ? "💬" : source === "payment" ? "💳" : "📋";
   const msg = `${emoji} New Booking Alert — PackZen 🚚\n\nID: ${bookingRef}\nName: ${name}\nPhone: +91 ${phone}\nPickup: ${pickup}\nDrop: ${drop}\nDate: ${date || "To be confirmed"}\nAmount: ₹${Number(total).toLocaleString("en-IN")}\nPayment: ${payLbl}`;
-  console.log("📲 Owner notification:", msg);
   try {
     fetch("https://n8n-production-e685.up.railway.app/webhook/owner-notification", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -2298,22 +2320,37 @@ function loadTrackingData() {
   if (!currentUser || !window._firebase) return;
   if (trackingListener) { trackingListener(); trackingListener = null; }
   trackingListener = window._firebase.db.collection("bookings")
-    .where("customerUid","==",currentUser.uid).limit(1)
+    .where("customerUid","==",currentUser.uid).orderBy("createdAt","desc").limit(10)
     .onSnapshot(snap => {
       if (snap.empty) { document.getElementById("trackingBookingId").textContent = "No active booking"; return; }
-      const booking = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      const pick = _pickTrackedBooking(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const booking = pick;
       currentBookingId = booking.id;
       updateTrackingUI(booking);
+    }, err => {
+      console.error("tracking listener failed:", err && err.code ? err.code : "error");
+      const el = document.getElementById("trackingBookingId");
+      if (el) el.textContent = "Tracking is unavailable right now — please try again.";
     });
+}
+
+// Track the booking the customer just made (if known), else the most recent
+// active one, else the most recent. Previously limit(1) with no ordering could
+// follow an arbitrary (old or cancelled) booking (R2-10).
+function _pickTrackedBooking(list) {
+  let preferred = null;
+  try { preferred = currentBookingId || localStorage.getItem("packzen_active_booking"); } catch (e) { preferred = currentBookingId; }
+  const done = ["cancelled", "delivered", "completed"];
+  return (preferred && list.find(b => b.id === preferred)) || list.find(b => !done.includes(b.status)) || list[0];
 }
 
 function updateTrackingUI(b) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set("trackingBookingId", "#" + b.id.slice(-6).toUpperCase());
   set("trackStatus", capitalize(b.status || "confirmed"));
-  set("trackVehicle", b.vehicle || "—");
+  set("trackVehicle", (window.PackZenBookingFormat && window.PackZenBookingFormat.vehicleLabel(b)) || "—");
   set("trackVehicleReg", b.driverVehicleReg || b.vehicleNumber || b.vehicleRegistration || "—");
-  set("trackDriver", b.driverName || "Not yet assigned");
+  set("trackDriver", (typeof b.driverName === "string" && b.driverName.trim()) || "Your driver/technician will appear here once assigned.");
 
   const phoneEl = document.getElementById("trackDriverPhone");
   if (phoneEl) {
@@ -2325,7 +2362,8 @@ function updateTrackingUI(b) {
   set("trackDate", b.date || "—");
 
   if (b.status !== "delivered" && b.status !== "completed") {
-    set("trackEstArrival", b.time ? b.date + " " + b.time : b.date);
+    const slot = (window.PackZenBookingFormat && window.PackZenBookingFormat.timeLabel(b)) || b.time || "";
+    set("trackEstArrival", [b.date, slot].filter(v => typeof v === "string" && v.trim()).join(" ") || "—");
   } else {
     set("trackEstArrival", "Arrived");
   }
@@ -3036,7 +3074,6 @@ async function loadQuotes() {
     container.innerHTML = "";
  snapshot.forEach(doc => {
     const data = doc.data();
-    console.log(data);
     container.innerHTML += `
         <div style="
             padding:16px;
@@ -3186,10 +3223,10 @@ function switchDashTab(tab, el) {
   const panel = document.getElementById(id);
     if (panel) panel.style.display = "none";
   });
-  document.querySelectorAll(".dash-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".dash-tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
   const target = document.getElementById("dash" + tab.charAt(0).toUpperCase() + tab.slice(1));
   if (target) target.style.display = "block";
-  if (el) el.classList.add("active");
+  if (el) { el.classList.add("active"); el.setAttribute("aria-selected", "true"); }
   if (tab === "referral") loadReferralData();
   if (tab === "bookings") loadUserBookings();
   if (tab === "profile") loadProfileData();
@@ -3197,75 +3234,129 @@ function switchDashTab(tab, el) {
 }
 
 function loadUserBookings() {
-      console.log("loadUserBookings called");
   if (!currentUser || !window._firebase) return;
   const list = document.getElementById("bookingsList");
-  if (list) list.innerHTML = 'Loading...';
+  if (list) list.innerHTML = '<div class="pz-state" role="status"><p>Loading your bookings…</p></div>';
   window._firebase.db.collection("bookings").where("customerUid","==",currentUser.uid).orderBy("createdAt","desc").limit(10).get()
     .then(snap => {
-      console.log("Documents:", snap.size);
       if (!list) return;
-      if (snap.empty) { list.innerHTML = 'No bookings yet.'; return; }
+      if (snap.empty) {
+        list.innerHTML = '<div class="pz-state"><h3>No bookings yet</h3><p>Your moves and service bookings will appear here.</p>' +
+          '<button type="button" class="pz-btn pz-btn--primary" onclick="openBookingSheet()">Get a moving quote</button> ' +
+          '<a class="pz-btn pz-btn--secondary" href="services.html">Browse services</a></div>';
+        return;
+      }
       const statusColors = {confirmed:"#0057ff",assigned:"#7c3aed",packing:"#0ea5e9",transit:"#f97316",delivered:"#16a34a",cancelled:"#dc2626"};
-      console.log(snap.docs);
       const statusIcons = {confirmed:"📋",assigned:"🚛",packing:"📦",transit:"🚚",delivered:"✅",cancelled:"❌"};
-      list.innerHTML = snap.docs.map(d => {
-        const b = d.data(), id = d.id;
-        const color = statusColors[b.status] || "#5a6a8a";
-        const icon = statusIcons[b.status] || "📋";
-        const canCancel = !["packing","transit","delivered","cancelled"].includes(b.status);
-        // Matches firestore.rules: customers may reschedule only pending/confirmed bookings.
-        const canReschedule = ["pending","confirmed"].includes(b.status);
-     const canRate = b.status === "delivered" && !b.driverRating;
-const canClaim = b.status === "delivered" && !b.damageClaimed;
-        // The card's action row (buttons, delivery OTP, invoice) keeps its previous
-        // visibility; it used to be gated through the wider canReschedule condition.
-        const showActionRow = !["transit","delivered","cancelled"].includes(b.status) || canRate || canClaim;
-const showOtp = b.status === "transit"; // completion stage only
-        return `<div class="bk-card"> <div class="bk-card-top"><div class="bk-route">${escapeHTML((b.pickup||"?").split(",")[0])} → ${escapeHTML((b.drop||"?").split(",")[0])}</div><div class="bk-status" style="color:${color}">${icon} ${escapeHTML(capitalize(b.status||"confirmed"))}</div></div> <div class="bk-meta"><span>₹${(b.total||0).toLocaleString("en-IN")}</span><span>${escapeHTML(b.date)||"Date TBD"}</span><span style="font-size:.72rem;color:#5a6a8a">${escapeHTML(b.bookingRef)||""}</span></div> ${showActionRow?`
-${canReschedule?`<button class="bk-btn reschedule" data-action="reschedule" data-id="${id}" data-ref="${b.bookingRef||id}" data-date="${b.date||""}">📅 Reschedule</button>`:""}
-${showOtp ? `
-<div style="
-    margin:12px 0;
-    padding:14px;
-    background:#f0fff4;
-    border:2px dashed #16a34a;
-    border-radius:10px;
-    text-align:center;
-">
-    <div style="font-size:12px;color:#666;">
-        Completion code
-    </div>
-
-    <div style="
-        font-size:34px;
-        font-weight:bold;
-        letter-spacing:8px;
-        color:#16a34a;
-    ">
-        <span data-completion-otp="${escapeHTML(id)}">••••</span>
-    </div>
-
-    <div style="font-size:13px;color:#666;">
-        Give this code to the driver only after delivery.
-    </div>
-</div>
-` : ""}
-${canCancel?`<button class="bk-btn cancel" data-action="cancel" data-id="${id}" data-ref="${b.bookingRef||id}" data-status="${b.status||""}">✕ Cancel</button>`:""}
-${canRate?`<button class="bk-btn rate" data-action="rate" data-id="${id}" data-ref="${b.bookingRef||id}" data-driver="${b.driverName||""}">⭐ Rate Driver</button>`:""}
-${canClaim?`<button class="bk-btn claim" data-action="claim" data-id="${id}" data-ref="${b.bookingRef||id}">🔧 Report Damage</button>`:""}
-<button class="bk-btn invoice" onclick="downloadInvoice('${id}')" style="background:#0ea5e9;color:white;border:none;">📄 Invoice</button>
-<button class="bk-btn email" onclick="emailInvoice('${id}')" style="background:#0284c7;color:white;border:none;">✉️ Email</button>
-
-`:""}
-</div>`;
-      }).join("");
+      list.innerHTML = snap.docs.map(d => renderBookingCard(d.data(), d.id)).join("");
       attachBookingButtonListeners();
       _hydrateCompletionOtps(list);
 }).catch((err) => {
-      console.error("loadUserBookings failed:", err);
-      if (list) list.innerHTML = `<div class="dash-empty">Error loading bookings: ${escapeHTML(err.message)}</div>`;
+      console.error("loadUserBookings failed:", err && err.code ? err.code : "error");
+      if (list) list.innerHTML = '<div class="pz-state" role="alert"><h3>We couldn\'t load your bookings</h3>' +
+        '<p>Please check your connection and try again.</p>' +
+        '<button type="button" class="pz-btn pz-btn--secondary" onclick="loadUserBookings()">Try again</button></div>';
     });
+}
+
+/* ============================================
+CUSTOMER BOOKING CARD (My Bookings)
+Every value is escaped; money comes from PackZenPaymentState (balanceDue
+first, legacy-safe); never renders undefined / null / NaN / [object Object].
+============================================ */
+const BOOKING_STATUS_LABELS = { pending: "Pending", confirmed: "Confirmed", assigned: "Assigned", packing: "Packing",
+  transit: "In transit", delivered: "Delivered", completed: "Completed", cancelled: "Cancelled" };
+
+function _rupees(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? "₹" + Math.round(v).toLocaleString("en-IN") : "—";
+}
+
+function _bookingTitle(b) {
+  if (b.bookingType === "service") {
+    const names = Array.isArray(b.items) ? b.items.map(i => i && i.name).filter(n => typeof n === "string" && n.trim()) : [];
+    if (names.length) return names.slice(0, 2).join(", ") + (names.length > 2 ? " +" + (names.length - 2) + " more" : "");
+    return "Service booking";
+  }
+  const first = v => (typeof v === "string" && v.trim()) ? v.split(",")[0].trim() : "";
+  const from = first(b.pickup), to = first(b.drop);
+  return from && to ? from + " → " + to : (from || to || "Moving booking");
+}
+
+function _nextAction(b, ps) {
+  switch (b.status) {
+    case "pending": return "We're reviewing your request and will confirm shortly.";
+    // Unassigned bookings already show the "will appear here once assigned" line.
+    case "confirmed": return b.driverName ? "Your crew is assigned. We'll update you on the day." : "";
+    case "assigned": return "Keep your OTP ready. Share it only when the job is complete.";
+    case "packing": case "transit": return "Your job is in progress. Track it live from Tracking.";
+    case "delivered": case "completed":
+      if (ps && ps.known && ps.balanceDue > 0) return "Balance of " + _rupees(ps.balanceDue) + " is due.";
+      return "All done. Rate your experience and download your invoice.";
+    case "cancelled": return b.refundStatus === "processed" ? "Cancelled — refund processed." : "This booking was cancelled.";
+    default: return "";
+  }
+}
+
+function _invoiceAmountText(b) {
+  const ps = window.PackZenPaymentState ? window.PackZenPaymentState.summarize(b) : null;
+  if (ps && ps.legacy) return "Paid " + _rupees(ps.paid);
+  return _rupees(ps ? ps.total : b.total);
+}
+
+function renderBookingCard(b, id) {
+  b = b || {};
+  const status = typeof b.status === "string" && b.status ? b.status : "confirmed";
+  const ps = window.PackZenPaymentState ? window.PackZenPaymentState.summarize(b) : null;
+  const ref = escapeHTML(String(b.bookingRef || id || ""));
+  const safeId = escapeHTML(String(id || ""));
+  const canCancel = !["packing", "transit", "delivered", "completed", "cancelled"].includes(status);
+  // Matches firestore.rules: customers may reschedule only pending/confirmed bookings.
+  const canReschedule = ["pending", "confirmed"].includes(status);
+  const canRate = status === "delivered" && !b.driverRating;
+  const canClaim = status === "delivered" && !b.damageClaimed;
+  const showActionRow = !["transit", "delivered", "cancelled"].includes(status) || canRate || canClaim;
+  // Phase 1: the completion code is server-side and shown only while the job is in transit.
+  const showOtp = b.status === "transit"; // completion stage only
+  const dateTxt = [b.date, window.PackZenBookingFormat ? window.PackZenBookingFormat.timeLabel(b) : ""]
+    .filter(v => typeof v === "string" && v.trim()).join(" · ") || "Date to be confirmed";
+
+  let money;
+  if (ps && ps.legacy) {
+    money = `<dl class="pz-bk-money"><div><dt>Paid online</dt><dd>${_rupees(ps.paid)}</dd></div><div><dt>Total</dt><dd>Being confirmed</dd></div><div><dt>Balance</dt><dd>Being confirmed</dd></div></dl>`;
+  } else if (ps) {
+    money = `<dl class="pz-bk-money"><div><dt>Total</dt><dd>${_rupees(ps.total)}</dd></div><div><dt>Paid</dt><dd>${_rupees(ps.paid)}</dd></div><div><dt>Balance</dt><dd>${ps.fullyPaid ? "Fully paid" : _rupees(ps.balanceDue)}</dd></div></dl>`;
+  } else {
+    money = `<dl class="pz-bk-money"><div><dt>Total</dt><dd>${_rupees(b.total)}</dd></div></dl>`;
+  }
+  const assignee = typeof b.driverName === "string" && b.driverName.trim()
+    ? "Assigned: " + escapeHTML(b.driverName.trim())
+    : "Your driver/technician will appear here once assigned.";
+  const next = _nextAction(b, ps);
+  const data = (k, v) => ` data-${k}="${escapeHTML(String(v == null ? "" : v))}"`;
+
+  return `<article class="bk-card" aria-label="Booking ${ref}">
+  <div class="pz-bk-head">
+    <div><div class="pz-bk-title">${escapeHTML(_bookingTitle(b))}</div>
+    <div class="pz-bk-sub">${escapeHTML(dateTxt)}${ref ? " · " + ref : ""}</div></div>
+    <span class="pz-badge pz-badge--${escapeHTML(status)}">${escapeHTML(BOOKING_STATUS_LABELS[status] || capitalize(status))}</span>
+  </div>
+  ${money}
+  <div class="pz-bk-assignee">${assignee}</div>
+  ${next ? `<div class="pz-bk-next">${escapeHTML(next)}</div>` : ""}
+  ${showActionRow ? `<div class="bk-actions">
+    ${canReschedule ? `<button type="button" class="bk-btn reschedule" data-action="reschedule"${data("id", id)}${data("ref", b.bookingRef || id)}${data("date", b.date || "")}>📅 Reschedule</button>` : ""}
+    ${showOtp ? `<div style="margin:12px 0;padding:14px;background:#f0fff4;border:2px dashed #16a34a;border-radius:10px;text-align:center;">
+      <div style="font-size:12px;color:#666;">Completion code</div>
+      <div style="font-size:34px;font-weight:bold;letter-spacing:8px;color:#16a34a;"><span data-completion-otp="${escapeHTML(id)}">••••</span></div>
+      <div style="font-size:13px;color:#666;">Give this code to the driver only after delivery.</div></div>` : ""}
+    ${canCancel ? `<button type="button" class="bk-btn cancel" data-action="cancel"${data("id", id)}${data("ref", b.bookingRef || id)}${data("status", status)}>✕ Cancel</button>` : ""}
+    ${canRate ? `<button type="button" class="bk-btn rate" data-action="rate"${data("id", id)}${data("ref", b.bookingRef || id)}${data("driver", b.driverName || "")}>⭐ Rate Driver</button>` : ""}
+    ${canClaim ? `<button type="button" class="bk-btn claim" data-action="claim"${data("id", id)}${data("ref", b.bookingRef || id)}>🔧 Report Damage</button>` : ""}
+    <button type="button" class="bk-btn invoice" onclick="downloadInvoice('${safeId}')" style="background:#0ea5e9;color:white;border:none;">📄 Invoice</button>
+    <button type="button" class="bk-btn email" onclick="emailInvoice('${safeId}')" style="background:#0284c7;color:white;border:none;">✉️ Email</button>
+  </div>` : ""}
+</article>`;
 }
 
 function attachBookingButtonListeners() {
@@ -3343,10 +3434,10 @@ function loadUserInvoices() {
         const b = d.data();
         return `<div class="quote-item" style="display:flex;justify-content:space-between;align-items:center;">
                   <div>
-                    <div style="font-weight:bold;">Invoice #${b.bookingRef || d.id.substring(0,8)}</div>
-                    <div style="font-size:0.8rem;color:var(--text-muted);">₹${(b.total||0).toLocaleString("en-IN")} • ${b.date||"N/A"}</div>
+                    <div style="font-weight:bold;">Invoice #${escapeHTML(String(b.bookingRef || d.id.substring(0,8)))}</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);">${_invoiceAmountText(b)} • ${escapeHTML(String(b.date || "Date not set"))}</div>
                   </div>
-                  <button class="btn-auth" style="padding:6px 12px;font-size:0.8rem;min-height:unset;" onclick="downloadInvoice('${d.id}')">Download</button>
+                  <button type="button" class="btn-auth" style="padding:6px 12px;font-size:0.8rem;min-height:unset;" onclick="downloadInvoice('${escapeHTML(d.id)}')">Download</button>
                 </div>`;
       }).join("");
     }).catch(err => { console.error("Error loading invoices:", err); list.innerHTML = '<div class="dash-empty">Error loading invoices.</div>'; });
@@ -4015,7 +4106,7 @@ function sendEmailNotification(bookingRef, name, phone, pickup, drop, date, tota
   if (typeof emailjs === "undefined") return;
   emailjs.send("service_surriec", "template_hffggde", {
     booking_id: bookingRef, name: name, phone: phone, pickup: pickup, drop: drop, date: date, amount: total
-  }).then(() => { console.log("Email sent successfully"); }).catch((err) => { console.error("Email failed:", err); });
+  }).then(() => {}).catch((err) => { console.error("Email failed:", err); });
 }
 
 /* ============================================
@@ -4299,7 +4390,6 @@ document.addEventListener("DOMContentLoaded", () => {
 window.addEventListener("load", () => {
   const pendingBooking = localStorage.getItem("pendingBooking");
   if (pendingBooking) {
-    console.log("⚠️ Found unsaved booking backup");
     showToast("Recovered unsaved booking data.");
     localStorage.removeItem("pendingBooking");
   }
