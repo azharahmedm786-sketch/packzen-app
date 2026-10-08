@@ -28,16 +28,18 @@ function toMs(v) { if (!v) return null; if (typeof v.toMillis === "function") re
 function planFor(uid, user, hasProfile, hasPresence) {
   const actions = [];
   if (!hasProfile) actions.push({ type: "createProfile", uid });
-  const hasCoords = typeof user.lat === "number" && typeof user.lng === "number";
-  if (!hasPresence && (hasCoords || typeof user.isOnline === "boolean")) actions.push({ type: "createPresence", uid });
+  if (!hasPresence && (validCoords(user) || typeof user.isOnline === "boolean")) actions.push({ type: "createPresence", uid });
   return actions;
 }
 
 function profileDoc(ts) {
   return dp.newProfile({ status: "active", serviceAreas: ["bangalore"], skills: ["moving"], vehicleIds: [] }, ts);
 }
+function validCoords(u) {
+  return Number.isFinite(u.lat) && Number.isFinite(u.lng) && Math.abs(u.lat) <= 90 && Math.abs(u.lng) <= 180;
+}
 function presenceDoc(user, nowMs) {
-  const hasCoords = typeof user.lat === "number" && typeof user.lng === "number" && Math.abs(user.lat) <= 90 && Math.abs(user.lng) <= 180;
+  const hasCoords = validCoords(user);
   const doc = { online: user.isOnline === true, updatedAt: new Date(toMs(user.locationUpdatedAt) || nowMs), appVersion: "backfill-2a" };
   if (hasCoords) Object.assign(doc, { lat: user.lat, lng: user.lng, geohash: dp.encodeGeohash(user.lat, user.lng, 7) });
   return doc;
@@ -60,7 +62,10 @@ async function run(deps) {
       const ref = db.collection(a.type === "createProfile" ? "driverProfiles" : "driverPresence").doc(uid);
       const data = a.type === "createProfile" ? profileDoc(deps.serverTimestamp()) : presenceDoc(user, deps.now());
       try { await ref.create(data); summary.created++; }
-      catch (e) { if (String(e && (e.code || e.message)).match(/6|ALREADY_EXISTS|already exists/i)) { summary.raced++; log(`    (already created concurrently — left untouched)`); } else throw e; }
+      catch (e) {
+        const exists = e && (e.code === 6 || e.code === "already-exists" || /ALREADY_EXISTS|already exists/i.test(String(e.message || "")));
+        if (exists) { summary.raced++; log(`    (already created concurrently — left untouched)`); } else throw e;
+      }
     }
   }
   log(`\n${apply ? "APPLIED" : "DRY RUN — nothing written"}: ${JSON.stringify(summary)}`);

@@ -196,7 +196,12 @@ service cloud.firestore {
       // code via verifyCompletionOtp).
       allow update: if isAdvisor()
         && onlyFields(['driverUid', 'driverName', 'driverPhone', 'status'])
-        && request.resource.data.status != 'delivered';
+        && request.resource.data.status != 'delivered'
+        // Phase 2 review: the assignee must be a real driver account, so an advisor
+        // can't hand booking read access (isAssignedDriver) to a customer/any uid.
+        && (request.resource.data.get('driverUid', null) == resource.data.get('driverUid', null)
+            || request.resource.data.get('driverUid', null) == null
+            || get(/databases/$(database)/documents/users/$(request.resource.data.driverUid)).data.role == 'driver');
       allow read, delete: if isAdmin();
       // Admins keep full edit rights EXCEPT moving a booking into "delivered":
       // that happens only server-side (verifyCompletionOtp, or the explicit

@@ -1307,7 +1307,7 @@ function renderDrivers() {
         </div>
       </div>
       <span class="badge ${d.isOnline?"badge-delivered":"badge-pending"}">${d.isOnline?"🟢 Active":"⚫ Offline"}</span>
-      <button type="button" class="btn-cancel" style="margin-left:8px;padding:4px 10px" onclick="editDriverProfile('${escapeHTML(raw.id)}')">Profile</button>
+      <button type="button" class="btn-cancel" style="margin-left:8px;padding:4px 10px" data-uid="${escapeHTML(raw.id)}" onclick="editDriverProfile(this.dataset.uid)">Profile</button>
     </div>`; }).join("");
 }
 // Phase 2A: driver profile (vehicles, skills, status, capacity) via the validated callable.
@@ -1441,9 +1441,14 @@ function loadAssignRecommendation(id) {
       box.innerHTML = "🤖 <strong>No eligible driver</strong>" + (why ? " — " + escapeHTML(why) : "");
       return;
     }
-    box.innerHTML = `🤖 Recommended: <strong>${escapeHTML(top.name || "Driver")}</strong> (score ${Number(top.score).toFixed(2)}) — ${escapeHTML((top.reasons || []).join(" · "))}` +
-      ` <button type="button" class="btn-cancel" style="padding:2px 8px;margin-left:6px" onclick="document.getElementById('assignSelect').value='${escapeHTML(top.uid)}'">Use</button>` +
-      `<div style="margin-top:3px">${rec.eligibleCount} eligible of ${rec.candidates} drivers · shadow mode (nothing is assigned automatically)</div>`;
+    box.innerHTML = `🤖 Recommended: <strong>${escapeHTML(top.name || "Driver")}</strong> (score ${escapeHTML(Number(top.score).toFixed(2))}) — ${escapeHTML((top.reasons || []).join(" · "))}` +
+      ` <button type="button" class="btn-cancel" id="assignUseRec" style="padding:2px 8px;margin-left:6px">Use</button>` +
+      `<div style="margin-top:3px">${escapeHTML(String(rec.eligibleCount))} eligible of ${escapeHTML(String(rec.candidates))} drivers · shadow mode (nothing is assigned automatically)</div>`;
+    const sel = document.getElementById("assignSelect");
+    document.getElementById("assignUseRec").addEventListener("click", () => {
+      if ([...sel.options].some(o => o.value === top.uid)) sel.value = top.uid;
+      else toast("⚠️ Recommended driver isn't in the list — refresh drivers");
+    });
   }).catch(() => { if (assigningId === id) box.textContent = "Recommendation unavailable — assign manually."; });
 }
 function closeAssignModal() { document.getElementById("assignModal").style.display = "none"; assigningId = null; }

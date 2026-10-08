@@ -33,13 +33,33 @@ async function getAppConfig(db) {
   try { const s = await db.collection("appConfig").doc("assignment").get(); return s.exists ? s.data() || {} : {}; } catch (e) { return {}; }
 }
 
+/**
+ * Schedule-lock entries are only trusted while the booking still exists on that
+ * date, is not cancelled/delivered and isn't assigned to someone else. Entries
+ * for bookings the same-day query doesn't know about (re-dated or deleted) are
+ * dropped; bookings it shows unassigned are KEPT (the query may be older than a
+ * concurrent assignment — conservative).
+ */
+function liveLockJobs(lockJobs, uid, sameDayIndex) {
+  const out = {};
+  Object.keys(lockJobs || {}).forEach((bid) => {
+    const b = sameDayIndex[bid];
+    if (!b) return;
+    if (["cancelled", "delivered"].includes(b.status)) return;
+    if (b.driverUid && b.driverUid !== uid) return;
+    out[bid] = lockJobs[bid];
+  });
+  return out;
+}
+
 /** All drivers with profile, presence and their jobs on `date` (from bookings + schedule locks). */
 async function loadDrivers(db, date, bookingId) {
   const users = await db.collection("users").where("role", "==", "driver").get();
   const sameDay = date ? await db.collection("bookings").where("date", "==", date).get() : { docs: [] };
-  const jobs = {};
+  const jobs = {}; const index = {};
   sameDay.docs.forEach((d) => {
     const b = d.data() || {};
+    index[d.id] = { status: b.status || null, driverUid: b.driverUid || null };
     if (!b.driverUid || !ACTIVE_JOB.includes(b.status) || d.id === bookingId) return;
     (jobs[b.driverUid] = jobs[b.driverUid] || {})[d.id] = engine.slotStartMin(b.shiftTime);
   });
@@ -51,11 +71,12 @@ async function loadDrivers(db, date, bookingId) {
       db.collection("driverPresence").doc(uid).get(),
       date ? db.collection("driverSchedule").doc(scheduleId(uid, date)).get() : Promise.resolve({ exists: false }),
     ]);
-    const merged = Object.assign({}, sch.exists ? (sch.data() || {}).jobs || {} : {}, jobs[uid] || {});
+    const merged = Object.assign({}, liveLockJobs(sch.exists ? (sch.data() || {}).jobs || {} : {}, uid, index), jobs[uid] || {});
     delete merged[bookingId];
     out.push({ uid, name: (u.data() || {}).name || "", profile: p.exists ? p.data() : null, presence: pr.exists ? pr.data() : null,
                jobsOnDate: Object.entries(merged).map(([bid, m]) => ({ bookingId: bid, startMin: m === undefined ? null : m })) });
   }
+  out.sameDayIndex = index;
   return out;
 }
 
@@ -156,7 +177,8 @@ async function handleAssign(data, context, deps) {
 
     const fromQuery = (driversNow.find((x) => x.uid === driverUid) || { jobsOnDate: [] }).jobsOnDate;
     const lockJobs = sSnap && sSnap.exists ? (sSnap.data() || {}).jobs || {} : {};
-    const merged = {}; fromQuery.forEach((j) => { merged[j.bookingId] = j.startMin; }); Object.assign(merged, lockJobs); delete merged[bookingId];
+    const liveLock = liveLockJobs(lockJobs, driverUid, driversNow.sameDayIndex || {});
+    const merged = {}; fromQuery.forEach((j) => { merged[j.bookingId] = j.startMin; }); Object.assign(merged, liveLock); delete merged[bookingId];
     const driver = { uid: driverUid, name: (u.data() || {}).name || "", profile: prof.exists ? prof.data() : null, presence: pres.exists ? pres.data() : null,
                      jobsOnDate: Object.entries(merged).map(([bid, m]) => ({ bookingId: bid, startMin: m === undefined ? null : m })) };
     const check = engine.checkDriver(b, driver, { now: deps.now(), bookingId });
@@ -178,7 +200,7 @@ async function handleAssign(data, context, deps) {
       assignment: { method: "manual", by: caller, at: deps.now(), previousDriverUid: prevUid, override: needsOverride.length ? { reasons: needsOverride, reason: overrideReason } : null,
                     warnings, engineVersion: engine.ENGINE_VERSION },
     });
-    if (sRef) tx.set(sRef, { driverUid, date, jobs: Object.assign({}, lockJobs, { [bookingId]: startMin }), updatedAt: deps.now() });
+    if (sRef) tx.set(sRef, { driverUid, date, jobs: Object.assign({}, liveLock, { [bookingId]: startMin }), updatedAt: deps.now() }); // stale entries pruned
     if (prevSRef && prevS && prevS.exists) { const j = Object.assign({}, (prevS.data() || {}).jobs || {}); delete j[bookingId]; tx.set(prevSRef, Object.assign({}, prevS.data(), { jobs: j, updatedAt: deps.now() })); }
     tx.update(uRef, { currentBooking: bookingId });
     if (prevU && prevU.exists && (prevU.data() || {}).currentBooking === bookingId) tx.update(prevURef, { currentBooking: null });
@@ -189,4 +211,4 @@ async function handleAssign(data, context, deps) {
   return { ok: true, already: !!result.already, warnings: result.warnings || [], overridden: result.overridden || [] };
 }
 
-module.exports = { recommend, shadowSweep, handleRecommend, handleAssign, loadDrivers, AssignError, istDate, scheduleId };
+module.exports = { recommend, shadowSweep, handleRecommend, handleAssign, loadDrivers, liveLockJobs, AssignError, istDate, scheduleId };

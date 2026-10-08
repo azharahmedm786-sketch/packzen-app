@@ -34,3 +34,17 @@ non-active drivers; area/vehicle/skill/capacity failures need a recorded overrid
 (pre-backfill) remain assignable with a warning. Writes booking `driverUid/Name/Phone`, `status: "assigned"`,
 `assignment{…}`, the schedule lock and `users.currentBooking` (releasing the previous driver's).
 The advisor dashboard still assigns by direct write (planned to move to the callable before 2C).
+
+## Advisor assignment (known, accepted for 2A/2B — HARD PREREQUISITE for 2C)
+`advisor-dashboard-patch.js` still assigns by direct Firestore write. It is acceptable for 2A/2B because:
+* rules still forbid advisors from setting `delivered` (Phase 1 completion stays server-only);
+* since the Phase 2 review, rules also require the new assignee to be a `role: "driver"` account (or unassigned), so an
+  advisor can't hand booking read access (`isAssignedDriver`) to a customer or arbitrary uid;
+* drivers can only progress assigned → packing → transit, and completion needs the customer's code.
+It does **not** take the schedule lock or run eligibility checks, and its `users.currentBooking` write is rejected by the
+users rules (pre-existing). **Before 2C (automatic offers)**: move advisor assignment to `adminAssignDriver` (or an
+advisor-scoped callable) and restrict the advisor rule so `driverUid` can't be written from the client.
+
+## Schedule locks
+Lock entries are trusted only while the booking still exists on that date, isn't cancelled/delivered and isn't assigned to
+another driver; stale entries are ignored and pruned on the next assignment for that driver/date.
