@@ -90,5 +90,10 @@
     return "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(msg);
   }
 
-  window.PackZenCatalog = { load: load, formatPrice: formatPrice, whatsappLink: whatsappLink, esc: esc };
+  /** Generic WhatsApp link to the official PackZen number (single source: WHATSAPP_NUMBER). */
+  function contactLink(text) {
+    return "https://wa.me/" + WHATSAPP_NUMBER + (text ? "?text=" + encodeURIComponent(String(text).slice(0, 300)) : "");
+  }
+
+  window.PackZenCatalog = { load: load, formatPrice: formatPrice, whatsappLink: whatsappLink, contactLink: contactLink, esc: esc };
 })();

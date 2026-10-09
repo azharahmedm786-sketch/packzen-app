@@ -15,31 +15,44 @@
   "use strict";
 
   var CITY = "Bangalore";
+  // Availability is stated honestly (pre-merge gate):
+  //   "book"  – bookable online today: the secure move-quote flow, or an item in
+  //             the live Firestore service catalog (tools/seedCatalog.js);
+  //   "addon" – only as part of a house/office move;
+  //   "soon"  – not offered yet: shown as "Coming soon", never linked to a booking.
   var CATEGORIES = [
-    { id: "moving", icon: "🚚", name: "Packers & Movers", sub: "Home, office and single-item moves across Bangalore", services: [
-      { name: "House shifting", move: "home", href: "house-shifting-bangalore.html", keywords: "home flat apartment villa relocation" },
-      { name: "Office relocation", move: "office", href: "office-relocation-bangalore.html", keywords: "corporate business" },
-      { name: "Single item", move: "single", href: "index.html#quote", keywords: "sofa fridge bed furniture" },
-      { name: "Bike transport", href: "bike-transport-bangalore.html", keywords: "scooter two wheeler" },
-      { name: "Car transport", href: "car-transport-bangalore.html", keywords: "vehicle" },
-      { name: "Packing & unpacking", href: "packing-unpacking-services-bangalore.html", keywords: "boxes cartons" } ] },
-    { id: "ac", icon: "❄️", name: "AC Services", sub: "Install, service and repair by verified technicians", services: [
-      { name: "AC installation" }, { name: "AC uninstallation" }, { name: "AC servicing", keywords: "cleaning wet service" },
-      { name: "AC repair" }, { name: "AC gas refill", keywords: "gas charging cooling" }, { name: "AC inspection" } ] },
-    { id: "appliances", icon: "🔌", name: "Appliance Services", sub: "Repairs and installation for everyday appliances", services: [
-      { name: "Refrigerator", keywords: "fridge" }, { name: "Washing machine", keywords: "washer" }, { name: "TV", keywords: "television mount" },
-      { name: "Geyser", keywords: "water heater" }, { name: "RO / water purifier", keywords: "ro purifier water filter" } ] },
-    { id: "home", icon: "🏠", name: "Home Services", sub: "Trusted professionals for everyday home jobs", services: [
-      { name: "Plumbing", keywords: "plumber tap leak" }, { name: "Electrical", keywords: "electrician wiring switch" },
-      { name: "Carpentry", keywords: "carpenter furniture repair" }, { name: "Painting", keywords: "painter wall" },
-      { name: "Cleaning", keywords: "deep cleaning home" }, { name: "Pest control", keywords: "termite cockroach" },
-      { name: "Bathroom cleaning" }, { name: "Kitchen cleaning" } ] },
-    { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Same-city parcels and vehicle transport", services: [
-      { name: "Two-wheeler parcel", href: "parcel.html", keywords: "courier package documents" },
-      { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance" },
-      { name: "Bike transport", href: "bike-transport-bangalore.html" },
-      { name: "Car transport", href: "car-transport-bangalore.html" } ] }
+    { id: "moving", icon: "🚚", name: "Packers & Movers", sub: "Home, office and single-item moves from Bangalore", services: [
+      { name: "House shifting", move: "home", href: "house-shifting-bangalore.html", keywords: "home flat apartment villa relocation", status: "book" },
+      { name: "Office relocation", move: "office", href: "office-relocation-bangalore.html", keywords: "corporate business", status: "book" },
+      { name: "Single item", move: "single", href: "index.html#quote", keywords: "sofa fridge bed furniture washing machine", status: "book" },
+      { name: "Packing & unpacking", href: "packing-unpacking-services-bangalore.html", keywords: "boxes cartons", status: "addon" },
+      { name: "Bike transport", href: "bike-transport-bangalore.html", keywords: "scooter two wheeler", status: "addon" },
+      { name: "Car transport", keywords: "vehicle", status: "soon" } ] },
+    { id: "ac", icon: "❄️", name: "AC Services", sub: "AC installation and uninstallation. More AC services coming soon.", services: [
+      { name: "AC installation", status: "book" }, { name: "AC uninstallation", status: "book" },
+      { name: "AC servicing", keywords: "cleaning wet service", status: "soon" }, { name: "AC repair", status: "soon" },
+      { name: "AC gas refill", keywords: "gas charging cooling", status: "soon" }, { name: "AC inspection", status: "soon" } ] },
+    { id: "appliances", icon: "🔌", name: "Appliance Services", sub: "TV wall mounting. Appliance repairs coming soon.", services: [
+      { name: "TV wall mount", keywords: "television mount", status: "book" },
+      { name: "Refrigerator repair", keywords: "fridge", status: "soon" }, { name: "Washing machine repair", keywords: "washer", status: "soon" },
+      { name: "Geyser repair", keywords: "water heater", status: "soon" }, { name: "RO / water purifier", keywords: "ro purifier water filter", status: "soon" } ] },
+    { id: "home", icon: "🏠", name: "Home Services", sub: "Electrical and carpentry jobs. More home services coming soon.", services: [
+      { name: "Electrical", q: "electrician", keywords: "electrician wiring switch", status: "book" }, { name: "Carpentry", q: "carpenter", keywords: "carpenter furniture repair", status: "book" },
+      { name: "Plumbing", keywords: "plumber tap leak", status: "soon" }, { name: "Painting", keywords: "painter wall", status: "soon" },
+      { name: "Cleaning", keywords: "deep cleaning home", status: "soon" }, { name: "Pest control", keywords: "termite cockroach", status: "soon" },
+      { name: "Bathroom cleaning", status: "soon" }, { name: "Kitchen cleaning", status: "soon" } ] },
+    { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore. Parcel delivery coming soon.", services: [
+      { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
+      { name: "Two-wheeler parcel", keywords: "courier package documents", status: "soon" },
+      { name: "Bike transport", href: "bike-transport-bangalore.html", status: "addon" },
+      { name: "Car transport", status: "soon" } ] }
   ];
+
+  /** WhatsApp link from the single existing source (catalog-public.js); null if unavailable. */
+  function contactLink(text) {
+    var cat = root && root.PackZenCatalog;
+    return cat && typeof cat.contactLink === "function" ? cat.contactLink(text) : null;
+  }
 
   function esc(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
@@ -48,8 +61,11 @@
   }
   function norm(t) { return String(t == null ? "" : t).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim(); }
 
-  /** Where a service chip leads. Non-moving services go to the live catalog search. */
-  function hrefFor(s) { return s.href || ("services.html?q=" + encodeURIComponent(s.name)); }
+  /** Where a service chip leads (null = "Coming soon", not linked). Catalog services go to the live catalog search. */
+  function hrefFor(s) {
+    if (s.status === "soon") return null;
+    return s.href || ("services.html?q=" + encodeURIComponent(s.q || s.name)); // q = catalog item wording
+  }
 
   function filter(text) {
     var q = norm(text);
@@ -71,7 +87,7 @@
       html += '<form class="pz-search" role="search" action="services.html" method="get">' +
         '<label class="pz-visually-hidden" for="pzSearchInput">Search PackZen services in ' + CITY + "</label>" +
         '<span class="pz-search-icon" aria-hidden="true">🔍</span>' +
-        '<input id="pzSearchInput" name="q" type="search" autocomplete="off" placeholder="Search services — e.g. AC repair, house shifting">' +
+        '<input id="pzSearchInput" name="q" type="search" autocomplete="off" placeholder="Search services — e.g. house shifting, AC installation">' +
         "</form>" +
         '<p class="pz-visually-hidden" id="pzSearchStatus" aria-live="polite"></p>';
     }
@@ -81,14 +97,19 @@
         '<div class="pz-cat-head"><span class="pz-cat-icon" aria-hidden="true">' + c.icon + "</span>" +
         "<div><h3 class=\"pz-cat-title\">" + esc(c.name) + '</h3><p class="pz-cat-sub">' + esc(c.sub) + "</p></div></div>" +
         '<div class="pz-chips">' + c.services.map(function (s) {
-          return '<a class="pz-chip" href="' + esc(hrefFor(s)) + '"' + (s.move ? ' data-move="' + esc(s.move) + '"' : "") +
-            ' data-name="' + esc(norm(c.name + " " + s.name + " " + (s.keywords || ""))) + '">' + esc(s.name) + "</a>";
+          var dataName = ' data-name="' + esc(norm(c.name + " " + s.name + " " + (s.keywords || ""))) + '"';
+          if (s.status === "soon") {
+            return '<span class="pz-chip pz-chip--soon"' + dataName + '>' + esc(s.name) + ' <small>Coming soon</small></span>';
+          }
+          return '<a class="pz-chip" href="' + esc(hrefFor(s)) + '"' + (s.move ? ' data-move="' + esc(s.move) + '"' : "") + dataName + '>' +
+            esc(s.name) + (s.status === "addon" ? ' <small>with a move</small>' : "") + "</a>";
         }).join("") + "</div></article>";
     });
     html += "</div>";
+    var askLink = contactLink("Hi PackZen, I have a question about your services in " + CITY + ".");
     html += '<div class="pz-state" id="pzNoMatch" hidden><h3>No matching service yet</h3>' +
-      '<p>We may still be able to help in ' + CITY + '. Tell us what you need.</p>' +
-      '<a class="pz-btn pz-btn--secondary" href="https://wa.me/919945095453" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a></div>';
+      "<p>This service isn't available online. You can ask us on WhatsApp.</p>" +
+      (askLink ? '<a class="pz-btn pz-btn--secondary" href="' + esc(askLink) + '" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a>' : "") + "</div>";
     el.innerHTML = html;
 
     // Moving chips open the existing secure quote sheet when available.
@@ -134,15 +155,15 @@
           }).join("") + "</div></div>";
         return;
       }
-      var wa = "https://wa.me/919945095453?text=" + encodeURIComponent("Hi PackZen, I need " + q + " in Bangalore.");
-      resultEl.innerHTML = '<div class="pz-state pz-card" role="status"><h3>' + safeQ + " isn’t bookable online yet</h3>" +
-        "<p>We’re adding more services in Bangalore. Message us and we’ll arrange it for you.</p>" +
-        '<a class="pz-btn pz-btn--primary" href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer">Request on WhatsApp</a></div>';
+      var wa = contactLink("Hi PackZen, I'm asking about: " + q + " in " + CITY + ".");
+      resultEl.innerHTML = '<div class="pz-state pz-card" role="status"><h3>' + safeQ + " isn't bookable online</h3>" +
+        "<p>This service isn't available for online booking right now.</p>" +
+        (wa ? '<a class="pz-btn pz-btn--primary" href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a>' : "") + "</div>";
     };
     if (!cat || typeof cat.load !== "function") return done([]);
     var nq = norm(q);
     cat.load().then(function (c) {
-      var all = [].concat(c.services || [], c.packages || []);
+      var all = [].concat(c.services || [], c.packages || [], c.addons || []);
       done(all.filter(function (i) {
         var hay = norm((i.name || "") + " " + (i.description || ""));
         return nq.split(" ").every(function (w) { return hay.indexOf(w) !== -1; });
@@ -166,7 +187,7 @@
     else autoInit();
   }
 
-  var api = { CATEGORIES: CATEGORIES, CITY: CITY, render: render, filter: filter, hrefFor: hrefFor, showQuery: showQuery };
+  var api = { CATEGORIES: CATEGORIES, CITY: CITY, render: render, filter: filter, hrefFor: hrefFor, showQuery: showQuery, contactLink: contactLink };
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.PackZenMarketplace = api;
 })(typeof window !== "undefined" ? window : null);

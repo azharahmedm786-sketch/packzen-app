@@ -180,3 +180,8 @@
 
 /* ── reviews card ── */
 .pz-review-card { margin-top: var(--pz-s3); text-align: center; }
+
+/* Services not offered yet: visible but clearly not bookable (no link). */
+.pz-chip--soon { cursor: default; color: var(--pz-muted); background: var(--pz-surface-2); border-style: dashed; }
+.pz-chip--soon:hover { border-color: var(--pz-line); background: var(--pz-surface-2); }
+.pz-chip small { font-weight: 700; font-size: .72em; opacity: .85; margin-left: 2px; }

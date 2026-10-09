@@ -37,11 +37,11 @@ const tests = []; const test = (n, f) => tests.push({ n, f });
 /* marketplace taxonomy */
 test("taxonomy: five categories with every required service", () => {
   const want = {
-    moving: ["House shifting", "Office relocation", "Single item", "Bike transport", "Car transport", "Packing & unpacking"],
+    moving: ["House shifting", "Office relocation", "Single item", "Packing & unpacking", "Bike transport", "Car transport"],
     ac: ["AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill", "AC inspection"],
-    appliances: ["Refrigerator", "Washing machine", "TV", "Geyser", "RO / water purifier"],
-    home: ["Plumbing", "Electrical", "Carpentry", "Painting", "Cleaning", "Pest control", "Bathroom cleaning", "Kitchen cleaning"],
-    delivery: ["Two-wheeler parcel", "Single-item delivery", "Bike transport", "Car transport"],
+    appliances: ["TV wall mount", "Refrigerator repair", "Washing machine repair", "Geyser repair", "RO / water purifier"],
+    home: ["Electrical", "Carpentry", "Plumbing", "Painting", "Cleaning", "Pest control", "Bathroom cleaning", "Kitchen cleaning"],
+    delivery: ["Single-item delivery", "Two-wheeler parcel", "Bike transport", "Car transport"],
   };
   assert.deepStrictEqual(mk.CATEGORIES.map((c) => c.id), Object.keys(want));
   for (const c of mk.CATEGORIES) assert.deepStrictEqual(c.services.map((s) => s.name), want[c.id], c.id);
@@ -54,7 +54,7 @@ test("taxonomy: navigation only — no prices/amounts defined client-side", () =
 test("search: keywords and partial words match; no match returns empty", () => {
   const names = (q) => mk.filter(q).map((r) => r.service.name);
   assert.ok(names("ac repair").includes("AC repair"));
-  assert.ok(names("fridge").includes("Refrigerator"));
+  assert.ok(names("fridge").includes("Refrigerator repair"));
   assert.ok(names("plumber").includes("Plumbing"));
   assert.ok(names("scooter").includes("Bike transport"));
   assert.deepStrictEqual(names("helicopter"), []);
@@ -63,8 +63,10 @@ test("search: keywords and partial words match; no match returns empty", () => {
 test("routing: moving uses existing quote flow / SEO pages; other services go to catalog search", () => {
   const find = (n) => mk.CATEGORIES.flatMap((c) => c.services).find((s) => s.name === n);
   assert.strictEqual(find("House shifting").move, "home");
-  assert.strictEqual(mk.hrefFor(find("AC repair")), "services.html?q=AC%20repair");
-  assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), "parcel.html");
+  assert.strictEqual(mk.hrefFor(find("AC installation")), "services.html?q=AC%20installation");
+  assert.strictEqual(mk.hrefFor(find("Electrical")), "services.html?q=electrician", "search wording matches the catalog item");
+  assert.strictEqual(mk.hrefFor(find("AC repair")), null, "not offered → no booking link");
+  assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), null);
   for (const s of mk.CATEGORIES.flatMap((c) => c.services)) if (s.href && !s.href.includes("#")) assert.ok(fs.existsSync(path.join(PUB, s.href.split("?")[0])), "missing page " + s.href);
 });
 
@@ -126,7 +128,7 @@ test("homepage: marketplace message, sections, Bangalore notice, design system a
 });
 test("services page: Bangalore notice, marketplace + query results wired", () => {
   assert.ok(servicesSrc.includes("currently available in Bangalore only")); assert.ok(servicesSrc.includes('id="pzQueryResult"'));
-  assert.ok(/catalog-public\.js"><\/script>\s*<script src="marketplace\.js\?v=1">/.test(servicesSrc));
+  assert.ok(/catalog-public\.js"><\/script>\s*<script src="marketplace\.js\?v=\d+">/.test(servicesSrc));
 });
 test("hygiene: no unpinned lucide, no broken #hero links, payment/invoice wiring intact", () => {
   for (const f of fs.readdirSync(PUB).filter((f) => f.endsWith(".html"))) {
@@ -137,6 +139,48 @@ test("hygiene: no unpinned lucide, no broken #hero links, payment/invoice wiring
   assert.ok(scriptSrc.includes('_authedPaymentPost("/verifyRazorpayPayment", body), remaining(), "confirm_deadline"'));
   assert.ok(!/console\.log\("loadUserBookings called"\)/.test(scriptSrc));
 });
+
+/* ── pre-merge gate: truthful availability, single contact source, safe HTML ── */
+test("availability: every service has an honest status; only real booking paths are linked", () => {
+  const all = mk.CATEGORIES.flatMap((c) => c.services);
+  for (const sv of all) assert.ok(["book", "addon", "soon"].includes(sv.status), sv.name);
+  const st = (n) => all.find((x) => x.name === n).status;
+  // Bookable online today: the move-quote flow, or items seeded in the live catalog (tools/seedCatalog.js).
+  for (const n of ["House shifting", "Office relocation", "Single item", "Single-item delivery", "AC installation", "AC uninstallation", "TV wall mount", "Electrical", "Carpentry"]) assert.strictEqual(st(n), "book", n);
+  for (const n of ["Packing & unpacking", "Bike transport"]) assert.strictEqual(st(n), "addon", n);
+  for (const n of ["AC servicing", "AC repair", "AC gas refill", "AC inspection", "Refrigerator repair", "Washing machine repair", "Geyser repair", "RO / water purifier",
+                   "Plumbing", "Painting", "Cleaning", "Pest control", "Bathroom cleaning", "Kitchen cleaning", "Two-wheeler parcel", "Car transport"]) assert.strictEqual(st(n), "soon", n);
+  const seed = fs.readFileSync(path.join(__dirname, "..", "..", "tools", "seedCatalog.js"), "utf8");
+  for (const id of ["ac-installation", "ac-uninstallation", "tv-wall-mount", "carpenter", "electrician"]) assert.ok(seed.includes(id), "catalog item " + id);
+});
+test("availability: rendered chips — 'Coming soon' is never a link; no unsupported claims", () => {
+  const html = renderHtml();
+  const soon = mk.CATEGORIES.flatMap((c) => c.services).filter((x) => x.status === "soon").length;
+  assert.strictEqual((html.match(/class="pz-chip pz-chip--soon"/g) || []).length, soon);
+  assert.ok(!/<a [^>]*pz-chip--soon/.test(html) && !/href="parcel\.html"/.test(html) && !/car-transport-bangalore\.html/.test(html));
+  const src = read("marketplace.js");
+  assert.ok(!/verified technicians|trusted professionals|same-city parcels|we'll arrange it/i.test(src));
+});
+test("contact: no hard-coded phone/WhatsApp number in marketplace.js; uses catalog-public.js", () => {
+  const src = read("marketplace.js");
+  assert.ok(!/\b9\d{9}\b|wa\.me/.test(src), "number must come from catalog-public.js");
+  assert.ok(read("catalog-public.js").includes('function contactLink(text)') && read("catalog-public.js").includes("contactLink: contactLink"));
+  for (const f of ["index.html", "services.html"]) {
+    const h = read(f); assert.ok(h.indexOf("catalog-public.js") > -1 && h.indexOf("catalog-public.js") < h.indexOf("marketplace.js?v="), f + " loads the contact source first");
+  }
+});
+test("xss: query text and catalog values are escaped in showQuery", async () => {
+  const el = { innerHTML: "" };
+  const payload = '<img src=x onerror=alert(1)>"\'';
+  global.window = { PackZenCatalog: { load: () => Promise.resolve({ services: [{ name: "<b>x</b>", description: "" }], packages: [], addons: [] }), formatPrice: () => "<i>₹1</i>", contactLink: (t) => "https://wa.me/X?text=" + encodeURIComponent(t) } };
+  const m = require("../../public/marketplace.js");
+  m.showQuery(el, payload);
+  assert.ok(!el.innerHTML.includes("<img") && el.innerHTML.includes("&lt;img"));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.ok(!el.innerHTML.includes("<img") && !el.innerHTML.includes("<b>x</b>") || /isn't bookable online/.test(el.innerHTML));
+  delete global.window;
+});
+function renderHtml() { const el = { innerHTML: "", addEventListener() {}, querySelector() { return null; } }; mk.render(el); return el.innerHTML; }
 
 (async () => {
   let pass = 0, fail = 0;
