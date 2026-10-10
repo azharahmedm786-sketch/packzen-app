@@ -182,7 +182,8 @@ test("client sends promoCode; the server never needs the client discount", () =>
   const s = fs.readFileSync(path.join(ROOT, "public/script.js"), "utf8");
   assert.ok(s.includes("promoCode: appliedPromoCode || null,"));
   assert.strictEqual((s.match(/appliedPromoCode = code;/g) || []).length, 2, "set on promo + referral success");
-  assert.ok(fs.readFileSync(path.join(ROOT, "public/index.html"), "utf8").includes('script.js?v=11'), "cache-busted");
+  const v = Number((fs.readFileSync(path.join(ROOT, "public/index.html"), "utf8").match(/script\.js\?v=(\d+)/) || [])[1]);
+  assert.ok(v >= 11, "cache-busted (v=11 or later)");
 });
 test("existing non-promo pricing unchanged: same total as the engine with zero discount", async () => {
   for (const qi of [{ km: 5, vehicleId: "tata_ace", furniture: {} }, { km: 40, vehicleId: "truck_22ft", furniture: { bed_double: 3 }, isInterstate: false }]) {

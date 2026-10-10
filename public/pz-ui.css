@@ -1,0 +1,187 @@
+/* ==========================================================================
+   PackZen UI — design system (tokens + components)
+   --------------------------------------------------------------------------
+   Loaded LAST on customer pages. Everything is namespaced `pz-` so it can be
+   adopted page by page without restyling legacy components by accident.
+   Brand colours come from the existing theme variables (theme-purple.css
+   maps --purple-* to the PackZen greens; style.css defines --navy-*), with
+   literal fallbacks so the file also works on pages without those themes.
+   ========================================================================== */
+
+:root {
+  /* colour */
+  --pz-primary: var(--purple-600, #2F9E5C);
+  --pz-primary-strong: var(--purple-700, #1C6E42);
+  --pz-primary-soft: var(--purple-100, #DDF3E3);
+  --pz-ink: var(--navy-800, #0c1b3a);
+  --pz-ink-2: #334155;
+  --pz-muted: #64748b;
+  --pz-line: #e2e8f0;
+  --pz-surface: #ffffff;
+  --pz-surface-2: #f8fafc;
+  --pz-cta: #ea580c;            /* matches the Razorpay checkout theme */
+  --pz-cta-strong: #c2410c;
+  --pz-info: #2563eb;
+  --pz-warn: #b45309;
+  --pz-danger: #dc2626;
+  --pz-success: #15803d;
+  /* type scale (mobile-first, fluid) */
+  --pz-font: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pz-fs-xs: 0.75rem;
+  --pz-fs-sm: 0.875rem;
+  --pz-fs-md: 1rem;
+  --pz-fs-lg: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);
+  --pz-fs-xl: clamp(1.375rem, 1.1rem + 1.2vw, 1.75rem);
+  --pz-fs-2xl: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+  /* spacing (4px grid) */
+  --pz-s1: 4px; --pz-s2: 8px; --pz-s3: 12px; --pz-s4: 16px; --pz-s5: 20px;
+  --pz-s6: 24px; --pz-s8: 32px; --pz-s10: 40px; --pz-s12: 48px;
+  /* shape + depth */
+  --pz-r-sm: 8px; --pz-r-md: 12px; --pz-r-lg: 16px; --pz-r-pill: 999px;
+  --pz-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --pz-shadow-2: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --pz-focus: 0 0 0 3px rgba(47, 158, 92, 0.35);
+  --pz-max: 1160px;
+}
+
+/* ── accessibility: visible focus everywhere, respect reduced motion ── */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--pz-primary);
+  outline-offset: 2px;
+  box-shadow: var(--pz-focus);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pz-section *, .pz-card, .pz-btn { transition: none !important; animation: none !important; }
+}
+.pz-visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── layout ── */
+.pz-section { padding: var(--pz-s8) var(--pz-s4); font-family: var(--pz-font); color: var(--pz-ink); }
+.pz-container { max-width: var(--pz-max); margin: 0 auto; }
+.pz-section-head { margin-bottom: var(--pz-s5); }
+.pz-eyebrow { font-size: var(--pz-fs-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--pz-primary-strong); }
+.pz-h2 { font-size: var(--pz-fs-xl); font-weight: 900; line-height: 1.2; margin: var(--pz-s1) 0 var(--pz-s2); color: var(--pz-ink); }
+.pz-lead { font-size: var(--pz-fs-md); color: var(--pz-ink-2); margin: 0; line-height: 1.55; }
+.pz-grid { display: grid; gap: var(--pz-s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+
+/* ── buttons ── */
+.pz-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--pz-s2);
+  min-height: 44px; padding: 0 var(--pz-s5); border-radius: var(--pz-r-pill);
+  font: 800 var(--pz-fs-sm)/1 var(--pz-font); text-decoration: none; cursor: pointer;
+  border: 1.5px solid transparent; transition: background .15s, border-color .15s, transform .15s;
+}
+.pz-btn:disabled, .pz-btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.pz-btn--primary { background: var(--pz-cta); color: #fff; }
+.pz-btn--primary:hover { background: var(--pz-cta-strong); }
+.pz-btn--secondary { background: var(--pz-surface); color: var(--pz-ink); border-color: var(--pz-line); }
+.pz-btn--secondary:hover { border-color: var(--pz-primary); }
+.pz-btn--ghost { background: transparent; color: var(--pz-primary-strong); }
+
+/* ── cards / chips / badges ── */
+.pz-card {
+  background: var(--pz-surface); border: 1px solid var(--pz-line); border-radius: var(--pz-r-lg);
+  padding: var(--pz-s5); box-shadow: var(--pz-shadow-1);
+}
+.pz-chip {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--pz-s3);
+  border-radius: var(--pz-r-pill); border: 1px solid var(--pz-line); background: var(--pz-surface-2);
+  color: var(--pz-ink); font: 700 var(--pz-fs-sm)/1.2 var(--pz-font); text-decoration: none; cursor: pointer;
+}
+.pz-chip:hover { border-color: var(--pz-primary); background: var(--pz-primary-soft); }
+.pz-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: var(--pz-r-pill);
+  font: 800 var(--pz-fs-xs)/1.4 var(--pz-font); background: #eef2f7; color: var(--pz-ink-2); white-space: nowrap;
+}
+.pz-badge--confirmed, .pz-badge--pending { background: #e0ecff; color: #1d4ed8; }
+.pz-badge--assigned { background: #ede9fe; color: #6d28d9; }
+.pz-badge--packing, .pz-badge--loading, .pz-badge--en_route, .pz-badge--in_progress { background: #e0f2fe; color: #0369a1; }
+.pz-badge--transit { background: #ffedd5; color: #c2410c; }
+.pz-badge--delivered, .pz-badge--completed { background: #dcfce7; color: var(--pz-success); }
+.pz-badge--cancelled { background: #fee2e2; color: var(--pz-danger); }
+
+/* ── notices / states ── */
+.pz-notice {
+  display: flex; gap: var(--pz-s3); align-items: flex-start; padding: var(--pz-s3) var(--pz-s4);
+  border-radius: var(--pz-r-md); background: var(--pz-primary-soft); color: var(--pz-primary-strong);
+  font: 700 var(--pz-fs-sm)/1.45 var(--pz-font);
+}
+.pz-state { text-align: center; padding: var(--pz-s8) var(--pz-s4); color: var(--pz-ink-2); font-family: var(--pz-font); }
+.pz-state h3 { margin: 0 0 var(--pz-s2); font-size: var(--pz-fs-lg); color: var(--pz-ink); }
+.pz-state p { margin: 0 0 var(--pz-s4); }
+
+/* ── marketplace: search + categories ── */
+.pz-search { position: relative; margin: var(--pz-s4) 0; }
+.pz-search input {
+  width: 100%; min-height: 48px; padding: 0 var(--pz-s4) 0 44px; border-radius: var(--pz-r-pill);
+  border: 1.5px solid var(--pz-line); font: 600 var(--pz-fs-md) var(--pz-font); color: var(--pz-ink); background: var(--pz-surface);
+  box-sizing: border-box;
+}
+.pz-search input:focus { border-color: var(--pz-primary); outline: none; box-shadow: var(--pz-focus); }
+.pz-search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--pz-muted); pointer-events: none; }
+.pz-cat { display: flex; flex-direction: column; gap: var(--pz-s3); }
+.pz-cat-head { display: flex; align-items: center; gap: var(--pz-s3); }
+.pz-cat-icon { width: 44px; height: 44px; border-radius: var(--pz-r-md); display: grid; place-items: center; font-size: 1.4rem; background: var(--pz-primary-soft); flex: none; }
+.pz-cat-title { margin: 0; font-size: var(--pz-fs-lg); font-weight: 900; color: var(--pz-ink); }
+.pz-cat-sub { margin: 0; font-size: var(--pz-fs-sm); color: var(--pz-muted); }
+.pz-chips { display: flex; flex-wrap: wrap; gap: var(--pz-s2); }
+.pz-cat[hidden], .pz-chip[hidden] { display: none !important; }
+
+/* ── steps ── */
+.pz-steps { counter-reset: pzstep; display: grid; gap: var(--pz-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); list-style: none; padding: 0; margin: 0; }
+.pz-steps li { counter-increment: pzstep; }
+.pz-steps li::before {
+  content: counter(pzstep); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--pz-primary); color: #fff; font-weight: 900; margin-bottom: var(--pz-s2);
+}
+.pz-steps h3 { margin: 0 0 4px; font-size: var(--pz-fs-md); }
+.pz-steps p { margin: 0; color: var(--pz-ink-2); font-size: var(--pz-fs-sm); }
+
+/* ── booking cards (customer dashboard) ── */
+.pz-bk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--pz-s2); }
+.pz-bk-title { font: 800 var(--pz-fs-md)/1.3 var(--pz-font); color: var(--pz-ink); overflow-wrap: anywhere; }
+.pz-bk-sub { font-size: var(--pz-fs-xs); color: var(--pz-muted); margin-top: 2px; }
+.pz-bk-money { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pz-s2); margin: var(--pz-s3) 0; }
+.pz-bk-money div { background: var(--pz-surface-2); border-radius: var(--pz-r-sm); padding: 6px 8px; min-width: 0; }
+.pz-bk-money dt { font-size: 0.68rem; color: var(--pz-muted); font-weight: 700; }
+.pz-bk-money dd { margin: 0; font: 800 var(--pz-fs-sm)/1.3 var(--pz-font); color: var(--pz-ink); overflow-wrap: anywhere; }
+.pz-bk-next { font-size: var(--pz-fs-xs); color: var(--pz-ink-2); background: #fffbeb; border-radius: var(--pz-r-sm); padding: 6px 10px; margin-bottom: var(--pz-s2); }
+.pz-bk-assignee { font-size: var(--pz-fs-xs); color: var(--pz-muted); margin-bottom: var(--pz-s2); }
+
+/* ── responsive guards ── */
+@media (min-width: 768px) {
+  .pz-section { padding: var(--pz-s12) var(--pz-s6); }
+}
+.pz-section img, .pz-card img { max-width: 100%; height: auto; }
+
+/* booking card action row (customer dashboard) */
+.bk-card .bk-actions { display: flex; flex-wrap: wrap; gap: var(--pz-s2); align-items: center; }
+.bk-card .bk-actions > div { flex-basis: 100%; }
+
+/* ── booking sheet: inline step validation ── */
+.pz-step-error {
+  margin: 0 0 var(--pz-s3); padding: var(--pz-s2) var(--pz-s3); border-radius: var(--pz-r-sm);
+  background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font: 700 var(--pz-fs-sm)/1.4 var(--pz-font);
+}
+.step-indicators .step-dot[aria-current="step"] .dot-label { font-weight: 900; }
+
+/* ── customer dashboard: consistent states, cards and tabs ── */
+.dash-tab:focus-visible { border-radius: var(--pz-r-sm); }
+.dash-empty { text-align: center; padding: var(--pz-s6) var(--pz-s4); color: var(--pz-muted); font-family: var(--pz-font); }
+#dashboardModal .quote-item {
+  background: var(--pz-surface); border: 1px solid var(--pz-line); border-radius: var(--pz-r-md);
+  padding: var(--pz-s3) var(--pz-s4); margin-bottom: var(--pz-s2); box-shadow: var(--pz-shadow-1);
+}
+#dashboardModal .bk-card { border-radius: var(--pz-r-lg); box-shadow: var(--pz-shadow-1); }
+#dashboardModal input:not([type="checkbox"]):not([type="radio"]), #dashboardModal select, #dashboardModal textarea { min-height: 44px; }
+
+/* ── reviews card ── */
+.pz-review-card { margin-top: var(--pz-s3); text-align: center; }
+
+/* Services not offered yet: visible but clearly not bookable (no link). */
+.pz-chip--soon { cursor: default; color: var(--pz-muted); background: var(--pz-surface-2); border-style: dashed; }
+.pz-chip--soon:hover { border-color: var(--pz-line); background: var(--pz-surface-2); }
+.pz-chip small { font-weight: 700; font-size: .72em; opacity: .85; margin-left: 2px; }

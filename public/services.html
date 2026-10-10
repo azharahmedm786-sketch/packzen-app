@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="desktop.css">
   <link rel="stylesheet" href="theme-purple.css">
   <link rel="stylesheet" href="services.css">
+  <link rel="stylesheet" href="pz-ui.css?v=2">
   <link rel="stylesheet" href="catalog.css">
 </head>
 
@@ -70,12 +71,20 @@
 <main id="main">
 <section class="hero-premium-section">
   <div class="hero-premium-content">
-    <div class="hero-badge">🧰 Everything You Need For Your Move</div>
-    <h1 class="hero-premium-title">PackZen Services &amp; Prices</h1>
-    <p class="hero-premium-desc">Moving • Packing • AC Services • Handyman — transparent starting prices</p>
+    <div class="hero-badge">📍 Now serving Bangalore</div>
+    <h1 class="hero-premium-title">PackZen Services in Bangalore</h1>
+    <p class="hero-premium-desc">Moving plus AC installation, TV wall mounting, electrical and carpentry jobs — transparent starting prices. Services are currently available in Bangalore only.</p>
   </div>
 </section>
 
+<section class="pz-section" aria-labelledby="pzBrowseTitle">
+  <div class="pz-container">
+    <h2 class="pz-h2" id="pzBrowseTitle">Browse all services</h2>
+    <p class="pz-notice" role="note"><span aria-hidden="true">📍</span><span>PackZen services are currently available in Bangalore. Moves start from Bangalore and can go anywhere in India.</span></p>
+    <div data-pz-marketplace></div>
+  </div>
+</section>
+<div class="pz-container" id="pzQueryResult" aria-live="polite"></div>
 <div class="cat-tabs" id="catTabs" role="tablist" aria-label="Service categories"></div>
 
 <div id="catRoot" aria-live="polite">
@@ -105,7 +114,7 @@
     <div class="app-footer-col">
       <div class="app-footer-col-title">Company</div>
       <div class="app-footer-links">
-        <a href="index.html#hero">About</a>
+        <a href="index.html">About</a>
         <a href="index.html#services">Services</a>
         <a href="index.html#pricing">Pricing</a>
         <a href="index.html#reviews">Reviews</a>
@@ -164,8 +173,9 @@
 <script src="env-config.js?v=2"></script>
 <script src="firebase-config.js"></script>
 <script src="catalog-public.js"></script>
+<script src="marketplace.js?v=2"></script>
 <script src="catalog-booking.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
 <script>
 (function () {
   "use strict";
@@ -255,5 +265,6 @@
   icons();
 })();
 </script>
+<script src="pz-a11y.js?v=1" defer></script>
 </body>
 </html>

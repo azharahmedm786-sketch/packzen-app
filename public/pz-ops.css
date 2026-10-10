@@ -1,0 +1,29 @@
+/* ==========================================================================
+   PackZen operations UI layer (admin, driver, partner)
+   --------------------------------------------------------------------------
+   Visual/responsive layer only: no markup, permission or logic changes.
+   Uses the pz-ui tokens (pz-ui.css is loaded first).
+   ========================================================================== */
+/* Wide tables never push the page sideways: they scroll inside their box. */
+@media (max-width: 900px) {
+  table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table thead, table tbody { display: table; width: 100%; min-width: 640px; }
+}
+th { position: sticky; top: 0; background: var(--pz-surface-2); z-index: 1; }
+th, td { vertical-align: top; }
+tbody tr:hover { background: #f8fafc; }
+/* Long text (addresses, IDs, emails) wraps instead of overflowing cards. */
+td, .card, .job-card, .booking-card, .stat-card { overflow-wrap: anywhere; }
+/* Comfortable touch targets for actions. */
+button, .btn, select { min-height: 40px; }
+input, select, textarea { font-size: max(16px, 1em); } /* avoids iOS zoom-on-focus */
+/* Status chips that already use these class names pick up the shared palette. */
+.status-badge, .badge { font-weight: 800; border-radius: var(--pz-r-pill); }
+/* Images and maps never exceed their container. */
+img, canvas, iframe, #map, .map { max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* Brand alignment: staff tools use the PackZen green instead of the legacy
+   blue (white text on #1C6E42 ≈ 6.4:1 contrast). Pages define --primary
+   inline; this file loads after those styles, so only the value changes. */
+:root { --primary: var(--pz-primary-strong, #1C6E42); }
