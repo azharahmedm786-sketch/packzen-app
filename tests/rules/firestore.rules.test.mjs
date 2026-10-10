@@ -13,7 +13,7 @@
  */
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { readFileSync } from "fs";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 
 const RULES_PATH = new URL("../../firestore.rules", import.meta.url);
 
@@ -59,7 +59,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await seed("bookings/s_complete", booking({ customerUid: "cust2", status: "transit", driverUid: "drv1" }));
   await seed("bookingSecrets/s_complete", { nonce: "n", attempts: 0, lockedUntil: 0 });
   // Advisor / partner / misc.
-  for (const id of ["v_assign", "v_total", "v_owner"]) await seed(`bookings/${id}`, booking({ customerUid: "cust2" }));
+  for (const id of ["v_assign", "v_total", "v_owner", "v_bad_assign", "v_unassign"]) await seed(`bookings/${id}`, booking({ customerUid: "cust2" }));
   await seed("bookings/partnerJob", booking({ customerUid: "cust2", assignedPartnerId: "ptr1", partnerStatus: "offered" }));
   await seed("bookings/a_total", booking({ customerUid: "cust2" }));
   await seed("bookings/a_delete", booking({ customerUid: "cust2" }));
@@ -124,6 +124,44 @@ await t("A23", "Driver reads completion secrets", false, () => getDoc(doc(drv, "
 await t("A24", "Server (Admin SDK, as adminCompleteBooking) completes a booking", true, () => env.withSecurityRulesDisabled((ctx) =>
   updateDoc(doc(ctx.firestore(), "bookings/s_complete"), { status: "delivered", completionMethod: "admin_override", completionOverride: { by: "admin1", reason: "customer unreachable after delivery" } })));
 
+/* ── Phase 2A/2B: driver profiles, presence, recommendations, legacy drivers ── */
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const f = ctx.firestore();
+  await setDoc(doc(f, "driverProfiles/drv1"), { status: "active", serviceAreas: ["bangalore"], vehicleIds: ["tata_ace"], skills: ["moving"], maxJobsPerDay: 3 });
+  await setDoc(doc(f, "driverProfiles/drv2"), { status: "active", serviceAreas: ["bangalore"], vehicleIds: [], skills: ["moving"], maxJobsPerDay: 3 });
+  await setDoc(doc(f, "drivers/drv1"), { name: "Legacy" });
+  await setDoc(doc(f, "assignmentRecommendations/bk_rec"), { bookingId: "bk_rec", top: [] });
+});
+await t("P1", "Driver reads own driverProfile", true, () => getDoc(doc(drv, "driverProfiles/drv1")));
+await t("P2", "Driver reads another driver's profile", false, () => getDoc(doc(drv, "driverProfiles/drv2")));
+await t("P3", "Customer reads a driverProfile", false, () => getDoc(doc(cust, "driverProfiles/drv1")));
+await t("P4", "Advisor reads a driverProfile", true, () => getDoc(doc(adv, "driverProfiles/drv1")));
+await t("P5", "Verified admin reads a driverProfile", true, () => getDoc(doc(admin, "driverProfiles/drv1")));
+await t("P6", "Driver edits own profile (vehicles)", false, () => updateDoc(doc(drv, "driverProfiles/drv1"), { vehicleIds: ["truck_22ft"] }));
+await t("P7", "Admin client writes a profile directly (callable only)", false, () => setDoc(doc(admin, "driverProfiles/drv2"), { status: "active" }));
+await t("P8", "Advisor writes a profile", false, () => updateDoc(doc(adv, "driverProfiles/drv1"), { status: "suspended" }));
+await t("PR1", "Driver creates own presence (allowed fields, server time)", true, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, updatedAt: serverTimestamp(), appVersion: "driver-web-2a" }));
+await t("PR2", "Driver updates own presence location (merge)", true, () => setDoc(doc(drv, "driverPresence/drv1"), { lat: 12.97, lng: 77.59, geohash: "tdr1v9q", updatedAt: serverTimestamp(), appVersion: "driver-web-2a" }, { merge: true }));
+await t("PR3", "Driver writes another driver's presence", false, () => setDoc(doc(drv, "driverPresence/drv2"), { online: true, updatedAt: serverTimestamp() }));
+await t("PR4", "Driver adds a non-allowed field to presence", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, rating: 5, updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR5", "Driver sets a client-chosen updatedAt", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: true, updatedAt: new Date(0) }, { merge: true }));
+await t("PR6", "Driver writes out-of-range latitude", false, () => setDoc(doc(drv, "driverPresence/drv1"), { lat: 123, updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR7", "Driver writes non-boolean online", false, () => setDoc(doc(drv, "driverPresence/drv1"), { online: "yes", updatedAt: serverTimestamp() }, { merge: true }));
+await t("PR8", "Customer writes a presence doc", false, () => setDoc(doc(cust, "driverPresence/cust1"), { online: true, updatedAt: serverTimestamp() }));
+await t("PR9", "Customer reads driver presence", false, () => getDoc(doc(cust, "driverPresence/drv1")));
+await t("PR10", "Advisor reads driver presence", true, () => getDoc(doc(adv, "driverPresence/drv1")));
+await t("PR11", "Driver deletes own presence", false, () => deleteDoc(doc(drv, "driverPresence/drv1")));
+await t("R1", "Advisor reads a shadow recommendation", true, () => getDoc(doc(adv, "assignmentRecommendations/bk_rec")));
+await t("R2", "Driver reads a shadow recommendation", false, () => getDoc(doc(drv, "assignmentRecommendations/bk_rec")));
+await t("R3", "Customer reads a shadow recommendation", false, () => getDoc(doc(cust, "assignmentRecommendations/bk_rec")));
+await t("R4", "Admin client writes a recommendation", false, () => setDoc(doc(admin, "assignmentRecommendations/bk_rec"), { top: ["x"] }));
+await t("L1", "Customer reads legacy drivers/{uid} (R2-22 fixed)", false, () => getDoc(doc(cust, "drivers/drv1")));
+await t("L2", "Other driver reads legacy drivers/{uid}", false, () => getDoc(doc(drv2, "drivers/drv1")));
+await t("L3", "Driver reads own legacy drivers/{uid}", true, () => getDoc(doc(drv, "drivers/drv1")));
+await t("L4", "Advisor reads legacy drivers/{uid}", true, () => getDoc(doc(adv, "drivers/drv1")));
+await t("S1x", "Driver reads a driverSchedule lock (server-only)", false, () => getDoc(doc(drv, "driverSchedule/drv1_2026-10-10")));
+await t("S2x", "Admin client writes appConfig (server-only)", false, () => setDoc(doc(admin, "appConfig/assignment"), { shadowEnabled: false }));
+
 /* ── SMS / WhatsApp queues (I-04) ───────────────────────────────────── */
 await t("Q1", "Customer queues an SMS", false, () => addDoc(collection(cust, "smsQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
 await t("Q2", "Customer queues a WhatsApp message", false, () => addDoc(collection(cust, "whatsappQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
@@ -183,6 +221,9 @@ await t("D15", "Driver can read deliveryOtp on assigned booking (I-16, later rel
 /* ── Bookings: advisor ──────────────────────────────────────────────── */
 await t("V1", "Advisor assigns driver (advisor-dashboard-patch.js payload)", true, () => updateDoc(doc(adv, "bookings/v_assign"), { driverUid: "drv1", driverName: "D1", driverPhone: "", status: "assigned" }));
 await t("V2", "Advisor changes total/paid", false, () => updateDoc(doc(adv, "bookings/v_total"), { total: 1, paid: 99999 }));
+await t("V11", "Advisor assigns a booking to a NON-driver uid (would grant isAssignedDriver read)", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "cust1", driverName: "X", driverPhone: "", status: "assigned" }));
+await t("V12", "Advisor assigns to a uid with no users doc", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "ghost_uid_01", status: "assigned" }));
+await t("V13", "Advisor status-only update (driver unchanged)", true, () => updateDoc(doc(adv, "bookings/v_unassign"), { status: "confirmed" }));
 await t("V3", "Advisor changes customerUid/paymentId", false, () => updateDoc(doc(adv, "bookings/v_owner"), { customerUid: "cust1", paymentId: "pay_x" }));
 await t("V4", "Advisor creates a walk-in booking", true, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "confirmed", source: "advisor" }));
 await t("V8", "Advisor sets a booking to delivered", false, () => updateDoc(doc(adv, "bookings/v_deliver"), { status: "delivered" }));
@@ -243,7 +284,13 @@ await t("O5", "Partner sets own completedJobs/rating (I-22)", true, () => update
 await t("O6", "Customer saves address (I-23)", false, () => addDoc(collection(cust, "users/cust1/addresses"), { address: "x" }), { knownOpen: true });
 await t("O7", "Review with any name, no booking link (I-24)", true, () => addDoc(collection(cust2, "reviews"), { name: "Fake", text: "x", rating: 1 }), { knownOpen: true });
 await t("O8", "Chat message spoofing sender 'admin' (I-24)", true, () => addDoc(collection(cust, "chats/c_read/messages"), { sender: "admin", text: "pay on UPI" }), { knownOpen: true });
-await t("O9", "Any signed-in user reads drivers collection (I-25)", true, () => getDocs(collection(cust, "drivers")), { knownOpen: true });
+// I-25 / R2-22 was documented here as a known-open case (expected "allow").
+// Phase 2A closed it on purpose: the legacy drivers collection is staff-only plus
+// the driver's own doc; no production page lists it (partners use
+// partners/{uid}/drivers). So the case now asserts the secure behaviour.
+await t("O9", "Any signed-in user lists the legacy drivers collection (I-25 fixed in Phase 2A)", false, () => getDocs(collection(cust, "drivers")));
+await t("O9b", "Advisor lists the legacy drivers collection", true, () => getDocs(collection(adv, "drivers")));
+await t("O9c", "Driver lists the whole legacy drivers collection (own doc only)", false, () => getDocs(collection(drv, "drivers")));
 await t("O10", "Any signed-in user lists promo codes (I-25)", true, () => getDocs(collection(cust, "promos")), { knownOpen: true });
 await t("O11", "Cancel request referencing another customer's booking (I-40)", true, () => addDoc(collection(cust, "cancelRequests"), { customerUid: "cust1", bookingDocId: "other", reason: "x" }), { knownOpen: true });
 
