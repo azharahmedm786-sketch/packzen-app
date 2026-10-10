@@ -507,7 +507,10 @@ if (!window._firebase) return setErr("⚠️ Not connected to Firebase.");
 
   const driverUid = document.getElementById("nbDriver")?.value || "";
   const driver = driverUid ? (allDrivers || []).find(d => d.id === driverUid) : null;
-  const status = driverUid ? "assigned" : (document.getElementById("nbStatus")?.value || "confirmed");
+  // The booking is created unassigned; a chosen driver is assigned afterwards
+  // through the server callable (eligibility + schedule lock).
+  const chosenStatus = document.getElementById("nbStatus")?.value || "confirmed";
+  const status = driverUid && chosenStatus === "assigned" ? "confirmed" : chosenStatus;
 
   const houseText = (() => {
     const sel = document.querySelector(`#nbSizeGrid .nb-select-card.selected`);
@@ -574,16 +577,17 @@ storageNeeded: !!document.getElementById("nbStorage")?.checked,
     createdByAdvisor: advisorUser?.uid || null,
     createdByAdvisorName: advisorUser?.displayName || (advisorUser?.email ? advisorUser.email.split("@")[0] : "Unknown"),
     createdByAdvisorEmail: advisorUser?.email || "",
-    driverUid: driverUid || null,
-    driverName: driver ? (driver.name || "") : "",
-    driverPhone: driver ? (driver.phone || "") : "",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
   if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   try {
-    await window._firebase.db.collection("bookings").add(payload);
+    const ref = await window._firebase.db.collection("bookings").add(payload);
     toast("Success: Booking created: " + bookingRef);
+    if (driverUid) {
+      try { await advAssignDriver(ref.id, driverUid, null); toast("Success: " + (driver ? (driver.name || "Driver") : "Driver") + " assigned"); }
+      catch (e) { toast("⚠️ Booking saved but not assigned: " + (e && e.message ? e.message : "assignment failed") + " — assign it from the list."); }
+    }
     nbDiscardDraft();
     nbResetForm();
   } catch (e) {
@@ -664,17 +668,20 @@ async function confirmAssign() {
   const driverUid = document.getElementById("assignDriverSelect")?.value;
   if (!driverUid) { toast("⚠️ Select a driver"); return; }
   if (!assignBookingId || !window._firebase) return;
-  const driver = (allDrivers || []).find(d => d.id === driverUid);
+  const b = (allBookings || []).find(x => x.id === assignBookingId) || {};
   try {
-    await window._firebase.db.collection("bookings").doc(assignBookingId).update({
-      driverUid, driverName: driver?.name || "Driver", driverPhone: driver?.phone || "", status: "assigned"
-    });
-    await window._firebase.db.collection("users").doc(driverUid).update({ currentBooking: assignBookingId });
-    toast("Success: Driver assigned");
+    // Server-side assignment: eligibility, schedule-conflict check and lock, one transaction.
+    const r = await advAssignDriver(assignBookingId, driverUid, b.driverUid || null);
+    const w = (r && r.data && r.data.warnings) || [];
+    toast(w.length ? "Success: Driver assigned (note: " + w.join(", ") + ")" : "Success: Driver assigned");
     closeAssignModal();
   } catch (e) {
-    toast("Failed: " + (e.code === "permission-denied" ? "Permission denied — check Firestore rules." : e.message));
+    toast("Failed: " + (e && e.message ? e.message : "Could not assign"));
   }
+}
+
+function advAssignDriver(bookingId, driverUid, expectedDriverUid) {
+  return firebase.app().functions("asia-south1").httpsCallable("adminAssignDriver")({ bookingId, driverUid, expectedDriverUid });
 }
 
 /* ============================================================

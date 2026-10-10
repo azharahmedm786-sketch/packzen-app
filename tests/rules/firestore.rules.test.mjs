@@ -114,6 +114,10 @@ await t("A16", "Verified admin reads/updates smsQueue (retry)", true, () => upda
 
 /* ── Completion: admin direct writes vs the server path (Phase 1) ────── */
 await t("A17", "Verified admin sets delivered by direct Firestore write (must use adminCompleteBooking)", false, () => updateDoc(doc(admin, "bookings/a_deliver"), { status: "delivered" }));
+await t("A25", "Verified admin writes driverUid directly (must use adminAssignDriver)", false, () => updateDoc(doc(admin, "bookings/a_deliver"), { driverUid: "drv2", driverName: "D2", driverPhone: "" }));
+await t("A26", "Verified admin creates a booking that already has a driver", false, () => addDoc(collection(admin, "bookings"), booking({ customerUid: "cust2", status: "confirmed", driverUid: "drv1" })));
+await t("A27", "Server (Admin SDK, as adminAssignDriver) sets the driver", true, () => env.withSecurityRulesDisabled((ctx) =>
+  updateDoc(doc(ctx.firestore(), "bookings/a_edit_delivered"), { driverUid: "drv1", driverName: "D1", driverPhone: "" })));
 await t("A18", "Verified admin edits other fields of an in-transit booking", true, () => updateDoc(doc(admin, "bookings/a_deliver"), { remarks: "admin note" }));
 await t("A19", "Verified admin edits an already-delivered booking (status unchanged)", true, () => updateDoc(doc(admin, "bookings/a_edit_delivered"), { remarks: "post-job note" }));
 await t("A20", "Verified admin creates a booking already marked delivered", false, () => addDoc(collection(admin, "bookings"), booking({ customerUid: "cust2", status: "delivered" })));
@@ -219,11 +223,14 @@ await t("D14", "Driver lists own active jobs (driver.html query)", true, () => g
 await t("D15", "Driver can read deliveryOtp on assigned booking (I-16, later release)", true, () => getDoc(doc(drv, "bookings/d_otp")), { knownOpen: true });
 
 /* ── Bookings: advisor ──────────────────────────────────────────────── */
-await t("V1", "Advisor assigns driver (advisor-dashboard-patch.js payload)", true, () => updateDoc(doc(adv, "bookings/v_assign"), { driverUid: "drv1", driverName: "D1", driverPhone: "", status: "assigned" }));
+// Phase 2C prerequisite: advisors assign through the adminAssignDriver callable; direct driver writes are denied.
+await t("V1", "Advisor writes driverUid directly (must use adminAssignDriver)", false, () => updateDoc(doc(adv, "bookings/v_assign"), { driverUid: "drv1", driverName: "D1", driverPhone: "", status: "assigned" }));
 await t("V2", "Advisor changes total/paid", false, () => updateDoc(doc(adv, "bookings/v_total"), { total: 1, paid: 99999 }));
 await t("V11", "Advisor assigns a booking to a NON-driver uid (would grant isAssignedDriver read)", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "cust1", driverName: "X", driverPhone: "", status: "assigned" }));
 await t("V12", "Advisor assigns to a uid with no users doc", false, () => updateDoc(doc(adv, "bookings/v_bad_assign"), { driverUid: "ghost_uid_01", status: "assigned" }));
 await t("V13", "Advisor status-only update (driver unchanged)", true, () => updateDoc(doc(adv, "bookings/v_unassign"), { status: "confirmed" }));
+await t("V14", "Advisor creates a walk-in booking that already has a driver", false, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "confirmed", source: "advisor", driverUid: "drv1", driverName: "D1" }));
+await t("V15", "Advisor status-only update to assigned/confirmed still works", true, () => updateDoc(doc(adv, "bookings/v_unassign"), { status: "assigned" }));
 await t("V3", "Advisor changes customerUid/paymentId", false, () => updateDoc(doc(adv, "bookings/v_owner"), { customerUid: "cust1", paymentId: "pay_x" }));
 await t("V4", "Advisor creates a walk-in booking", true, () => addDoc(collection(adv, "bookings"), { customerName: "Walk-in", total: 3000, paid: 0, status: "confirmed", source: "advisor" }));
 await t("V8", "Advisor sets a booking to delivered", false, () => updateDoc(doc(adv, "bookings/v_deliver"), { status: "delivered" }));

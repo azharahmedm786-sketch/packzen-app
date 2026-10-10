@@ -523,6 +523,7 @@ function staffDeps() {
     db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
     serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
     isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
+    isAdvisor: async (ctx) => (await staffRole(ctx)) === "advisor",
   };
 }
 function staffCallable(handler, ErrClass) {
@@ -539,7 +540,8 @@ function staffCallable(handler, ErrClass) {
 exports.adminUpsertDriverProfile = functions.region("asia-south1").https.onCall(staffCallable(driverProfile.handleUpsert, driverProfile.ProfileError));
 // Admin: compute (and store) the shadow-mode recommendation for one booking. Never assigns.
 exports.adminGetAssignmentRecommendation = functions.region("asia-south1").https.onCall(staffCallable(assignment.handleRecommend, assignment.AssignError));
-// Admin: manual assignment in one transaction (booking + schedule lock + users.currentBooking).
+// Admin/advisor: manual assignment in one transaction (booking + schedule lock + users.currentBooking).
+// The ONLY way to set booking.driverUid (firestore.rules block client writes of driver fields).
 exports.adminAssignDriver = functions.region("asia-south1").https.onCall(staffCallable(assignment.handleAssign, assignment.AssignError));
 // Shadow mode: every 30 min store recommendations for unassigned bookings in the next 3 days.
 // Disable with Firestore appConfig/assignment { shadowEnabled: false } or by pausing the scheduler job.

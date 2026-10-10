@@ -412,6 +412,36 @@ test("review backfill: real write errors are not swallowed; malformed records ar
   void realCreate;
 });
 
+/* ── Phase 2C prerequisite: advisors assign via the callable ── */
+const advDeps = (deps) => Object.assign({}, deps, { isAdvisor: async (c) => c.auth.uid === "advisorAA1" });
+test("2C-prereq: advisor assigns through the callable (role recorded); customer/driver still denied", async () => {
+  const { db, deps } = asgEnv(); const d = advDeps(deps);
+  const r = await asg.handleAssign({ bookingId: "bkOne00001", driverUid: "drvBig0001", expectedDriverUid: null }, ctx("advisorAA1"), d);
+  assert.ok(r.ok); const b = db.col("bookings").bkOne00001;
+  assert.deepStrictEqual([b.driverUid, b.status, b.assignment.byRole, b.assignment.by], ["drvBig0001", "assigned", "advisor", "advisorAA1"]);
+  assert.deepStrictEqual(db.col("driverSchedule")["drvBig0001_2026-10-12"].jobs, { bkOne00001: 540 });
+  for (const who of ["drvBig0001", "custX00001"]) await rejects(asg.handleAssign({ bookingId: "bkTwo00001", driverUid: "drvBig0002", expectedDriverUid: null }, ctx(who), d), "permission-denied");
+});
+test("2C-prereq: advisors can't override eligibility (admin only); schedule conflicts still block", async () => {
+  const { db, deps } = asgEnv(); const d = advDeps(deps);
+  const e = await rejects(asg.handleAssign({ bookingId: "bkOne00001", driverUid: "drvAce0001", expectedDriverUid: null, overrideReason: "two trips agreed with customer" }, ctx("advisorAA1"), d), "failed-precondition");
+  assert.ok(/Only an admin/.test(e.publicMessage)); assert.ok(!db.col("bookings").bkOne00001.driverUid);
+  await asg.handleAssign({ bookingId: "bkOne00001", driverUid: "drvBig0001", expectedDriverUid: null }, ctx("advisorAA1"), d);
+  await rejects(asg.handleAssign({ bookingId: "bkTwo00001", driverUid: "drvBig0001", expectedDriverUid: null }, ctx("advisorAA1"), d), "failed-precondition");
+  const r = await asg.handleAssign({ bookingId: "bkOne00001", driverUid: "drvAce0001", expectedDriverUid: "drvBig0001", overrideReason: "two trips agreed with customer" }, ctx("adminAAA01"), d);
+  assert.deepStrictEqual(r.overridden, ["vehicle_too_small"]);
+});
+test("2C-prereq: no client code writes booking driver fields any more", () => {
+  const adv = fs.readFileSync(path.join(ROOT, "public/advisor-dashboard-patch.js"), "utf8");
+  assert.ok(!/update\(\{\s*driverUid/.test(adv) && !/driverUid: driverUid \|\| null/.test(adv), "advisor direct writes removed");
+  assert.ok(adv.includes('httpsCallable("adminAssignDriver")'));
+  assert.ok(fs.readFileSync(path.join(ROOT, "public/advisor.html"), "utf8").includes("firebase-functions-compat.js"));
+  const r = fs.readFileSync(path.join(ROOT, "firestore.rules"), "utf8");
+  assert.ok(/isAdvisor\(\)\s*&& onlyFields\(\['status'\]\)/.test(r));
+  assert.ok(r.includes("request.resource.data.get('driverUid', null) == resource.data.get('driverUid', null)"));
+  assert.ok(r.includes("&& request.resource.data.get('driverUid', null) == null;"));
+});
+
 test("2B admin UI uses the callables; no direct driverUid write left in admin.html", () => {
   const a = fs.readFileSync(path.join(ROOT, "public/admin.html"), "utf8");
   assert.ok(a.includes('_adminCallable("adminAssignDriver")') && a.includes('_adminCallable("adminGetAssignmentRecommendation")') && a.includes('_adminCallable("adminUpsertDriverProfile")'));
