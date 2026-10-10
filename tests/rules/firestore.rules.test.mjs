@@ -284,7 +284,13 @@ await t("O5", "Partner sets own completedJobs/rating (I-22)", true, () => update
 await t("O6", "Customer saves address (I-23)", false, () => addDoc(collection(cust, "users/cust1/addresses"), { address: "x" }), { knownOpen: true });
 await t("O7", "Review with any name, no booking link (I-24)", true, () => addDoc(collection(cust2, "reviews"), { name: "Fake", text: "x", rating: 1 }), { knownOpen: true });
 await t("O8", "Chat message spoofing sender 'admin' (I-24)", true, () => addDoc(collection(cust, "chats/c_read/messages"), { sender: "admin", text: "pay on UPI" }), { knownOpen: true });
-await t("O9", "Any signed-in user reads drivers collection (I-25)", true, () => getDocs(collection(cust, "drivers")), { knownOpen: true });
+// I-25 / R2-22 was documented here as a known-open case (expected "allow").
+// Phase 2A closed it on purpose: the legacy drivers collection is staff-only plus
+// the driver's own doc; no production page lists it (partners use
+// partners/{uid}/drivers). So the case now asserts the secure behaviour.
+await t("O9", "Any signed-in user lists the legacy drivers collection (I-25 fixed in Phase 2A)", false, () => getDocs(collection(cust, "drivers")));
+await t("O9b", "Advisor lists the legacy drivers collection", true, () => getDocs(collection(adv, "drivers")));
+await t("O9c", "Driver lists the whole legacy drivers collection (own doc only)", false, () => getDocs(collection(drv, "drivers")));
 await t("O10", "Any signed-in user lists promo codes (I-25)", true, () => getDocs(collection(cust, "promos")), { knownOpen: true });
 await t("O11", "Cancel request referencing another customer's booking (I-40)", true, () => addDoc(collection(cust, "cancelRequests"), { customerUid: "cust1", bookingDocId: "other", reason: "x" }), { knownOpen: true });
 
