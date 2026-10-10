@@ -515,6 +515,40 @@ exports.verifyCompletionOtp = functions.region("asia-south1").runWith({ secrets:
 exports.adminCompleteBooking = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
   .https.onCall(completionOtp.callable(completionOtp.handleAdminOverride, completionOtpDeps, toHttpsError));
 
+/* === Phase 2A/2B: driver profiles, shadow recommendations, manual assignment === */
+const driverProfile = require("./driver-profile");
+const assignment = require("./assignment");
+function staffDeps() {
+  return {
+    db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
+    serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
+    isAdvisor: async (ctx) => (await staffRole(ctx)) === "advisor",
+  };
+}
+function staffCallable(handler, ErrClass) {
+  return async (data, context) => {
+    try { return await handler(data, context, staffDeps()); }
+    catch (e) {
+      if (e instanceof ErrClass) throw new functions.https.HttpsError(e.code, e.publicMessage, e.detail ? { reasons: e.detail } : undefined);
+      functions.logger.error("staff_callable_error", { message: String(e && e.message).slice(0, 120) });
+      throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+    }
+  };
+}
+// Admin creates/updates driverProfiles/{uid} (validated; no client writes allowed by rules).
+exports.adminUpsertDriverProfile = functions.region("asia-south1").https.onCall(staffCallable(driverProfile.handleUpsert, driverProfile.ProfileError));
+// Admin: compute (and store) the shadow-mode recommendation for one booking. Never assigns.
+exports.adminGetAssignmentRecommendation = functions.region("asia-south1").https.onCall(staffCallable(assignment.handleRecommend, assignment.AssignError));
+// Admin/advisor: manual assignment in one transaction (booking + schedule lock + users.currentBooking).
+// The ONLY way to set booking.driverUid (firestore.rules block client writes of driver fields).
+exports.adminAssignDriver = functions.region("asia-south1").https.onCall(staffCallable(assignment.handleAssign, assignment.AssignError));
+// Shadow mode: every 30 min store recommendations for unassigned bookings in the next 3 days.
+// Disable with Firestore appConfig/assignment { shadowEnabled: false } or by pausing the scheduler job.
+exports.shadowAssignmentSweep = functions.region("asia-south1")
+  .pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata")
+  .onRun(async () => { await assignment.shadowSweep(staffDeps()); return null; });
+
 // Hourly exception digest -> admin email only when something new needs attention.
 exports.opsDigest = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })
   .pubsub.schedule("every 60 minutes").timeZone("Asia/Kolkata")

@@ -168,9 +168,11 @@ test("rules: no client role can write 'delivered' (driver, customer, advisor, ad
   assert.ok(/request\.resource\.data\.status == 'cancelled'/.test(b));
   assert.ok(!/customerUid == request\.auth\.uid[\s\S]{0,400}'delivered'/.test(b.replace(/!= 'delivered'/g, "")), "customer path mentions delivered");
   // advisor and admin updates exclude moving into delivered; create excludes delivered
-  assert.ok(/isAdvisor\(\)\s*&& onlyFields\(\['driverUid', 'driverName', 'driverPhone', 'status'\]\)\s*&& request\.resource\.data\.status != 'delivered';/.test(b));
-  assert.ok(/allow update: if isAdmin\(\)\s*&& \(request\.resource\.data\.status != 'delivered' \|\| resource\.data\.status == 'delivered'\);/.test(b));
-  assert.ok(/\(isAdvisor\(\) \|\| isAdmin\(\)\)\s*&& request\.resource\.data\.status != 'delivered';/.test(b));
+  // (Phase 2 review added a further "assignee must be a driver" clause after this one — stricter, not weaker.)
+  // Advisors: status only, never 'delivered' (Phase 2C prerequisite removed driver fields — stricter).
+  assert.ok(/isAdvisor\(\)\s*&& onlyFields\(\['status'\]\)\s*&& request\.resource\.data\.status != 'delivered'(;|\s)/.test(b));
+  assert.ok(/allow update: if isAdmin\(\)\s*&& \(request\.resource\.data\.status != 'delivered' \|\| resource\.data\.status == 'delivered'\)(;|\s)/.test(b));
+  assert.ok(/\(isAdvisor\(\) \|\| isAdmin\(\)\)\s*&& request\.resource\.data\.status != 'delivered'(;|\s)/.test(b));
   assert.ok(!/allow read, update, delete: if isAdmin\(\);/.test(b), "unrestricted admin update remains");
   // every other 'allow update' in the bookings block either excludes delivered or can't touch status
   const updates = b.match(/allow update:[\s\S]*?;/g) || [];
