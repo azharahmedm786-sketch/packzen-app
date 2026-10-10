@@ -145,7 +145,7 @@ test("invoices (customer + admin) use the formatter; no raw object stringificati
     assert.ok(!src.includes('let furnText = b.furniture || ""'), name);
     assert.ok(!src.includes("`${k} x${v}`"), name);
   }
-  assert.ok(/booking-format\.js\?v=1"><\/script>\s*<script src="script\.js\?v=10">/.test(indexSrc), "index loads formatter before script.js");
+  assert.ok(/booking-format\.js\?v=1"><\/script>\s*<script src="script\.js\?v=\d+">/.test(indexSrc), "index loads formatter before script.js");
   assert.ok(adminSrc.includes('<script src="booking-format.js"></script>'));
 });
 

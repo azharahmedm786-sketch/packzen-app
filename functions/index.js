@@ -252,7 +252,11 @@ async function getGoogleMapsDistance(pickup, drop) {
   return 0;
 }
 
-async function calculateServerQuote(quoteInput, pickup, drop) {
+// P0: discounts are server-authoritative (promo.js). Only quoteInput.promoCode is
+// honoured; any client promoDiscount/total is discarded before pricing.
+const promo = require("./promo");
+
+async function calculateServerQuote(quoteInput, pickup, drop, opts) {
   const computedKm = await getGoogleMapsDistance(pickup, drop);
   if (computedKm > 0) {
     quoteInput.km = computedKm;
@@ -284,16 +288,18 @@ async function calculateServerQuote(quoteInput, pickup, drop) {
      throw new Error("Unknown vehicle ID.");
   }
 
-  const validation = PackZenPricing.validateInput(quoteInput);
-  if (!validation.valid) {
-    throw new Error("Validation error: " + validation.errors.join(", "));
-  }
-
-  const quote = PackZenPricing.calculateQuote(quoteInput);
-  if (!quote.valid) {
-    throw new Error("Pricing error: " + quote.errors.join(", "));
-  }
-  return quote;
+  const calc = async (qi) => {
+    const validation = PackZenPricing.validateInput(qi);
+    if (!validation.valid) {
+      throw new Error("Validation error: " + validation.errors.join(", "));
+    }
+    const quote = PackZenPricing.calculateQuote(qi);
+    if (!quote.valid) {
+      throw new Error("Pricing error: " + quote.errors.join(", "));
+    }
+    return quote;
+  };
+  return promo.priceWithPromo(quoteInput, calc, { db: admin.firestore(), now: () => Date.now(), uid: (opts && opts.uid) || null });
 }
 
 
@@ -327,7 +333,7 @@ exports.createBooking = functions
 
     let quote;
     try {
-      quote = await calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop);
+      quote = await calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop, { uid: context.auth.uid });
     } catch (e) {
       throw new functions.https.HttpsError("invalid-argument", e.message);
     }
@@ -351,6 +357,8 @@ exports.createBooking = functions
     finalPayload.distance = quote.km;
     finalPayload.originalTotal = quote.finalTotal;
     finalPayload.quoteBreakdown = quote.breakdown;
+    finalPayload.promoCode = quote.promo ? quote.promo.code : null;       // server-validated
+    finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;   // server-computed
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
     finalPayload.status = "confirmed"; // Enforce safe initial status
     finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
@@ -389,7 +397,7 @@ exports.createRazorpayOrder = functions
         Object.assign({ scope: "moveOrderUid", subject: uid }, rateLimit.LIMITS.moveOrderUid),
         Object.assign({ scope: "moveOrderIp", subject: rateLimit.clientIp(r) }, rateLimit.LIMITS.moveOrderIp),
       ], functions.logger),
-      quote: (quoteInput, pickup, drop) => calculateServerQuote(quoteInput, pickup, drop),
+      quote: (quoteInput, pickup, drop, opts) => calculateServerQuote(quoteInput, pickup, drop, opts),
       normalize: (quoteInput) => {
         const v = PackZenPricing.validateInput(quoteInput);
         return v && v.data ? v.data : quoteInput;
