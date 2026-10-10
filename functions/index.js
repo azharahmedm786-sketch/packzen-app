@@ -157,25 +157,18 @@ exports.sendWhatsApp = functions
       return null;
     }
 
-    try {
-      // Placeholder for WhatsApp API (e.g. MSG91 WhatsApp, Meta API, etc.)
-      // Since no specific WhatsApp API is provided, we simulate a successful send.
-      console.log(`✅ WhatsApp sent to ${mobile}:`, message);
-      await docRef.update({
-        status: "sent",
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        response: JSON.stringify({ success: true, dummy: true }).slice(0, 500)
-      });
-    } catch (err) {
-      console.error(`❌ WhatsApp failed to ${mobile}:`, err.message);
-      const retries = (data.retries || 0) + 1;
-      await docRef.update({
-        status: retries >= 3 ? "failed" : "pending",  // retry up to 3 times
-        retries,
-        lastError: err.message,
-        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
+    // No WhatsApp provider is configured yet. Previously this stub marked every
+    // message "sent" (and logged the phone number + text) without sending it.
+    // It now records the truth: the message was NOT sent. No retries (nothing
+    // can succeed until a provider exists), no personal data in logs.
+    // When a real provider (Meta WhatsApp Cloud API / MSG91 WhatsApp) with
+    // approved templates is configured, replace this block with the API call.
+    await docRef.update({
+      status: "skipped",
+      skipReason: "whatsapp_not_configured",
+      skippedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    functions.logger.info("whatsapp_skipped_not_configured", { docId: context.params.docId });
 
     return null;
   });
