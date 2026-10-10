@@ -136,13 +136,17 @@ async function handleRecommend(data, context, deps) {
 async function handleAssign(data, context, deps) {
   const caller = context && context.auth && context.auth.uid;
   if (!caller) throw new AssignError("unauthenticated", "Please sign in.");
-  if (!(await deps.isAdmin(context))) throw new AssignError("permission-denied", "Only admins can assign drivers.");
+  // Admins and advisors both assign through this callable (Phase 2C prerequisite:
+  // no client may write driverUid directly). Only admins may override eligibility.
+  const callerIsAdmin = await deps.isAdmin(context);
+  const callerIsAdvisor = !callerIsAdmin && deps.isAdvisor ? await deps.isAdvisor(context) : false;
+  if (!callerIsAdmin && !callerIsAdvisor) throw new AssignError("permission-denied", "Only admins and advisors can assign drivers.");
   const { bookingId, driverUid } = data || {};
   if (!validId(bookingId) || !validId(driverUid)) throw new AssignError("invalid-argument", "Invalid booking or driver.");
   if (!data || !("expectedDriverUid" in data) || (data.expectedDriverUid !== null && !validId(data.expectedDriverUid))) {
     throw new AssignError("invalid-argument", "expectedDriverUid (current driver or null) is required.");
   }
-  const overrideReason = typeof data.overrideReason === "string" ? data.overrideReason.trim().slice(0, 300) : "";
+  const overrideReason = callerIsAdmin && typeof data.overrideReason === "string" ? data.overrideReason.trim().slice(0, 300) : "";
   const db = deps.db;
   const bRef = db.collection("bookings").doc(bookingId);
 
@@ -190,6 +194,7 @@ async function handleAssign(data, context, deps) {
     const blocking = reasons.filter((r) => BLOCKING.has(r));
     if (blocking.length) return { error: ["failed-precondition", "Can't assign: " + blocking.join(", ") + "."] };
     const needsOverride = reasons.filter((r) => OVERRIDABLE.has(r));
+    if (needsOverride.length && !callerIsAdmin) return { error: ["failed-precondition", "Driver isn't eligible (" + needsOverride.join(", ") + "). Only an admin can override this."] };
     if (needsOverride.length && overrideReason.length < 10) return { error: ["failed-precondition", "Driver isn't eligible (" + needsOverride.join(", ") + "). Give an override reason (10+ characters) to assign anyway."], detail: needsOverride };
     const warnings = reasons.filter((r) => !BLOCKING.has(r) && !OVERRIDABLE.has(r)).concat(driver.profile ? [] : ["no_profile"]);
 
@@ -197,7 +202,7 @@ async function handleAssign(data, context, deps) {
     tx.update(bRef, {
       driverUid, driverName: (u.data() || {}).name || "Driver", driverPhone: (u.data() || {}).phone || "",
       status: "assigned",
-      assignment: { method: "manual", by: caller, at: deps.now(), previousDriverUid: prevUid, override: needsOverride.length ? { reasons: needsOverride, reason: overrideReason } : null,
+      assignment: { method: "manual", by: caller, byRole: callerIsAdmin ? "admin" : "advisor", at: deps.now(), previousDriverUid: prevUid, override: needsOverride.length ? { reasons: needsOverride, reason: overrideReason } : null,
                     warnings, engineVersion: engine.ENGINE_VERSION },
     });
     if (sRef) tx.set(sRef, { driverUid, date, jobs: Object.assign({}, liveLock, { [bookingId]: startMin }), updatedAt: deps.now() }); // stale entries pruned
