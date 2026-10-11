@@ -562,6 +562,29 @@ exports.jobOfferSweep = functions.region("asia-south1").runWith({ secrets: [...B
   .pubsub.schedule("every 1 minutes").timeZone("Asia/Kolkata")
   .onRun(async () => { await jobOffers.sweep(staffDeps()); return null; });
 // Driver (or admin) records cash/UPI collected; the job can't be completed while balanceDue > 0.
+// Level 2: customer pays the remaining balance online (amount always read from the booking).
+const balancePay = require("./balance-payment");
+function customerCallable(handler) {
+  return async (data, context) => {
+    try {
+      const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+      return await handler(data, context, {
+        db: admin.firestore(), now: () => Date.now(), logger: functions.logger, keyId: RAZORPAY_KEY_ID.value(),
+        keySecret: RAZORPAY_KEY_SECRET.value(), signatureMatches: require("./move-payment")._internal.signatureMatches,
+        createOrder: (o) => razorpay.orders.create(o), fetchPayment: (id) => razorpay.payments.fetch(id),
+      });
+    } catch (e) {
+      if (e instanceof balancePay.BalancePayError) throw new functions.https.HttpsError(e.code, e.publicMessage);
+      functions.logger.error("balance_payment_error", { message: String(e && e.message).slice(0, 160) });
+      throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+    }
+  };
+}
+exports.createBalanceOrder = functions.region("asia-south1").runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onCall(customerCallable(balancePay.handleCreateBalanceOrder));
+exports.verifyBalancePayment = functions.region("asia-south1").runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onCall(customerCallable(balancePay.handleVerifyBalancePayment));
+
 exports.recordBalanceCollection = functions.region("asia-south1").https.onCall(staffCallable(balance.handleRecordCollection, balance.BalanceError));
 
 // Hourly exception digest -> admin email only when something new needs attention.

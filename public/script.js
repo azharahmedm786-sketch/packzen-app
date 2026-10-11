@@ -3315,7 +3315,9 @@ function renderBookingCard(b, id) {
   const canReschedule = ["pending", "confirmed"].includes(status);
   const canRate = status === "delivered" && !b.driverRating;
   const canClaim = status === "delivered" && !b.damageClaimed;
-  const showActionRow = !["transit", "delivered", "cancelled"].includes(status) || canRate || canClaim;
+  // Level 2: the customer can pay the remaining balance online on an active booking.
+  const canPayBalance = !!(ps && ps.known && ps.balanceDue > 0 && ["confirmed", "assigned", "packing", "transit"].includes(status));
+  const showActionRow = (!["transit", "delivered", "cancelled"].includes(status) || canRate || canClaim) || canPayBalance;
   // Phase 1: the completion code is server-side and shown only while the job is in transit.
   const showOtp = b.status === "transit"; // completion stage only
   const dateTxt = [b.date, window.PackZenBookingFormat ? window.PackZenBookingFormat.timeLabel(b) : ""]
@@ -3350,6 +3352,7 @@ function renderBookingCard(b, id) {
       <div style="font-size:12px;color:#666;">Completion code</div>
       <div style="font-size:34px;font-weight:bold;letter-spacing:8px;color:#16a34a;"><span data-completion-otp="${escapeHTML(id)}">••••</span></div>
       <div style="font-size:13px;color:#666;">Give this code to the driver only after delivery.</div></div>` : ""}
+    ${canPayBalance ? `<button type="button" class="bk-btn paybalance" data-action="paybalance"${data("id", id)} style="background:#16a34a;color:white;border:none;">💳 Pay balance ${_rupees(ps.balanceDue)}</button>` : ""}
     ${canCancel ? `<button type="button" class="bk-btn cancel" data-action="cancel"${data("id", id)}${data("ref", b.bookingRef || id)}${data("status", status)}>✕ Cancel</button>` : ""}
     ${canRate ? `<button type="button" class="bk-btn rate" data-action="rate"${data("id", id)}${data("ref", b.bookingRef || id)}${data("driver", b.driverName || "")}>⭐ Rate Driver</button>` : ""}
     ${canClaim ? `<button type="button" class="bk-btn claim" data-action="claim"${data("id", id)}${data("ref", b.bookingRef || id)}>🔧 Report Damage</button>` : ""}
@@ -3375,8 +3378,45 @@ function attachBookingButtonListeners() {
       else if (action === 'cancel') openCancelModal(id, ref, status);
       else if (action === 'rate') openRateDriverModal(id, ref, driver);
       else if (action === 'claim') openDamageModal(id, ref);
+      else if (action === 'paybalance') payBalanceOnline(id, this);
     });
   });
+}
+
+/* Level 2: pay the remaining balance online. The server reads the amount from
+   the booking (never from this page), creates the Razorpay order and verifies
+   the payment; the webhook settles it even if this tab is closed. */
+let _balancePayBusy = false;
+async function payBalanceOnline(bookingId, btn) {
+  if (_balancePayBusy) return;
+  if (typeof window.Razorpay !== "function") { showToast("⚠️ Payment couldn't load. Please refresh and try again."); return; }
+  _balancePayBusy = true; if (btn) btn.disabled = true;
+  const fns = firebase.app().functions("asia-south1");
+  const done = () => { _balancePayBusy = false; if (btn) btn.disabled = false; };
+  try {
+    const r = await fns.httpsCallable("createBalanceOrder")({ bookingId });
+    const o = r.data || {};
+    const rzp = new window.Razorpay({
+      key: o.keyId, order_id: o.orderId, amount: o.amount, currency: o.currency || "INR",
+      name: "PackZen", description: "Balance payment" + (o.bookingRef ? " · " + o.bookingRef : ""),
+      prefill: { email: (currentUser && currentUser.email) || "" },
+      theme: { color: "#16a34a" },
+      handler: async (resp) => {
+        try {
+          await fns.httpsCallable("verifyBalancePayment")({ orderId: resp.razorpay_order_id, paymentId: resp.razorpay_payment_id, signature: resp.razorpay_signature });
+          showToast("✅ Balance paid. Thank you!");
+        } catch (e) {
+          showToast("⏳ Payment received — confirming. Your booking will update shortly.");
+        }
+        done(); if (typeof loadUserBookings === "function") loadUserBookings();
+      },
+      modal: { ondismiss: done },
+    });
+    rzp.open();
+  } catch (e) {
+    showToast("⚠️ " + ((e && e.message) || "Couldn't start the payment."));
+    done();
+  }
 }
 
 function loadUserAddresses() {
