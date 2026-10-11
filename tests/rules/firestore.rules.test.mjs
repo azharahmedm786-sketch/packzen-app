@@ -166,6 +166,18 @@ await t("L4", "Advisor reads legacy drivers/{uid}", true, () => getDoc(doc(adv, 
 await t("S1x", "Driver reads a driverSchedule lock (server-only)", false, () => getDoc(doc(drv, "driverSchedule/drv1_2026-10-10")));
 await t("S2x", "Admin client writes appConfig (server-only)", false, () => setDoc(doc(admin, "appConfig/assignment"), { shadowEnabled: false }));
 
+/* ── Phase 2C: automatic job offers ── */
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), "jobOffers/bkJO_1"), { bookingId: "bkJO", driverUid: "drv1", state: "offered", expiresAt: 9999999999999, summary: { date: "2026-10-11", area: "Koramangala" } });
+});
+await t("JO1", "Offered driver reads own job offer", true, () => getDoc(doc(drv, "jobOffers/bkJO_1")));
+await t("JO2", "Another driver reads the offer", false, () => getDoc(doc(drv2, "jobOffers/bkJO_1")));
+await t("JO3", "Customer reads a job offer", false, () => getDoc(doc(cust, "jobOffers/bkJO_1")));
+await t("JO4", "Driver accepts by writing the offer directly (must use acceptJobOffer)", false, () => updateDoc(doc(drv, "jobOffers/bkJO_1"), { state: "accepted" }));
+await t("JO5", "Advisor reads a job offer", true, () => getDoc(doc(adv, "jobOffers/bkJO_1")));
+await t("JO6", "Driver lists own offers (driver.html query)", true, () => getDocs(query(collection(drv, "jobOffers"), where("driverUid", "==", "drv1"), where("state", "==", "offered"))));
+await t("JO7", "Driver writes a payment collection record directly", false, () => setDoc(doc(drv, "bookings/d_transit/collections/x1"), { amount: 100 }));
+
 /* ── SMS / WhatsApp queues (I-04) ───────────────────────────────────── */
 await t("Q1", "Customer queues an SMS", false, () => addDoc(collection(cust, "smsQueue"), { mobile: "919999999999", message: "x", status: "pending" }));
 await t("Q2", "Customer queues a WhatsApp message", false, () => addDoc(collection(cust, "whatsappQueue"), { mobile: "919999999999", message: "x", status: "pending" }));

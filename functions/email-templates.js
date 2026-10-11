@@ -274,8 +274,8 @@ function feedbackRequest(d) {
       bodyHtml: `<p>Hi ${esc(d.customerName)},</p>
         <p>Thank you for choosing PackZen for your recent move (${esc(d.bookingRef)}). We'd love to hear your feedback — it takes less than a minute.</p>
         ${bookingInfoTable(d)}`,
-      ctaLabel: "Leave Feedback",
-      ctaUrl: BRAND.website
+      ctaLabel: d.reviewUrl ? "Leave a Google review" : "Leave Feedback",
+      ctaUrl: d.reviewUrl || BRAND.website
     })
   };
 }

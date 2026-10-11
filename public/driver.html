@@ -203,6 +203,7 @@
 
 <!-- DRIVER APP -->
 <div class="driver-app" id="driverApp">
+  <div id="offersPanel" style="display:none" aria-live="polite"></div>
 
   <!-- HEADER -->
   <div class="app-header">
@@ -331,6 +332,7 @@
       <input type="text" id="deliveryOtpInput" inputmode="numeric" maxlength="4" style="width:100%;padding:12px;text-align:center;font-size:1.5rem;font-weight:800;letter-spacing:12px;border:1.5px solid var(--border);border-radius:10px;outline:none;background:var(--surface);color:var(--text);margin-bottom:12px" placeholder="••••">
       <div id="otpError" style="font-size:.8rem;color:#e53e3e;margin-bottom:12px;display:none;text-align:center;font-weight:600"></div>
       <button class="btn-update" style="background:var(--accent);box-shadow:0 5px 16px rgba(0,201,110,.3)" onclick="verifyDeliveryOtp()">Confirm Delivery ✓</button>
+      <button type="button" class="btn-update" style="background:transparent;color:var(--primary);box-shadow:none;margin-top:4px;padding:8px" onclick="recordBalancePayment()">Record payment received</button>
       <button type="button" class="btn-update" style="background:transparent;color:var(--primary);box-shadow:none;margin-top:4px;padding:8px" onclick="sendCodeToCustomer()">Send code to customer</button>
       <button class="btn-update" style="background:transparent;color:var(--text-muted);box-shadow:none;margin-top:4px;padding:8px" onclick="cancelOtpEntry()">Cancel</button>
     </div>
@@ -558,6 +560,7 @@ function showApp(data) {
     startLocationSharing();
   }
   listenForBooking();
+  listenForOffers();
   buildStatusSteps("assigned");
 }
 
@@ -610,6 +613,58 @@ function setOnlineUI(online) {
 }
 
 /* LISTEN FOR BOOKING */
+/* ── Phase 2C: automatic job offers (accept within the time shown) ── */
+let _offersUnsub = null;
+function listenForOffers() {
+  if (!driverUser || _offersUnsub) return;
+  _offersUnsub = window._firebase.db.collection("jobOffers")
+    .where("driverUid", "==", driverUser.uid).where("state", "==", "offered")
+    .onSnapshot(snap => renderOffers(snap.docs.map(d => Object.assign({ id: d.id }, d.data()))), () => {});
+  setInterval(() => renderOffers(window._lastOffers || []), 15000);
+}
+function _esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function renderOffers(list) {
+  window._lastOffers = list;
+  const el = document.getElementById("offersPanel"); if (!el) return;
+  const now = Date.now();
+  const live = list.filter(o => o.expiresAt > now);
+  if (!live.length) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "block";
+  el.innerHTML = live.map(o => {
+    const s = o.summary || {}; const mins = Math.max(0, Math.ceil((o.expiresAt - now) / 60000));
+    return `<div style="margin:12px;padding:14px;border-radius:14px;border:2px solid var(--accent);background:var(--surface)">
+      <div style="font-weight:800">🚚 New job offer — ${_esc(s.kind === "service" ? "Service" : "Move")}</div>
+      <div style="margin:6px 0;color:var(--text-muted)">${_esc(s.date || "")} ${_esc(s.shiftTime || "")} · ${_esc(s.area || "Bangalore")} · ${_esc(s.vehicle || "")}</div>
+      <div style="font-size:.85rem;margin-bottom:8px">Accept within <b>${mins} min</b>. Customer details appear after you accept.</div>
+      <button type="button" class="btn-update" data-offer="${_esc(o.id)}" data-act="accept">Accept</button>
+      <button type="button" class="btn-update" style="background:transparent;color:var(--text-muted);box-shadow:none" data-offer="${_esc(o.id)}" data-act="decline">Decline</button>
+    </div>`; }).join("");
+  el.querySelectorAll("button[data-offer]").forEach(b => b.addEventListener("click", () => respondOffer(b.dataset.offer, b.dataset.act, b)));
+}
+async function respondOffer(offerId, act, btn) {
+  btn.disabled = true;
+  try {
+    await _driverCallable(act === "accept" ? "acceptJobOffer" : "declineJobOffer")({ offerId });
+    toast(act === "accept" ? "✅ Job accepted — it's now in your jobs" : "Offer declined", 3500);
+  } catch (e) { toast("❌ " + (e && e.message ? e.message : "Could not respond"), 4000); btn.disabled = false; }
+}
+
+/* ── Phase 2E: record cash/UPI received; completion needs balance 0 ── */
+async function recordBalancePayment() {
+  const due = Number(currentBookingData && currentBookingData.balanceDue);
+  if (!Number.isFinite(due) || due <= 0) { toast("Nothing is due on this booking."); return; }
+  const amt = parseInt(prompt("Amount received from the customer (₹). Balance due: ₹" + due, String(due)) || "", 10);
+  if (!Number.isInteger(amt) || amt <= 0) return;
+  const method = (prompt("Paid by cash or UPI? Type cash or upi", "cash") || "").trim().toLowerCase();
+  if (!["cash", "upi"].includes(method)) { toast("Type cash or upi."); return; }
+  const requestId = "col_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  try {
+    const r = await _driverCallable("recordBalanceCollection")({ bookingId: currentBookingId, amount: amt, method, requestId });
+    currentBookingData.balanceDue = r.data.balanceDue;
+    toast(r.data.balanceDue === 0 ? "✅ Fully paid — now enter the customer's code" : "Recorded. Still due: ₹" + r.data.balanceDue, 4000);
+  } catch (e) { toast("❌ " + (e && e.message ? e.message : "Could not record payment"), 4000); }
+}
+
 function listenForBooking() {
   if (!driverUser) return;
   if (bookingListener) { bookingListener(); bookingListener = null; }

@@ -90,39 +90,21 @@ exports.sendBookingReminders = functions
    Runs every 3 hours. Finds bookings delivered more than 24
    hours ago that haven't had a feedback request sent yet.
    ──────────────────────────────────────────────────────────── */
+// Phase 2F: Google review request, once, 2 hours after a code-verified completion
+// (skips admin-override completions, damage claims, refunds). See review-request.js.
 exports.sendFeedbackRequests = functions
   .region("asia-south1")
   .runWith({ secrets: BREVO_SECRETS })
-  .pubsub.schedule("every 180 minutes")
-  .onRun(async (context) => {
-    const db = admin.firestore();
-    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
-
+  .pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata")
+  .onRun(async () => {
+    const reviewRequest = require("./review-request");
     try {
-      const snap = await db.collection("bookings")
-        .where("status", "==", "delivered")
-        .limit(100)
-        .get();
-
-      if (snap.empty) return null;
-
-      for (const doc of snap.docs) {
-        const b = doc.data();
-        if (b.feedbackRequestSent === true) continue;
-        // Only send once the move has been delivered for 24h+.
-        // Use createdAt as a fallback if no deliveredAt timestamp exists.
-        const deliveredRef = b.deliveredAt || b.createdAt;
-        if (!deliveredRef || deliveredRef.toMillis() > cutoff.toMillis()) continue;
-
-        const email = await getCustomerEmail(b);
-        if (email) {
-          await sendCustomerEmail("feedback_request", email, bookingToTemplateData(b));
-        }
-        await doc.ref.update({ feedbackRequestSent: true, feedbackRequestSentAt: admin.firestore.FieldValue.serverTimestamp() });
-      }
-    } catch (e) {
-      console.error("sendFeedbackRequests error:", e.message);
-    }
+      await reviewRequest.run({
+        db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
+        getEmail: (b) => getCustomerEmail(b),
+        send: (email, b) => sendCustomerEmail("feedback_request", email, Object.assign(bookingToTemplateData(b), { reviewUrl: reviewRequest.GOOGLE_REVIEW_URL })),
+      });
+    } catch (e) { functions.logger.error("sendFeedbackRequests error", { message: String(e && e.message).slice(0, 120) }); }
     return null;
   });
 /* ── SIGNUP OTP CLEANUP ──────────────────────────────────────

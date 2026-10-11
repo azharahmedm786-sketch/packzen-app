@@ -524,6 +524,8 @@ function staffDeps() {
     serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
     isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
     isAdvisor: async (ctx) => (await staffRole(ctx)) === "advisor",
+    isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
+    alert: (subject, rows) => require("./notification-service").sendAdminEmail(subject, rows, null),
   };
 }
 function staffCallable(handler, ErrClass) {
@@ -548,6 +550,19 @@ exports.adminAssignDriver = functions.region("asia-south1").https.onCall(staffCa
 exports.shadowAssignmentSweep = functions.region("asia-south1")
   .pubsub.schedule("every 30 minutes").timeZone("Asia/Kolkata")
   .onRun(async () => { await assignment.shadowSweep(staffDeps()); return null; });
+
+/* === Phase 2C automatic offers (flag: appConfig/assignment.autoOffers, default OFF) + 2E balance === */
+const jobOffers = require("./job-offers");
+const balance = require("./balance");
+exports.acceptJobOffer = functions.region("asia-south1").https.onCall(staffCallable(jobOffers.handleAccept, jobOffers.OfferError));
+exports.declineJobOffer = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })
+  .https.onCall(staffCallable(jobOffers.handleDecline, jobOffers.OfferError));
+// Every minute: expire offers after offerTimeoutMin (5), offer the next driver, alert admin when nobody is left.
+exports.jobOfferSweep = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })
+  .pubsub.schedule("every 1 minutes").timeZone("Asia/Kolkata")
+  .onRun(async () => { await jobOffers.sweep(staffDeps()); return null; });
+// Driver (or admin) records cash/UPI collected; the job can't be completed while balanceDue > 0.
+exports.recordBalanceCollection = functions.region("asia-south1").https.onCall(staffCallable(balance.handleRecordCollection, balance.BalanceError));
 
 // Hourly exception digest -> admin email only when something new needs attention.
 exports.opsDigest = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] })

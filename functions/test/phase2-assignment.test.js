@@ -448,7 +448,10 @@ test("2B admin UI uses the callables; no direct driverUid write left in admin.ht
   assert.ok(!/update\(\{ driverUid, driverName/.test(a));
   const idx = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
   for (const f of ["adminUpsertDriverProfile", "adminGetAssignmentRecommendation", "adminAssignDriver", "shadowAssignmentSweep"]) assert.ok(new RegExp("exports\\." + f + " = ").test(idx), f);
-  assert.ok(!/jobOffers|acceptJobOffer|autoAssign/.test(idx + fs.readFileSync(path.join(__dirname, "..", "assignment.js"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "")), "no 2C automatic offers");
+  // 2C now exists but is OFF unless appConfig/assignment.autoOffers === true (was: "no 2C automatic offers").
+  const jo = fs.readFileSync(path.join(__dirname, "..", "job-offers.js"), "utf8");
+  assert.ok(jo.includes("autoOffers: c.autoOffers === true") && /autoOffers: false/.test(jo), "automatic offers are flag-gated, default off");
+  assert.ok(!/autoAssign/.test(fs.readFileSync(path.join(__dirname, "..", "assignment.js"), "utf8")), "shadow/manual module never auto-assigns");
 });
 
 (async () => {
