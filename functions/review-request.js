@@ -20,15 +20,24 @@ function eligible(b, now) {
 /** deps: { db, now(), getEmail(b), send(email, data), logger } */
 async function run(deps) {
   const now = deps.now(); let sent = 0, skipped = 0;
-  const q = await deps.db.collection("bookings").where("status", "==", "delivered").limit(200).get();
+  // Only bookings completed with the customer's code are flagged reviewRequestPending,
+  // so older delivered bookings never crowd out new ones (and never get surprise emails).
+  const q = await deps.db.collection("bookings").where("reviewRequestPending", "==", true).limit(200).get();
   for (const d of q.docs) {
     const b = d.data() || {};
-    if (!eligible(b, now)) { skipped++; continue; }
+    if (!eligible(b, now)) {
+      skipped++;
+      const at = toMs(b.deliveredAt) || toMs(b.completionVerifiedAt);
+      const tooSoon = b.status === "delivered" && b.completionMethod === "otp" && !b.damageClaimed &&
+        !["refunded", "partially_refunded"].includes(b.paymentStatus) && b.feedbackRequestSent !== true && at !== null && now - at < DELAY_MS;
+      if (!tooSoon) await d.ref.update({ reviewRequestPending: false }); // permanently ineligible → stop checking
+      continue;
+    }
     // claim first (no duplicates even if the send fails or the job overlaps)
     const claimed = await deps.db.runTransaction(async (tx) => {
       const cur = await tx.get(d.ref); const c = cur.data() || {};
-      if (c.feedbackRequestSent === true) return false;
-      tx.update(d.ref, { feedbackRequestSent: true, feedbackRequestSentAt: now });
+      if (c.feedbackRequestSent === true || c.reviewRequestPending !== true) return false;
+      tx.update(d.ref, { feedbackRequestSent: true, feedbackRequestSentAt: now, reviewRequestPending: false });
       return true;
     });
     if (!claimed) continue;

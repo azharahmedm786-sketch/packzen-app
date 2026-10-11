@@ -168,7 +168,17 @@ async function sweep(deps) {
     const o = d.data() || {};
     const b = await db.collection("bookings").doc(o.bookingId).get(); const bd = b.exists ? b.data() || {} : {};
     const orphan = !b.exists || bd.driverUid || bd.status !== "confirmed" || (bd.assignment || {}).offerId !== d.id;
-    if (orphan) { await d.ref.update({ state: "cancelled", respondedAt: now }); stats.cancelled++; continue; }
+    if (orphan) {
+      // Transactional: an offer accepted after this sweep's query must never be overwritten.
+      const done = await db.runTransaction(async (tx) => {
+        const cur = await tx.get(d.ref);
+        if ((cur.data() || {}).state !== "offered") return false;
+        tx.update(d.ref, { state: "cancelled", respondedAt: now });
+        return true;
+      });
+      if (done) stats.cancelled++;
+      continue;
+    }
     if (now >= o.expiresAt) {
       await db.runTransaction(async (tx) => {
         const cur = await tx.get(d.ref); if ((cur.data() || {}).state !== "offered") return;
