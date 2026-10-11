@@ -72,6 +72,14 @@
     return cached;
   }
 
+  // What one unit is, for "₹429 / AC" instead of "/ item" (display only; the server prices the cart).
+  const UNIT_LABELS = { "ac-installation": "AC", "ac-uninstallation": "AC", "ac-service-standard": "AC", "ac-service-deep": "AC",
+    "ac-gas-refill": "AC", "bathroom-cleaning": "bathroom", "tv-wall-mount": "TV" };
+  function unitLabel(item) {
+    const l = (item && (item.unitLabel || UNIT_LABELS[item.id])) || "item";
+    return String(l).replace(/[^A-Za-z ]/g, "").slice(0, 20) || "item";
+  }
+
   function formatPrice(item) {
     if (!item || item.pricingUnit === "quote") return "Get a quote";
     const n = Number(item.basePrice);
@@ -79,7 +87,7 @@
     const base = "₹" + n.toLocaleString("en-IN");
     switch (item.pricingUnit) {
       case "starting_from": return "From " + base;
-      case "per_item": return base + " / item";
+      case "per_item": return base + " / " + unitLabel(item);
       case "per_carton": return base + " / carton";
       default: return base;
     }

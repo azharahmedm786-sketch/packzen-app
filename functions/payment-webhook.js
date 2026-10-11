@@ -85,7 +85,15 @@ async function applyCapturedPayment(deps, pay, via) {
   }
 
   const pSnap = await db.collection(mp.PENDING_COLLECTION).doc(orderId).get();
-  if (!pSnap.exists) return "unmatched"; // not a move order (or catalog flow) — left for manual reconciliation
+  if (!pSnap.exists) {
+    // Online balance payments (balance-payment.js) settle here too, so a closed
+    // browser after paying still clears the customer's balance.
+    const bp = require("./balance-payment");
+    const r = await bp.applyBalancePayment({ db, now: () => Date.now() }, orderId, pay);
+    if (r.result === "processed" || r.result === "already") { logger.info("rzp_balance_settled", { orderId: mp.maskId(orderId), result: r.result }); return "processed"; }
+    if (r.result !== "unmatched") { logger.error("rzp_balance_problem", { orderId: mp.maskId(orderId), result: r.result }); return "needs_review"; }
+    return "unmatched"; // not a move order or a balance order -- left for manual reconciliation
+  }
   const p = pSnap.data();
   if (!p.uid) {
     await db.collection(mp.PENDING_COLLECTION).doc(orderId).update({ status: "needs_review", reviewReason: "legacy_no_uid", capturedPaymentId: pay.id, lastEventAt: deps.serverTimestamp() });
