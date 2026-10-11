@@ -28,24 +28,25 @@
       { name: "Packing & unpacking", href: "packing-unpacking-services-bangalore.html", keywords: "boxes cartons", status: "addon" },
       { name: "Bike transport", href: "bike-transport-bangalore.html", keywords: "scooter two wheeler", status: "addon" },
       { name: "Car transport", keywords: "vehicle", status: "soon" } ] },
-    { id: "ac", icon: "❄️", name: "AC Services", sub: "AC installation and uninstallation. More AC services coming soon.", services: [
+    { id: "ac", icon: "❄️", name: "AC Services", sub: "Installation, servicing, gas refill and repair", services: [
       { name: "AC installation", status: "book" }, { name: "AC uninstallation", status: "book" },
-      { name: "AC servicing", keywords: "cleaning wet service", status: "soon" }, { name: "AC repair", status: "soon" },
-      { name: "AC gas refill", keywords: "gas charging cooling", status: "soon" }, { name: "AC inspection", status: "soon" } ] },
-    { id: "appliances", icon: "🔌", name: "Appliance Services", sub: "TV wall mounting. Appliance repairs coming soon.", services: [
-      { name: "TV wall mount", keywords: "television mount", status: "book" },
-      { name: "Refrigerator repair", keywords: "fridge", status: "soon" }, { name: "Washing machine repair", keywords: "washer", status: "soon" },
-      { name: "Geyser repair", keywords: "water heater", status: "soon" }, { name: "RO / water purifier", keywords: "ro purifier water filter", status: "soon" } ] },
-    { id: "home", icon: "🏠", name: "Home Services", sub: "Electrical and carpentry jobs. More home services coming soon.", services: [
-      { name: "Electrical", q: "electrician", keywords: "electrician wiring switch", status: "book" }, { name: "Carpentry", q: "carpenter", keywords: "carpenter furniture repair", status: "book" },
-      { name: "Plumbing", keywords: "plumber tap leak", status: "soon" }, { name: "Painting", keywords: "painter wall", status: "soon" },
-      { name: "Cleaning", keywords: "deep cleaning home", status: "soon" }, { name: "Pest control", keywords: "termite cockroach", status: "soon" },
-      { name: "Bathroom cleaning", status: "soon" }, { name: "Kitchen cleaning", status: "soon" } ] },
-    { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore. Parcel delivery coming soon.", services: [
+      { name: "AC servicing", q: "AC Service", keywords: "cleaning wet service deep foam", status: "book" },
+      { name: "AC repair", q: "AC Repair", keywords: "not cooling noise leak inspection", status: "book" },
+      { name: "AC gas refill", q: "Gas Refill", keywords: "gas charging cooling", status: "book" } ] },
+    { id: "cleaning", icon: "\u{1F9F9}", name: "Cleaning", sub: "Deep home, kitchen and bathroom cleaning", services: [
+      { name: "Home deep cleaning", q: "Deep Cleaning", keywords: "full house 1bhk 2bhk 3bhk move in move out", status: "book" },
+      { name: "Kitchen cleaning", q: "Kitchen", keywords: "chimney grease", status: "book" },
+      { name: "Bathroom cleaning", q: "Bathroom", keywords: "toilet tiles", status: "book" } ] },
+    { id: "home", icon: "🏠", name: "Home Services", sub: "Electrician, carpenter, plumber and TV mounting", services: [
+      { name: "Electrical", q: "Electrician", keywords: "electrician wiring switch fan light", status: "book" },
+      { name: "Carpentry", q: "Carpenter", keywords: "carpenter furniture repair assembly", status: "book" },
+      { name: "Plumbing", q: "Plumber", keywords: "plumber tap leak pipe", status: "book" },
+      { name: "TV wall mount", q: "TV Wall Mount", keywords: "television mount", status: "book" },
+      { name: "Painting", keywords: "painter wall", status: "soon" }, { name: "Pest control", keywords: "termite cockroach", status: "soon" },
+      { name: "Appliance repair", keywords: "fridge refrigerator washing machine geyser ro purifier", status: "soon" } ] },
+    { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
       { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
-      { name: "Two-wheeler parcel", keywords: "courier package documents", status: "soon" },
-      { name: "Bike transport", href: "bike-transport-bangalore.html", status: "addon" },
-      { name: "Car transport", status: "soon" } ] }
+      { name: "Two-wheeler parcel", keywords: "courier package documents", status: "soon" } ] }
   ];
 
   /** WhatsApp link from the single existing source (catalog-public.js); null if unavailable. */
@@ -98,15 +99,19 @@
         "<div><h3 class=\"pz-cat-title\">" + esc(c.name) + '</h3><p class="pz-cat-sub">' + esc(c.sub) + "</p></div></div>" +
         '<div class="pz-chips">' + c.services.map(function (s) {
           var dataName = ' data-name="' + esc(norm(c.name + " " + s.name + " " + (s.keywords || ""))) + '"';
-          if (s.status === "soon") {
-            return '<span class="pz-chip pz-chip--soon"' + dataName + '>' + esc(s.name) + ' <small>Coming soon</small></span>';
-          }
+          if (s.status === "soon") return ""; // not offered yet: listed once below the grid, never as a chip
           return '<a class="pz-chip" href="' + esc(hrefFor(s)) + '"' + (s.move ? ' data-move="' + esc(s.move) + '"' : "") + dataName + '>' +
             esc(s.name) + (s.status === "addon" ? ' <small>with a move</small>' : "") + "</a>";
         }).join("") + "</div></article>";
     });
     html += "</div>";
+    var soonNames = [];
+    CATEGORIES.forEach(function (c) { c.services.forEach(function (s) { if (s.status === "soon" && soonNames.indexOf(s.name) < 0) soonNames.push(s.name); }); });
     var askLink = contactLink("Hi PackZen, I have a question about your services in " + CITY + ".");
+    if (soonNames.length) {
+      html += '<p class="pz-soon-line">Coming later to ' + CITY + ": " + esc(soonNames.join(", ")) + "." +
+        (askLink ? ' <a href="' + esc(askLink) + '" target="_blank" rel="noopener noreferrer">Ask us on WhatsApp</a>' : "") + "</p>";
+    }
     html += '<div class="pz-state" id="pzNoMatch" hidden><h3>No matching service yet</h3>' +
       "<p>This service isn't available online. You can ask us on WhatsApp.</p>" +
       (askLink ? '<a class="pz-btn pz-btn--secondary" href="' + esc(askLink) + '" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a>' : "") + "</div>";

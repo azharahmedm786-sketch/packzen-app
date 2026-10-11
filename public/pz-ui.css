@@ -185,3 +185,7 @@
 .pz-chip--soon { cursor: default; color: var(--pz-muted); background: var(--pz-surface-2); border-style: dashed; }
 .pz-chip--soon:hover { border-color: var(--pz-line); background: var(--pz-surface-2); }
 .pz-chip small { font-weight: 700; font-size: .72em; opacity: .85; margin-left: 2px; }
+
+/* One compact line for services not offered yet (replaces "Coming soon" chips). */
+.pz-soon-line { margin: var(--pz-s4) 0 0; color: var(--pz-muted); font-size: var(--pz-fs-sm); }
+.pz-soon-line a { font-weight: 800; }

@@ -45,9 +45,10 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const categories = [
   { id: "moving",      name: "Moving Services",   icon: "🚚", displayOrder: 1, description: "Home, office and intercity relocation" },
   { id: "packing",     name: "Packing Services",  icon: "📦", displayOrder: 2, description: "Packing and unpacking with quality material tiers" },
-  { id: "ac-services", name: "AC Services",       icon: "❄️", displayOrder: 3, description: "AC installation, uninstallation and repair" },
+  { id: "ac-services", name: "AC Services",       icon: "❄️", displayOrder: 3, description: "AC installation, uninstallation, servicing, gas refill and repair" },
   { id: "appliances",  name: "Appliance Services",icon: "📺", displayOrder: 4, description: "TV mounting and appliance handling" },
-  { id: "handyman",    name: "Handyman Services", icon: "🛠️", displayOrder: 5, description: "Carpenter and electrician work" },
+  { id: "cleaning",    name: "Cleaning Services", icon: "\u{1F9F9}", displayOrder: 6, description: "Deep home, kitchen and bathroom cleaning" },
+  { id: "handyman",    name: "Handyman Services", icon: "🛠️", displayOrder: 5, description: "Electrician, carpenter and plumber visits" },
 ].map((c) => ({ ...c, isActive: true }));
 
 // ── Services ────────────────────────────────────────────────────
@@ -57,6 +58,17 @@ const services = [
   { id: "local-house-shifting",  categoryId: "moving", name: "Local House Shifting (within Bangalore)", basePrice: 1999, pricingUnit: "starting_from", displayOrder: 1, description: "Door-to-door household shifting within the city" },
   { id: "intercity-relocation",  categoryId: "moving", name: "Intercity Relocation",                    basePrice: 0,    pricingUnit: "quote",         displayOrder: 2, description: "Long-distance household moves — quoted per route" },
   { id: "office-relocation",     categoryId: "moving", name: "Office Relocation",                       basePrice: 0,    pricingUnit: "quote",         displayOrder: 3, description: "Commercial and office shifting — quoted per inventory" },
+  // Home services — owner-approved prices (2026-10-11), set just below NoBroker's Bangalore rates.
+  { id: "ac-repair-inspection", categoryId: "ac-services", name: "AC Repair (inspection)", basePrice: 249,  pricingUnit: "fixed",    displayOrder: 10, description: "Technician visit and diagnosis; repair and parts quoted on site" },
+  { id: "ac-service-standard",  categoryId: "ac-services", name: "AC Service",             basePrice: 429,  pricingUnit: "per_item", displayOrder: 11, description: "Filter, coil and drain cleaning, per AC" },
+  { id: "ac-service-deep",      categoryId: "ac-services", name: "AC Deep Service",        basePrice: 599,  pricingUnit: "per_item", displayOrder: 12, description: "Foam/jet deep cleaning of indoor unit, per AC" },
+  { id: "ac-gas-refill",        categoryId: "ac-services", name: "AC Gas Refill",          basePrice: 2399, pricingUnit: "per_item", displayOrder: 13, description: "Gas charging with leak check, per AC" },
+  { id: "deep-cleaning-1bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 1 BHK",  basePrice: 3299, pricingUnit: "fixed",    displayOrder: 20, description: "Full-home deep cleaning, furnished 1 BHK" },
+  { id: "deep-cleaning-2bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 2 BHK",  basePrice: 4299, pricingUnit: "fixed",    displayOrder: 21, description: "Full-home deep cleaning, furnished 2 BHK" },
+  { id: "deep-cleaning-3bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 3 BHK",  basePrice: 5499, pricingUnit: "fixed",    displayOrder: 22, description: "Full-home deep cleaning, furnished 3 BHK" },
+  { id: "kitchen-cleaning",     categoryId: "cleaning",    name: "Kitchen Deep Cleaning",  basePrice: 999,  pricingUnit: "fixed",    displayOrder: 23, description: "Cabinets, slab, tiles and appliances exterior" },
+  { id: "bathroom-cleaning",    categoryId: "cleaning",    name: "Bathroom Cleaning",      basePrice: 449,  pricingUnit: "per_item", displayOrder: 24, description: "Machine deep cleaning, per bathroom" },
+  { id: "plumber-visit",        categoryId: "handyman",    name: "Plumber Visit",          basePrice: 149,  pricingUnit: "fixed",    displayOrder: 30, description: "Visit charge, adjusted in the final bill; work priced on site" },
 ].map((s) => ({ ...s, isActive: true }));
 
 // ── Packages ────────────────────────────────────────────────────
@@ -74,7 +86,9 @@ const movingPackages = [
   categoryId: "moving",
   pricingUnit: "starting_from",
   description: `Complete ${p.homeSize} household shifting package`,
-  isActive: true,
+  // Inactive: moves are priced by pricing-engine-v2.js (the booking sheet); these
+  // placeholder package prices conflicted with the engine (2026-10-11 review).
+  isActive: false,
 }));
 
 // Packing tiers — per-carton rates. Basic / Premium Bubble / Wooden Crating
@@ -90,13 +104,13 @@ const packingPackages = [
 const packages = [...movingPackages, ...packingPackages];
 
 // ── Add-ons ─────────────────────────────────────────────────────
-// Prices match specializedServices in pricing-engine-v2.js.
+// Standalone prices approved 2026-10-11. (Inside a move, the moving engine still prices AC/TV add-ons itself.)
 const addons = [
-  { id: "ac-installation",   categoryId: "ac-services", name: "AC Installation",    basePrice: 1400, pricingUnit: "per_item", displayOrder: 1, description: "Per AC unit" },
-  { id: "ac-uninstallation", categoryId: "ac-services", name: "AC Uninstallation",  basePrice: 800,  pricingUnit: "per_item", displayOrder: 2, description: "Per AC unit" },
-  { id: "tv-wall-mount",     categoryId: "appliances",  name: "TV Wall Mount",      basePrice: 350,  pricingUnit: "per_item", displayOrder: 3, description: "Wall-mount install / removal per TV" },
-  { id: "carpenter",         categoryId: "handyman",    name: "Carpenter Work",     basePrice: 500,  pricingUnit: "fixed",    displayOrder: 4, description: "Dismantling and reassembly of furniture" },
-  { id: "electrician",       categoryId: "handyman",    name: "Electrician Work",   basePrice: 450,  pricingUnit: "fixed",    displayOrder: 5, description: "Fans, lights and fittings" },
+  { id: "ac-installation",   categoryId: "ac-services", name: "AC Installation",    basePrice: 1649, pricingUnit: "per_item", displayOrder: 1, description: "Per AC unit" },
+  { id: "ac-uninstallation", categoryId: "ac-services", name: "AC Uninstallation",  basePrice: 799,  pricingUnit: "per_item", displayOrder: 2, description: "Per AC unit" },
+  { id: "tv-wall-mount",     categoryId: "appliances",  name: "TV Wall Mount",      basePrice: 499,  pricingUnit: "per_item", displayOrder: 3, description: "Wall-mount install / removal per TV" },
+  { id: "carpenter",         categoryId: "handyman",    name: "Carpenter Visit",    basePrice: 149,  pricingUnit: "fixed",    displayOrder: 4, description: "Dismantling and reassembly of furniture" },
+  { id: "electrician",       categoryId: "handyman",    name: "Electrician Visit",  basePrice: 149,  pricingUnit: "fixed",    displayOrder: 5, description: "Visit charge, adjusted in the final bill; fans, lights and fittings priced on site" },
 ].map((a) => ({ ...a, isActive: true }));
 
 /* ================================================================
