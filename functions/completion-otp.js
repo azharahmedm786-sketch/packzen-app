@@ -136,7 +136,8 @@ async function handleVerifyOtp(data, context, deps) {
     }
     tx.update(sRef, { verifiedAt: now, attempts: 0, lockedUntil: 0 });
     tx.update(bRef, { status: "delivered", deliveredAt: deps.serverTimestamp(), completionVerifiedAt: deps.serverTimestamp(),
-                      completionMethod: "otp", completionVerifiedBy: isAdmin && b.driverUid !== uid ? "admin" : "driver" });
+                      completionMethod: "otp", completionVerifiedBy: isAdmin && b.driverUid !== uid ? "admin" : "driver",
+                      reviewRequestPending: true }); // picked up by review-request.js (Phase 2F)
     return { ok: true };
   });
   if (result.error) {

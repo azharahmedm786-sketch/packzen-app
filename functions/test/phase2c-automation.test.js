@@ -186,7 +186,7 @@ test("2E legacy bookings without a recorded balance can still complete", () => {
 /* ═════ 2F ═════ */
 function revEnv() {
   const db = makeDb(); const sent = [];
-  const base = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 2 * 3600e3 - 1, email: "c@example.com", bookingRef: "PKZ-1" };
+  const base = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 2 * 3600e3 - 1, email: "c@example.com", bookingRef: "PKZ-1", reviewRequestPending: true };
   db.col("bookings").ok = Object.assign({}, base);
   db.col("bookings").tooSoon = Object.assign({}, base, { deliveredAt: NOW - 3600e3 });
   db.col("bookings").override = Object.assign({}, base, { completionMethod: "admin_override" });
@@ -205,6 +205,23 @@ test("2F review request: once, 2 h after a verified completion, with the Google 
   assert.strictEqual(db.col("bookings").noEmail.feedbackRequestError, "no_email");
   assert.strictEqual((await review.run(deps)).sent, 0, "never sent twice");
   const both = revEnv(); await Promise.all([review.run(both.deps), review.run(both.deps)]); assert.strictEqual(both.sent.length, 1, "overlapping runs send once");
+});
+test("2F no starvation: hundreds of old delivered bookings don't block a new one; ineligible flags are cleared", async () => {
+  const db = makeDb(); const sent = [];
+  for (let i = 0; i < 260; i++) db.col("bookings")["old" + String(i).padStart(4, "0")] = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 30 * 864e5, email: "o@example.com" };
+  db.col("bookings").zzNew = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 3 * 3600e3, email: "n@example.com", reviewRequestPending: true };
+  db.col("bookings").zzDamage = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 3 * 3600e3, email: "d@example.com", damageClaimed: true, reviewRequestPending: true };
+  db.col("bookings").zzSoon = { status: "delivered", completionMethod: "otp", deliveredAt: NOW - 600e3, email: "s@example.com", reviewRequestPending: true };
+  const r = await review.run({ db, now: () => NOW, logger: quiet, getEmail: async (b) => b.email, send: async (to) => sent.push(to) });
+  assert.deepStrictEqual(sent, ["n@example.com"]); assert.strictEqual(r.sent, 1);
+  assert.strictEqual(db.col("bookings").zzDamage.reviewRequestPending, false, "permanently ineligible → flag cleared");
+  assert.strictEqual(db.col("bookings").zzSoon.reviewRequestPending, true, "too soon → stays pending");
+  assert.ok(!db.col("bookings").old0000.feedbackRequestSent, "old bookings never emailed");
+  assert.ok(fs.readFileSync(path.join(__dirname, "..", "completion-otp.js"), "utf8").includes("reviewRequestPending: true"));
+});
+test("2C sweep never overwrites an offer accepted after its query (orphan cancel is transactional)", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "job-offers.js"), "utf8");
+  assert.ok(/if \(\(cur\.data\(\) \|\| \{\}\)\.state !== "offered"\) return false;\s*tx\.update\(d\.ref, \{ state: "cancelled"/.test(src));
 });
 test("2F schedule + template wiring", () => {
   const s = fs.readFileSync(path.join(__dirname, "..", "scheduled-notifications.js"), "utf8");
