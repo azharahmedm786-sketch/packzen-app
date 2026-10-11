@@ -337,7 +337,13 @@ service cloud.firestore {
       allow read: if isAdmin() || isAdvisor();
       allow write: if false;
     }
-    // driverSchedule/* and appConfig/* stay server-only via the catch-all deny.
+    // Phase 2C — automatic job offers: the offered driver (and staff) can read;
+    // only the server writes (acceptJobOffer / declineJobOffer / jobOfferSweep).
+    match /jobOffers/{offerId} {
+      allow read: if isAdmin() || isAdvisor() || (isDriver() && resource.data.driverUid == request.auth.uid);
+      allow write: if false;
+    }
+    // driverSchedule/*, appConfig/* and bookings/{id}/collections/* stay server-only via the catch-all deny.
 
     // DAMAGE CLAIMS
     match /damageClaims/{claimId} {

@@ -119,6 +119,10 @@ async function handleVerifyOtp(data, context, deps) {
     if (!isAdmin && !(isDriver && b.driverUid === uid)) return { error: ["permission-denied", "Only the assigned driver can complete this job."] };
     if (b.status === "delivered") return { already: true };
     if (b.status !== "transit") return { error: ["failed-precondition", "Mark the job as in transit before completing it."] };
+    // Owner rule (Phase 2E): no completion while money is owed — checked before the code,
+    // so a blocked attempt never uses up one of the 5 code attempts.
+    const blocker = require("./balance").completionBlocker(b);
+    if (blocker) return { error: ["failed-precondition", blocker] };
     const sSnap = await tx.get(sRef);
     if (!sSnap.exists || !sSnap.data().nonce) return { error: ["failed-precondition", "Ask the customer to open My Bookings (or tap “Send code to customer”) to get the code."] };
     const s = sSnap.data();
