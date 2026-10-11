@@ -562,6 +562,28 @@ exports.jobOfferSweep = functions.region("asia-south1").runWith({ secrets: [...B
   .pubsub.schedule("every 1 minutes").timeZone("Asia/Kolkata")
   .onRun(async () => { await jobOffers.sweep(staffDeps()); return null; });
 // Driver (or admin) records cash/UPI collected; the job can't be completed while balanceDue > 0.
+// Level 2: customers cancel themselves; full automatic refund before the job day.
+const customerCancel = require("./customer-cancel");
+exports.customerCancelBooking = functions.region("asia-south1").runWith({ secrets: [RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET] })
+  .https.onCall(async (data, context) => {
+    try {
+      const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
+      const refundDeps = movePaymentDeps({
+        isAdmin: async () => true, // policy-approved system refund (customer-owned booking checked above)
+        createRefund: (paymentId, opts) => razorpay.payments.refund(paymentId, opts),
+        toClientError: (code, message) => Object.assign(new Error(message), { code }),
+      });
+      return await customerCancel.handleCustomerCancel(data, context, {
+        db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
+        refund: (req) => paymentRefund.handleRefund(req, { auth: { uid: "system:customer-cancel" } }, refundDeps),
+      });
+    } catch (e) {
+      if (e instanceof customerCancel.CancelError) throw new functions.https.HttpsError(e.code, e.publicMessage);
+      functions.logger.error("customer_cancel_error", { message: String(e && e.message).slice(0, 160) });
+      throw new functions.https.HttpsError("internal", "Couldn't cancel right now. Please try again or call us.");
+    }
+  });
+
 // Level 2: customer pays the remaining balance online (amount always read from the booking).
 const balancePay = require("./balance-payment");
 function customerCallable(handler) {

@@ -3573,7 +3573,7 @@ async function openProfile() {
 CANCEL / RESCHEDULE / RATE / DAMAGE
 ============================================ */
 function openCancelModal(bookingDocId, bookingRef, status) {
-  if (["packing","transit","delivered"].includes(status)) { showToast("❌ Cannot cancel after packing has started."); return; }
+  if (["packing","transit","delivered"].includes(status)) { showToast("❌ This job has started. Please call us to cancel."); return; }
   document.getElementById("cancelBookingDocId").value = bookingDocId;
   document.getElementById("cancelBookingRef").textContent = bookingRef || bookingDocId;
   document.getElementById("cancelReason").value = "";
@@ -3589,14 +3589,13 @@ async function confirmCancellation() {
   const btn = document.getElementById("btnConfirmCancel");
   if (btn) { btn.textContent = "Cancelling..."; btn.disabled = true; }
   try {
-    await window._firebase.db.collection("bookings").doc(docId).update({ status:"cancelled", cancelReason: reason, cancelledAt: firebase.firestore.FieldValue.serverTimestamp(), cancelledBy:"customer" });
-    await window._firebase.db.collection("cancelRequests").add({ bookingDocId: docId, reason, customerUid: currentUser.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp(), resolved: false }).catch(() => {});
-    const cancelledDoc = await window._firebase.db.collection("bookings").doc(docId).get();
-    if (cancelledDoc.exists) {
-      const cb = cancelledDoc.data();
-      queueSMS(cb.phone || "", "cancelled", { name: cb.customerName || "", bookingRef: cb.bookingRef || docId });
-    }
-    closeCancelModal(); showToast("✅ Booking cancelled. Refund (if any) in 5–7 business days."); loadUserBookings();
+    // Level 2: the server cancels and, before the job day, refunds the full amount paid online.
+    const res = await firebase.app().functions("asia-south1").httpsCallable("customerCancelBooking")({ bookingId: docId, reason });
+    const rf = (res && res.data && res.data.refund) || {};
+    const refundMsg = rf.amount > 0 ? " Full refund of ₹" + Number(rf.amount).toLocaleString("en-IN") + " started — it reaches you in 5–7 business days."
+      : rf.status === "needs_review" ? " Our team will process your refund shortly." : "";
+    closeCancelModal(); showToast("✅ Booking cancelled." + refundMsg); loadUserBookings();
+
     if (currentBookingId === docId) { dismissTrackBanner(); localStorage.removeItem("packzen_active_booking"); }
   } catch(e) { showToast("❌ Error: " + e.message); }
   finally { if (btn) { btn.textContent = "Yes, Cancel Booking"; btn.disabled = false; } }
