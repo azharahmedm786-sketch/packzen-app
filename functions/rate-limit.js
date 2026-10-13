@@ -71,6 +71,11 @@ const LIMITS = {
   signupVerifyIp: { limit: 30, windowMs: 60 * 60 * 1000 },
   completionOtpView: { limit: 30, windowMs: 60 * 60 * 1000 },
   completionOtpSend: { limit: 3, windowMs: 60 * 60 * 1000 },
+  // Account lookup / reset endpoints: cap per IP so one caller can't enumerate
+  // many addresses or spray reset emails at many inboxes.
+  authLookupIp: { limit: 30, windowMs: 60 * 60 * 1000 },
+  passwordResetIp: { limit: 10, windowMs: 60 * 60 * 1000 },
+  passwordResetGlobal: { limit: 300, windowMs: 60 * 60 * 1000 },
 };
 
 module.exports = { consume, consumeAll, clientIp, keyFor, LIMITS, COLLECTION };
