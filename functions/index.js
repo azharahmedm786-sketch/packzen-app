@@ -255,16 +255,12 @@ async function getGoogleMapsDistance(pickup, drop) {
 // P0: discounts are server-authoritative (promo.js). Only quoteInput.promoCode is
 // honoured; any client promoDiscount/total is discarded before pricing.
 const promo = require("./promo");
+const pricingGuard = require("./pricing-guard");
 
 async function calculateServerQuote(quoteInput, pickup, drop, opts) {
-  const computedKm = await getGoogleMapsDistance(pickup, drop);
-  if (computedKm > 0) {
-    quoteInput.km = computedKm;
-  } else if (quoteInput.km) {
-    if (computedKm === 0) {
-      throw new Error("Could not calculate distance server-side.");
-    }
-  }
+  // Pricing integrity: distance always comes from the server. If Maps can't
+  // measure the route we refuse to price rather than fall back to 0 km.
+  quoteInput.km = pricingGuard.requireServerDistance(await getGoogleMapsDistance(pickup, drop));
   // Strict sanitization of quantities
   if (quoteInput.furniture) {
     for (const [key, qty] of Object.entries(quoteInput.furniture)) {
@@ -357,10 +353,12 @@ exports.createBooking = functions
     finalPayload.distance = quote.km;
     finalPayload.originalTotal = quote.finalTotal;
     finalPayload.quoteBreakdown = quote.breakdown;
+    finalPayload.pricedInput = pricingGuard.pricedInputSnapshot(quoteInput, quote); // what the total was actually computed from
     finalPayload.promoCode = quote.promo ? quote.promo.code : null;       // server-validated
     finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;   // server-computed
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
     finalPayload.status = "confirmed"; // Enforce safe initial status
+    finalPayload.paymentType = "pay_later"; // this callable only creates pay-later bookings; never trust the client label
     finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
     finalPayload.balanceDue = quote.finalTotal;
     finalPayload.paymentStatus = "unpaid";
