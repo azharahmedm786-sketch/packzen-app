@@ -1,95 +1,50 @@
-const fs = require('fs');
+/**
+ * Pricing engine V4 scenario sweep (rewritten: the old version targeted the
+ * retired V2 inputs — houseValue / _internal.operCost — and could no longer run).
+ *
+ * For every combination it checks that a huge promo can never push the price
+ * below the engine's guard rails:
+ *   - discount <= 30% of the service subtotal (maxPromoFraction)
+ *   - total >= minimumFare, finite, whole rupees
+ *   - discounted total >= 70% of the undiscounted total
+ *   - longer distance is never cheaper (same inputs otherwise)
+ *   node tests/test_50_scenarios.js
+ */
+const path = require("path");
+const engine = require(path.join(__dirname, "..", "public", "pricing-engine-v2.js"));
+const cfg = engine.config || engine.PRICING_CONFIG || {};
+const MIN_FARE = (cfg && cfg.minimumFare) || 0;
 
-// Load pricing engine in a crude way for testing
-const code = fs.readFileSync('pricing-engine-v2.js', 'utf8');
-const window = {};
-let document = { getElementById: () => null };
-eval(code);
-const engine = window.PackZenPricing;
+const kms = [0, 5, 12, 45, 120, 500];
+const vehicles = Object.keys(engine.vehicles);
+const floors = [[0, 0], [3, 2]];
+const lifts = [true, false];
+const packing = [false, true];
+const nights = [false, true];
 
-const distances = [5, 12, 45, 120, 500, 1500];
-const houseValues = [0, 200, 2500, 6500, 13500];
-const moveTypes = ["home", "office", "single"];
-const timeSlots = [10, 14, 22]; // 22 is night surcharge
-const isWeekends = [false, true];
-const liftAvailabilities = [true, false];
-const packingFlags = [false, true];
+let n = 0, failures = 0;
+const fail = (msg) => { failures++; if (failures <= 20) console.log("FAIL " + msg); };
 
-const scenarios = [];
-
-for (const km of distances) {
-  for (const houseValue of houseValues) {
-    for (const moveType of moveTypes) {
-      if (moveType === "single" && houseValue !== 0) continue;
-      if (moveType !== "single" && houseValue === 0) continue;
-
-      const isIntercity = km > 100;
-      if (isIntercity && moveType === "single") continue;
-
-      for (const shiftHour of timeSlots) {
-        for (const isWeekend of isWeekends) {
-          for (const liftAvailable of liftAvailabilities) {
-             for (const packingService of packingFlags) {
-
-                // create a mock date for weekend
-                const shiftDate = new Date();
-                shiftDate.setFullYear(shiftDate.getFullYear() + 1); // Next year to ensure not past
-                if (isWeekend) {
-                   while (shiftDate.getDay() !== 6) shiftDate.setDate(shiftDate.getDate() + 1); // Next Saturday
-                } else {
-                   while (shiftDate.getDay() === 0 || shiftDate.getDay() === 6) shiftDate.setDate(shiftDate.getDate() + 1); // Next Weekday
-                }
-
-                let vehicleHtmlValue = "0";
-                if (houseValue <= 2500) vehicleHtmlValue = "200";
-                else if (houseValue <= 6500) vehicleHtmlValue = "2500";
-                else if (houseValue <= 10500) vehicleHtmlValue = "4000";
-                else vehicleHtmlValue = "5500";
-
-                scenarios.push({
-                   input: {
-                     pickup: "A", drop: "B",
-                     km, houseValue, moveType,
-                     shiftHour, shiftDate: shiftDate.toISOString().split("T")[0],
-                     liftAvailable, packingService,
-                     vehicleHtmlValue,
-                     promoDiscount: 50000 // Huge discount to trigger protection
-                   }
-                });
-             }
-          }
-        }
-      }
-    }
+for (const vehicleId of vehicles) for (const [pf, df] of floors) for (const liftAvailable of lifts)
+for (const packingService of packing) for (const isNightShift of nights) {
+  let prev = -1;
+  for (const km of kms) {
+    const base = { pickup: "A", drop: "B", km, vehicleId, pickupFloor: pf, dropFloor: df, liftAvailable,
+      packingService, isNightShift, furniture: { sofa_3: 1, bed_double: 1 }, cartonQty: 10 };
+    const full = engine.calculateQuote(Object.assign({}, base));
+    const promo = engine.calculateQuote(Object.assign({}, base, { promoDiscount: 500000 }));
+    n++;
+    const tag = JSON.stringify({ vehicleId, km, pf, df, liftAvailable, packingService, isNightShift });
+    if (!full.valid || !promo.valid) { fail("invalid " + tag); continue; }
+    const t = promo.finalTotal, u = full.finalTotal;
+    if (!Number.isFinite(t) || t !== Math.round(t)) fail("non-integer total " + tag);
+    if (t < MIN_FARE) fail(`below minimum fare ${t} < ${MIN_FARE} ` + tag);
+    if (t < Math.floor(u * 0.7)) fail(`promo cut more than 30%: ${t} vs ${u} ` + tag);
+    if (u < prev) fail(`longer distance cheaper: ${u} < ${prev} ` + tag);
+    prev = u;
   }
 }
 
-console.log(`--- Running ${scenarios.length} scenarios ---`);
-let passed = 0;
-let underpriced = 0;
-
-for (const [i, s] of scenarios.entries()) {
-  const res = engine.calculateQuote(s.input);
-  if (!res.valid) {
-    console.log(`Scenario ${i+1} invalid: ${res.errors.join(", ")}`);
-    continue;
-  }
-
-  const operCost = res._internal.operCost;
-  const minRequiredTotal = Math.ceil(operCost * 1.1);
-  const total = res.finalTotal;
-
-  if (total < minRequiredTotal && res._internal.profitPercent < 10) {
-     underpriced++;
-     console.log(`Underpriced! Scenario ${i+1}: Total=${total}, OperCost=${operCost}, ExpectedMin=${minRequiredTotal}`);
-  }
-  passed++;
-}
-
-console.log(`Passed: ${passed}/${scenarios.length}`);
-if (underpriced > 0) {
-  console.log(`FAILED! ${underpriced} scenarios were underpriced.`);
-  process.exit(1);
-} else {
-  console.log("All scenarios maintained >= 10% profit margin.");
-}
+console.log(`--- ${n} scenarios ---`);
+if (failures) { console.log(`FAILED: ${failures} problem(s)`); process.exit(1); }
+console.log("All scenarios respect the promo cap, minimum fare and distance monotonicity.");

@@ -120,9 +120,12 @@ function renderAdminValue(v) {
 }
 
 async function sendAdminEmail(subjectPrefix, bodyLines, bookingRef) {
-  const functions = require("firebase-functions");
-  const cfg = functions.config().admin || {};
-  const adminEmails = (cfg.notifyemails || "moveeasyblr@gmail.com,azharahmedm786@gmail.com")
+  // ADMIN_NOTIFY_EMAILS (functions/.env.packzen-e7539) replaces the deprecated
+  // functions.config().admin.notifyemails, which Firebase shuts down in March 2027.
+  // The old config is still read as a fallback until then, never fatally.
+  let legacy = "";
+  try { legacy = ((require("firebase-functions").config() || {}).admin || {}).notifyemails || ""; } catch (_) { legacy = ""; }
+  const adminEmails = (process.env.ADMIN_NOTIFY_EMAILS || legacy || "moveeasyblr@gmail.com,azharahmedm786@gmail.com")
     .split(",").map(e => e.trim()).filter(Boolean);
 
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1a2744;line-height:1.6;">
