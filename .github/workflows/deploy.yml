@@ -1,9 +1,21 @@
 name: Deploy PackZen Website
 
-# Production is served by Firebase Hosting (`firebase deploy`).
-# Auto-deploy to GitHub Pages on push is disabled so the two hosts can't drift.
+# packzenblr.in is served by GitHub Pages from ./public.
+# Any merge to main that changes public/ goes live automatically; you can also
+# run it by hand from the Actions tab. Cloud Functions and Firestore rules are
+# still deployed separately with `firebase deploy --only functions,firestore`.
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "public/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 permissions:
   contents: read
