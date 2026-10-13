@@ -7,7 +7,7 @@ global.document = {
 };
 
 // Load script
-const code = fs.readFileSync('pricing-engine-v2.js', 'utf8');
+const code = fs.readFileSync('public/pricing-engine-v2.js', 'utf8');
 eval(code);
 
 function test(name, input, expectedFn) {

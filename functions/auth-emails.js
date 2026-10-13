@@ -371,6 +371,15 @@ exports.sendPasswordResetEmailBrevo = functions
     const email = (data?.email || "").trim().toLowerCase();
     if (!EMAIL_REGEX.test(email)) throw new functions.https.HttpsError("invalid-argument", "A valid email is required.");
 
+    // Auth abuse: limit BEFORE the account lookup (per email, per IP, and globally),
+    // so the endpoint can't be used to enumerate accounts or spray reset emails.
+    await enforceRateLimit("password_reset", email);
+    const rl = await rateLimit.consumeAll(admin.firestore(), [
+      Object.assign({ scope: "passwordResetIp", subject: rateLimit.clientIp(context.rawRequest) }, rateLimit.LIMITS.passwordResetIp),
+      Object.assign({ scope: "passwordResetGlobal", subject: "all" }, rateLimit.LIMITS.passwordResetGlobal),
+    ], functions.logger);
+    if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again later.");
+
     let userRecord;
     try {
       userRecord = await admin.auth().getUserByEmail(email);
@@ -383,8 +392,6 @@ exports.sendPasswordResetEmailBrevo = functions
     if (!hasPasswordProvider) {
       throw new functions.https.HttpsError("failed-precondition", "auth/google-account-no-password");
     }
-
-    await enforceRateLimit("password_reset", email);
 
     const link = await admin.auth().generatePasswordResetLink(email, { url: ACTION_URL.value(), handleCodeInApp: false });
 
@@ -415,6 +422,9 @@ exports.checkAuthProvider = functions
     if (!EMAIL_REGEX.test(email)) throw new functions.https.HttpsError("invalid-argument", "A valid email is required.");
 
     await enforceRateLimit("check_provider", email);
+    // Auth abuse: per-email limits alone don't stop one caller probing thousands of addresses.
+    const ipRl = await rateLimit.consume(admin.firestore(), Object.assign({ scope: "authLookupIp", subject: rateLimit.clientIp(context.rawRequest) }, rateLimit.LIMITS.authLookupIp)).catch(() => ({ ok: true }));
+    if (!ipRl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again later.");
 
     try {
       const userRecord = await admin.auth().getUserByEmail(email);

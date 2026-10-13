@@ -1,9 +1,8 @@
 name: Deploy PackZen Website
 
+# Production is served by Firebase Hosting (`firebase deploy`).
+# Auto-deploy to GitHub Pages on push is disabled so the two hosts can't drift.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:

@@ -3722,40 +3722,12 @@ async function submitDamageClaim() {
 /* ============================================
 SMS & NOTIFICATIONS
 ============================================ */
-const SMS_TEMPLATES = {
-  booking_confirmed: d => `Hi ${d.name}, your PackZen booking ${d.bookingRef} is confirmed for ${d.date}! Pickup: ${(d.pickup||"").split(",")[0]}. Est. cost: Rs.${Number(d.total).toLocaleString("en-IN")}. Track: packzenblr.in. Queries: 9945095453`,
-  driver_assigned: d => `Hi ${d.name}, your PackZen driver ${d.driverName} (${d.driverPhone}) is assigned for booking ${d.bookingRef}. Track live on packzenblr.in. Queries: 9945095453`,
-  move_started: d => `Hi ${d.name}, your goods are now in transit for booking ${d.bookingRef}. Track your driver live on packzenblr.in.`,
-  delivered: d => `Hi ${d.name}, your PackZen move ${d.bookingRef} is complete! Please rate your driver on packzenblr.in. Thank you for choosing PackZen!`,
-  cancelled: d => `Hi ${d.name}, your PackZen booking ${d.bookingRef} has been cancelled. Refund (if any) in 5-7 business days. Queries: 9945095453`,
-  damage_claim: d => `Hi ${d.name}, your damage claim (ID: ${d.claimId}) for booking ${d.bookingRef} has been received. Our team will respond within 3 business days. Queries: 9945095453`,
-  reschedule_confirmed: d => `Hi ${d.name}, your PackZen booking ${d.bookingRef} has been rescheduled to ${d.date}. Queries: 9945095453`,
-};
-
-async function queueSMS(phone, templateKey, data) {
-  if (!phone || !window._firebase) return;
-  const mobile = "91" + String(phone).replace(/\D/g,"").slice(-10);
-  if (mobile.length !== 12) return;
-  const template = SMS_TEMPLATES[templateKey];
-  if (!template) return;
-  try {
-    await window._firebase.db.collection("smsQueue").add({ mobile, message: template(data), status:"pending", createdAt: firebase.firestore.FieldValue.serverTimestamp(), retries:0 });
-  } catch(e) {}
-}
-
-function setupStatusSMS(bookingDocId, customerPhone, customerName, bookingRef) {
-  if (!bookingDocId || !window._firebase) return;
-  const map = { transit:"move_started", delivered:"delivered", cancelled:"cancelled" };
-  let lastStatus = "";
-  window._firebase.db.collection("bookings").doc(bookingDocId).onSnapshot(doc => {
-    if (!doc.exists) return;
-    const b = doc.data(); const status = b.status;
-    if (!status || status === lastStatus) return;
-    lastStatus = status;
-    if (map[status]) queueSMS(b.phone||customerPhone, map[status], { name: b.customerName||customerName, bookingRef: b.bookingRef||bookingRef||bookingDocId, driverName: b.driverName||"", driverPhone: b.driverPhone||"", date: b.date||"" });
-    if (status === "assigned" && b.driverName) queueSMS(b.phone||customerPhone, "driver_assigned", { name: b.customerName||customerName, bookingRef: b.bookingRef||bookingDocId, driverName: b.driverName, driverPhone: b.driverPhone||"" });
-  });
-}
+// Customer SMS / WhatsApp are sent server-side only (functions/notifications.js,
+// triggered by booking changes). Firestore rules deny client writes to smsQueue,
+// so the old client-side queueing here always failed silently. Kept as no-ops so
+// existing call sites stay harmless.
+function queueSMS() {}
+function setupStatusSMS() {}
 
 async function requestPushPermission() {
   if (!("Notification" in window) || !window._firebase?.messaging) return;

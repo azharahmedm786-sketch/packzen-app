@@ -24,6 +24,7 @@ const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
 const rateLimit = require("./rate-limit");
 const opsAlerts = require("./ops-alerts");
 const completionOtp = require("./completion-otp");
+const { claimPending } = require("./queue-claim");
 /* ============================================================
    SEND SMS VIA MSG91
    Triggered whenever a new doc is added to /smsQueue
@@ -41,6 +42,8 @@ exports.sendSMS = functions
 
     // Skip if already processed (safety check)
     if (data.status !== "pending") return null;
+    // Claim it first so a duplicate trigger can't send the same SMS twice.
+    if (!(await claimPending(admin.firestore(), docRef))) return null;
 
     const { mobile, message } = data; 
     if (!mobile || !message) {
@@ -157,25 +160,14 @@ exports.sendWhatsApp = functions
       return null;
     }
 
-    try {
-      // Placeholder for WhatsApp API (e.g. MSG91 WhatsApp, Meta API, etc.)
-      // Since no specific WhatsApp API is provided, we simulate a successful send.
-      console.log(`✅ WhatsApp sent to ${mobile}:`, message);
-      await docRef.update({
-        status: "sent",
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        response: JSON.stringify({ success: true, dummy: true }).slice(0, 500)
-      });
-    } catch (err) {
-      console.error(`❌ WhatsApp failed to ${mobile}:`, err.message);
-      const retries = (data.retries || 0) + 1;
-      await docRef.update({
-        status: retries >= 3 ? "failed" : "pending",  // retry up to 3 times
-        retries,
-        lastError: err.message,
-        lastAttempt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
+    // No WhatsApp provider is connected yet. This used to mark every message
+    // "sent" without sending anything; record the truth instead so the queue
+    // and ops reports don't claim deliveries that never happened.
+    await docRef.update({
+      status: "not_sent",
+      error: "No WhatsApp provider configured",
+      lastAttempt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     return null;
   });
@@ -255,16 +247,12 @@ async function getGoogleMapsDistance(pickup, drop) {
 // P0: discounts are server-authoritative (promo.js). Only quoteInput.promoCode is
 // honoured; any client promoDiscount/total is discarded before pricing.
 const promo = require("./promo");
+const pricingGuard = require("./pricing-guard");
 
 async function calculateServerQuote(quoteInput, pickup, drop, opts) {
-  const computedKm = await getGoogleMapsDistance(pickup, drop);
-  if (computedKm > 0) {
-    quoteInput.km = computedKm;
-  } else if (quoteInput.km) {
-    if (computedKm === 0) {
-      throw new Error("Could not calculate distance server-side.");
-    }
-  }
+  // Pricing integrity: distance always comes from the server. If Maps can't
+  // measure the route we refuse to price rather than fall back to 0 km.
+  quoteInput.km = pricingGuard.requireServerDistance(await getGoogleMapsDistance(pickup, drop));
   // Strict sanitization of quantities
   if (quoteInput.furniture) {
     for (const [key, qty] of Object.entries(quoteInput.furniture)) {
@@ -357,10 +345,12 @@ exports.createBooking = functions
     finalPayload.distance = quote.km;
     finalPayload.originalTotal = quote.finalTotal;
     finalPayload.quoteBreakdown = quote.breakdown;
+    finalPayload.pricedInput = pricingGuard.pricedInputSnapshot(quoteInput, quote); // what the total was actually computed from
     finalPayload.promoCode = quote.promo ? quote.promo.code : null;       // server-validated
     finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;   // server-computed
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
     finalPayload.status = "confirmed"; // Enforce safe initial status
+    finalPayload.paymentType = "pay_later"; // this callable only creates pay-later bookings; never trust the client label
     finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
     finalPayload.balanceDue = quote.finalTotal;
     finalPayload.paymentStatus = "unpaid";

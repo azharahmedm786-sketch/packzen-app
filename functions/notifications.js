@@ -187,6 +187,24 @@ exports.onBookingUpdatedNotify = functions
         ], after.bookingRef);
       }
 
+      // ── DRIVER REASSIGNED (A -> B): tell the new driver, the old driver and the customer ──
+      const driverReassigned = !!before.driverUid && !!after.driverUid && before.driverUid !== after.driverUid;
+      if (driverReassigned) {
+        const msgCustomer = `Hi ${after.customerName}, your PackZen driver for booking ${after.bookingRef} has changed to ${after.driverName} (${after.driverPhone}). Queries: 9945095453`;
+        await queueSMS(after.phone, msgCustomer, after.bookingRef);
+        await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+        const msgNew = `New Booking Assigned: ${after.bookingRef} on ${after.date}. Pickup: ${after.pickup}. Drop: ${after.drop}. Customer: ${after.customerName} (${after.phone}). Log in to PackZen partner app to start.`;
+        await queueSMS(after.driverPhone, msgNew, after.bookingRef);
+        await queueWhatsApp(after.driverPhone, msgNew, after.bookingRef);
+        if (before.driverPhone && before.driverPhone !== after.driverPhone) {
+          await queueSMS(before.driverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been reassigned to another driver. You no longer need to attend this job.`, after.bookingRef);
+        }
+        await sendAdminEmail("Driver Reassigned", [
+          ["Booking Ref", after.bookingRef], ["Customer", after.customerName],
+          ["Previous Driver", before.driverName || before.driverUid], ["New Driver", after.driverName || after.driverUid]
+        ], after.bookingRef);
+      }
+
       // ── DRIVER ARRIVING (custom flag some flows may set) ──
       if (!after.driverArrivingNotified && after.driverArriving === true) {
         if (email) await sendCustomerEmail("driver_arriving", email, data);
@@ -239,6 +257,13 @@ exports.onBookingUpdatedNotify = functions
         // ── BOOKING CANCELLED ──
         if (after.status === "cancelled") {
           if (email) await sendCustomerEmail("booking_cancelled", email, data);
+          const msgCancel = `Hi ${after.customerName}, your PackZen booking ${after.bookingRef} has been cancelled. Refund (if any) in 5-7 business days. Queries: 9945095453`;
+          await queueSMS(after.phone, msgCancel, after.bookingRef);
+          await queueWhatsApp(after.phone, msgCancel, after.bookingRef);
+          const cancelledDriverPhone = after.driverPhone || before.driverPhone;
+          if (cancelledDriverPhone) {
+            await queueSMS(cancelledDriverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been cancelled. Please do not attend this job.`, after.bookingRef);
+          }
           await sendAdminEmail("Booking Cancelled", [
             ["Booking Ref", after.bookingRef],
             ["Customer", after.customerName],
@@ -247,14 +272,16 @@ exports.onBookingUpdatedNotify = functions
         }
       }
 
-      // ── BOOKING RESCHEDULED ──
-      if (before.date !== after.date && after.rescheduledAt && !before.rescheduledAt) {
+      // ── BOOKING RESCHEDULED ── (first reschedule, or a later one with a new rescheduledAt)
+      const rescheduled = before.date !== after.date && !!after.rescheduledAt && (
+        !before.rescheduledAt ||
+        before.rescheduledAt.toMillis?.() !== after.rescheduledAt.toMillis?.());
+      if (rescheduled) {
         if (email) await sendCustomerEmail("booking_rescheduled", email, data);
-      }
-      // Subsequent reschedules (rescheduledAt already existed but date changed again)
-      if (before.date !== after.date && before.rescheduledAt && after.rescheduledAt &&
-          before.rescheduledAt.toMillis?.() !== after.rescheduledAt.toMillis?.()) {
-        if (email) await sendCustomerEmail("booking_rescheduled", email, data);
+        await queueSMS(after.phone, `Hi ${after.customerName}, your PackZen booking ${after.bookingRef} has been rescheduled to ${after.date}. Queries: 9945095453`, after.bookingRef);
+        if (after.driverPhone) {
+          await queueSMS(after.driverPhone, `PackZen: booking ${after.bookingRef} has moved from ${before.date} to ${after.date}. Check the partner app for details.`, after.bookingRef);
+        }
       }
 
       // ── REFUND PROCESSED (admin sets refundStatus:"processed") ──
