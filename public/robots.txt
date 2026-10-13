@@ -28,6 +28,9 @@ Disallow: /partner-profile.html
 Disallow: /partner-settings.html
 Disallow: /partner-support.html
 
+# Unused duplicate copies of the partner portal (reorganisation folder) — keep out of search
+Disallow: /pages/
+
 # Transactional / internal-only pages — no search value
 Disallow: /registration-success.html
 Disallow: /delete-account.html
