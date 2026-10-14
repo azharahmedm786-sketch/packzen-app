@@ -76,12 +76,12 @@
         ],
        reply:
   "🏠 PackZen Pricing Guide\n\n" +
-  "• 1 RK — ₹2,500 onwards\n" +
-  "• 1 BHK — ₹4,500 onwards\n" +
-  "• 2 BHK — ₹6,500 onwards\n" +
-  "• 3 BHK — ₹8,500 onwards\n" +
-  "• 4 BHK — ₹10,500 onwards\n" +
-  "• Villa — ₹13,500 onwards\n\n" +
+  "• 1 RK — ₹2,150 onwards\n" +
+  "• 1 BHK — ₹4,200 onwards\n" +
+  "• 2 BHK — ₹6,450 onwards\n" +
+  "• 3 BHK — ₹9,100 onwards\n" +
+  "• 4 BHK — ₹11,000 onwards\n" +
+  "• Villa — ₹14,000 onwards\n\n" +
   "Final cost depends on:\n" +
   "✅ Distance\n" +
   "✅ Furniture quantity\n" +
