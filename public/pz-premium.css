@@ -331,3 +331,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
 .btn-quote { color: var(--nb-green-deep) !important; }
 .logo-text, .logo-text span { color: var(--nb-text) !important; -webkit-text-fill-color: currentColor !important; }
 .help-text a { color: var(--nb-green-deep) !important; }
+
+/* pass 5: price lists on service pages */
+.svc-section .pricing-app-card { padding: 6px clamp(16px, 3vw, 24px) 16px !important; }
+.svc-section .pricing-row { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0 !important; border-bottom: 1px solid var(--nb-line); }
+.svc-section .pricing-row span:last-child { text-align: right; white-space: nowrap; }
+@media (max-width: 480px) { .svc-section .pricing-row span:last-child { white-space: normal; max-width: 45%; } }
+.svc-section .pricing-note { padding: 14px 0 0 !important; font-size: 0.9rem; }
