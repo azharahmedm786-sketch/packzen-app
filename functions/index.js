@@ -229,30 +229,43 @@ const cors = require("cors")({
   ]
 });
 
-async function getGoogleMapsDistance(pickup, drop) {
-  if (!pickup || !drop) return 0;
+// Returns { km, originAddress, destinationAddress } — Google's formatted addresses
+// (which carry the pincode) are used for the service-area check.
+async function getGoogleMapsRoute(pickup, drop) {
+  const out = { km: 0, originAddress: "", destinationAddress: "" };
+  if (!pickup || !drop) return out;
   try {
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(pickup)}&destinations=${encodeURIComponent(drop)}&key=${GOOGLE_MAPS_KEY.value()}`;
     const response = await fetch(url);
     const data = await response.json();
-    if (data.status === "OK" && data.rows[0].elements[0].status === "OK") {
-      return data.rows[0].elements[0].distance.value / 1000;
+    if (data.status === "OK") {
+      out.originAddress = (data.origin_addresses && data.origin_addresses[0]) || "";
+      out.destinationAddress = (data.destination_addresses && data.destination_addresses[0]) || "";
+      if (data.rows[0].elements[0].status === "OK") out.km = data.rows[0].elements[0].distance.value / 1000;
     }
   } catch (err) {
     console.error("Google Maps Distance API error:", err);
   }
-  return 0;
+  return out;
+}
+async function getGoogleMapsDistance(pickup, drop) {
+  return (await getGoogleMapsRoute(pickup, drop)).km;
 }
 
 // P0: discounts are server-authoritative (promo.js). Only quoteInput.promoCode is
 // honoured; any client promoDiscount/total is discarded before pricing.
 const promo = require("./promo");
 const pricingGuard = require("./pricing-guard");
+const serviceArea = require("./service-area");
 
 async function calculateServerQuote(quoteInput, pickup, drop, opts) {
   // Pricing integrity: distance always comes from the server. If Maps can't
   // measure the route we refuse to price rather than fall back to 0 km.
-  quoteInput.km = pricingGuard.requireServerDistance(await getGoogleMapsDistance(pickup, drop));
+  const route = await getGoogleMapsRoute(pickup, drop);
+  // Service area: moves must START in Bangalore (destination may be anywhere).
+  const area = serviceArea.checkAddress(route.originAddress, pickup);
+  if (!area.ok) throw new Error(serviceArea.messageFor(area, "pickup"));
+  quoteInput.km = pricingGuard.requireServerDistance(route.km);
   // Strict sanitization of quantities
   if (quoteInput.furniture) {
     for (const [key, qty] of Object.entries(quoteInput.furniture)) {

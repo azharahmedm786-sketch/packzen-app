@@ -8,6 +8,7 @@
  * Kept free of firebase imports so it can be unit-tested directly.
  */
 "use strict";
+const serviceArea = require("./service-area");
 
 const TYPES = ["services", "packages", "addons"];
 const SLOTS = { morning: "Morning (8am – 12pm)", afternoon: "Afternoon (12pm – 4pm)", evening: "Evening (4pm – 8pm)" };
@@ -137,6 +138,11 @@ function validateDetails(details, now) {
 
   const address = str(d.address, 300);
   if (address.length < 8) errors.push("Please enter the full service address.");
+  else {
+    // Bangalore-only: the service address must be in the approved area.
+    const area = serviceArea.checkAddress(address);
+    if (!area.ok) errors.push(serviceArea.messageFor(area, "service address"));
+  }
 
   const date = str(d.date, 10);
   const today = todayIST(now);
