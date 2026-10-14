@@ -313,3 +313,21 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
 .app-footer .app-footer-bottom { border-top: 1px solid rgba(255, 255, 255, 0.18) !important; color: rgba(255, 255, 255, 0.75) !important; }
 .app-footer .app-footer-bottom * { color: rgba(255, 255, 255, 0.85) !important; }
 .app-footer img { box-shadow: none !important; }
+
+/* =====================================================================
+   pass 4: mobile QA fixes
+   ===================================================================== */
+/* comfortable tap targets on phones (≥ 40px) */
+@media (max-width: 768px) {
+  .app-footer-links a, .app-footer-contact a, .app-footer-bottom a { display: inline-flex !important; align-items: center; min-height: 40px; }
+  .see-all-link, .offer-btn, .pz-chip, .area-chip { min-height: 40px; display: inline-flex !important; align-items: center; }
+  .faq-a a { padding: 6px 0; display: inline-block; }
+}
+/* 404 page on brand */
+.blob-1, .blob-2, .blob-3 { background: rgba(31, 157, 92, 0.35) !important; }
+.blob-2 { background: rgba(255, 178, 36, 0.35) !important; }
+.error-code { background: none !important; -webkit-text-fill-color: var(--nb-green) !important; color: var(--nb-green) !important; font-family: var(--nb-display) !important; }
+.btn-home { background: var(--nb-green) !important; color: #fff !important; border-radius: var(--nb-r-pill) !important; box-shadow: none !important; }
+.btn-quote { color: var(--nb-green-deep) !important; }
+.logo-text, .logo-text span { color: var(--nb-text) !important; -webkit-text-fill-color: currentColor !important; }
+.help-text a { color: var(--nb-green-deep) !important; }
