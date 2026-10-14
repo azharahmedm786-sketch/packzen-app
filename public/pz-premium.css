@@ -1,25 +1,27 @@
 /* =====================================================================
-   PackZen — "Night Bangalore" premium layer (loaded LAST on customer pages)
-   Dark, glassy, Apple/Linear-inspired. Green = brand & actions,
+   PackZen — premium layer, LIGHT edition (loaded LAST on customer pages)
+   White, airy, Apple/Linear-inspired. Green = brand & actions,
    marigold = the one bold accent (price highlights, "New", the hero glow).
    This file only restyles: no markup, ids or behaviour are changed.
    ===================================================================== */
 
 :root {
   /* palette */
-  --nb-night: #06110D;      /* forest-night base, not a neutral black */
-  --nb-night-2: #0A1A14;    /* raised band */
-  --nb-glass: rgba(255, 255, 255, 0.045);
-  --nb-glass-2: rgba(255, 255, 255, 0.075);
-  --nb-line: rgba(208, 240, 224, 0.10);
-  --nb-line-2: rgba(208, 240, 224, 0.18);
-  --nb-text: #E9F3EE;
-  --nb-text-2: #B9CBC2;
-  --nb-muted: #8BA096;
-  --nb-green: #3DD68C;      /* PackZen green, lifted for dark backgrounds */
-  --nb-green-deep: #1F8A55;
-  --nb-marigold: #FFB224;   /* Bangalore marigold / packing-tape amber */
-  --nb-ink-on-green: #04140C;
+  --nb-night: #FFFFFF;      /* page background (white) */
+  --nb-night-2: #F6F8F7;    /* soft band */
+  --nb-glass: rgba(255, 255, 255, 0.78);
+  --nb-glass-2: #FFFFFF;
+  --nb-line: rgba(10, 40, 28, 0.09);
+  --nb-line-2: rgba(10, 40, 28, 0.16);
+  --nb-text: #0C1A14;
+  --nb-text-2: #3E5248;
+  --nb-muted: #6B7D74;
+  --nb-green: #1F9D5C;      /* PackZen green, accessible on white */
+  --nb-green-deep: #157A47;
+  --nb-marigold: #FFB224;   /* Bangalore marigold — fills, badges, glow */
+  --nb-marigold-ink: #9A5B00; /* marigold for text on white (readable) */
+  --nb-ink-on-green: #FFFFFF;
+  --nb-shadow: 0 1px 2px rgba(12, 26, 20, 0.04), 0 8px 24px -12px rgba(12, 26, 20, 0.12);
   --nb-r-xl: 28px; --nb-r-lg: 20px; --nb-r-md: 14px; --nb-r-pill: 999px;
   --nb-display: "Bricolage Grotesque", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --nb-body: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -30,14 +32,14 @@
   --text-primary: var(--nb-text); --text-secondary: var(--nb-text-2); --text-muted: var(--nb-muted); --text: var(--nb-text);
   --border-light: var(--nb-line);
   --primary: var(--nb-green-deep); --accent: var(--nb-green); --accent-bright: var(--nb-green);
-  --accent-light: rgba(61, 214, 140, 0.14); --accent-gradient: var(--nb-green);
-  --gold: var(--nb-green); --gold-bright: var(--nb-green); --gold-gradient: var(--nb-green); --gold-tint: rgba(61, 214, 140, 0.10);
-  --primary-tint: rgba(61, 214, 140, 0.08); --primary-border: var(--nb-line-2);
-  --pz-primary: var(--nb-green); --pz-primary-strong: var(--nb-green-deep); --pz-primary-soft: rgba(61, 214, 140, 0.14);
+  --accent-light: rgba(31, 157, 92, 0.14); --accent-gradient: var(--nb-green);
+  --gold: var(--nb-green); --gold-bright: var(--nb-green); --gold-gradient: var(--nb-green); --gold-tint: rgba(31, 157, 92, 0.10);
+  --primary-tint: rgba(31, 157, 92, 0.08); --primary-border: var(--nb-line-2);
+  --pz-primary: var(--nb-green); --pz-primary-strong: var(--nb-green-deep); --pz-primary-soft: rgba(31, 157, 92, 0.14);
   --pz-ink: var(--nb-text); --pz-ink-2: var(--nb-text-2); --pz-muted: var(--nb-muted); --pz-line: var(--nb-line);
   --pz-surface: var(--nb-glass); --pz-surface-2: var(--nb-glass-2);
   --pz-font: var(--nb-body);
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 /* ---------- base ---------- */
@@ -55,7 +57,7 @@ h1, h2, h3, .pz-h2, .wcs-heading, .hero-premium-title, .svc-hero h1, .legal-hero
 h2, .pz-h2, .wcs-heading { font-size: clamp(1.7rem, 1.2rem + 2vw, 2.6rem) !important; line-height: 1.08 !important; font-weight: 700 !important; }
 p, li, .pz-lead, .hero-premium-desc, .wcs-desc, .sac-sub, .faq-a, .svc-related-sub { color: var(--nb-text-2) !important; }
 a { color: inherit; }
-::selection { background: rgba(61, 214, 140, 0.35); color: #fff; }
+::selection { background: rgba(31, 157, 92, 0.22); color: var(--nb-text); }
 :focus-visible { outline: 2px solid var(--nb-green) !important; outline-offset: 3px !important; }
 
 /* section labels: sentence case, quiet — no tracked-out caps */
@@ -68,30 +70,30 @@ a { color: inherit; }
 .pricing-app-card, .offer-banner, .pz-review-card, .chatbot-cta, .local-seo, .modal-box, .action-modal,
 .trust-signals-card, .svc-cta-banner, .legal-content {
   background: var(--nb-glass) !important; border: 1px solid var(--nb-line) !important;
-  border-radius: var(--nb-r-xl) !important; box-shadow: none !important;
+  border-radius: var(--nb-r-xl) !important; box-shadow: var(--nb-shadow) !important;
   -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
   color: var(--nb-text) !important;
 }
 .qa-card, .service-app-card, .wcs-card, .pz-card, .faq-item, .svc-related-card, .svc-feature-card, .svc-step,
 .cat-card, .pz-cat, .pz-step, .dashboard-card, .booking-card {
   background: var(--nb-glass) !important; border: 1px solid var(--nb-line) !important;
-  border-radius: var(--nb-r-lg) !important; box-shadow: none !important; color: var(--nb-text) !important;
+  border-radius: var(--nb-r-lg) !important; box-shadow: var(--nb-shadow) !important; color: var(--nb-text) !important;
 }
 .qa-card:hover, .service-app-card:hover, .svc-related-card:hover, .cat-card:hover { border-color: var(--nb-line-2) !important; background: var(--nb-glass-2) !important; }
 .sac-title, .wcs-title, .svc-related-title, .faq-q, .pricing-app-title, .offer-title, .chatbot-cta-title,
 .qa-card, .qa-card span, .pz-cat h3, .pz-step h3 { color: var(--nb-text) !important; }
-.qa-img-wrap, .sac-img-wrap, .wcs-icon-circle { background: rgba(255, 255, 255, 0.04) !important; border-radius: var(--nb-r-md) !important; }
+.qa-img-wrap, .sac-img-wrap, .wcs-icon-circle { background: var(--nb-night-2) !important; border-radius: var(--nb-r-md) !important; }
 
 /* ---------- header ---------- */
 .app-bar, .app-bar.white-nav, .navbar {
-  background: rgba(6, 17, 13, 0.72) !important; border-bottom: 1px solid var(--nb-line) !important; box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.78) !important; border-bottom: 1px solid var(--nb-line) !important; box-shadow: none !important;
   -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
 }
 .app-bar a, .app-bar .desktop-nav-links a, .nav-links a, .app-logo, .app-bar .dark-icon { color: var(--nb-text) !important; }
 .app-bar .desktop-nav-links a:hover { color: var(--nb-green) !important; }
 .app-phone-btn { background: transparent !important; border: 1px solid var(--nb-line-2) !important; color: var(--nb-text) !important; border-radius: var(--nb-r-pill) !important; }
-.app-login-pill { background: var(--nb-text) !important; color: var(--nb-night) !important; border-radius: var(--nb-r-pill) !important; border: 0 !important; }
-.user-dropdown { background: #0D1F18 !important; border: 1px solid var(--nb-line-2) !important; color: var(--nb-text) !important; }
+.app-login-pill { background: var(--nb-text) !important; color: #fff !important; border-radius: var(--nb-r-pill) !important; border: 0 !important; }
+.user-dropdown { background: #fff !important; border: 1px solid var(--nb-line-2) !important; color: var(--nb-text) !important; }
 .user-dropdown a, .dropdown-name { color: var(--nb-text) !important; }
 
 /* ---------- buttons ---------- */
@@ -99,7 +101,7 @@ a { color: inherit; }
   background: var(--nb-green) !important; color: var(--nb-ink-on-green) !important; border: 0 !important;
   border-radius: var(--nb-r-pill) !important; font-weight: 700 !important; box-shadow: none !important;
 }
-.hero-cta-btn.primary:hover, .pricing-cta:hover, .offer-btn:hover, .svc-cta-quote:hover { background: #5BE3A2 !important; }
+.hero-cta-btn.primary:hover, .pricing-cta:hover, .offer-btn:hover, .svc-cta-quote:hover { background: var(--nb-green-deep) !important; }
 .hero-cta-btn.secondary, .svc-cta-call, .see-all-link {
   background: transparent !important; color: var(--nb-text) !important; border: 1px solid var(--nb-line-2) !important;
   border-radius: var(--nb-r-pill) !important; box-shadow: none !important;
@@ -115,12 +117,12 @@ a { color: inherit; }
 .hero-premium-section::before {  /* aurora: brand green meeting marigold, behind the photo */
   content: ""; position: absolute; z-index: -1; inset: -10% -5% auto auto; width: min(760px, 90vw); height: 620px;
   background:
-    radial-gradient(closest-side at 60% 45%, rgba(61, 214, 140, 0.30), transparent 70%),
-    radial-gradient(closest-side at 78% 70%, rgba(255, 178, 36, 0.22), transparent 70%);
+    radial-gradient(closest-side at 60% 45%, rgba(31, 157, 92, 0.16), transparent 70%),
+    radial-gradient(closest-side at 78% 70%, rgba(255, 178, 36, 0.20), transparent 70%);
   filter: blur(20px); pointer-events: none;
 }
 .hero-badge {
-  background: rgba(255, 178, 36, 0.10) !important; color: var(--nb-marigold) !important;
+  background: rgba(255, 178, 36, 0.14) !important; color: var(--nb-marigold-ink) !important;
   border: 1px solid rgba(255, 178, 36, 0.35) !important; border-radius: var(--nb-r-pill) !important; font-weight: 600 !important;
 }
 .hero-premium-title {
@@ -135,7 +137,7 @@ a { color: inherit; }
 .illustration-bg { background: transparent !important; }
 .hero-premium-illustration img {
   border-radius: var(--nb-r-xl) !important; border: 1px solid var(--nb-line-2) !important;
-  box-shadow: 0 40px 120px -30px rgba(61, 214, 140, 0.35) !important;
+  box-shadow: 0 40px 100px -40px rgba(12, 26, 20, 0.35) !important;
 }
 .trust-signals-card { border-radius: var(--nb-r-pill) !important; }
 .trust-item { color: var(--nb-text-2) !important; }
@@ -149,18 +151,18 @@ a { color: inherit; }
   background: transparent !important; color: var(--nb-text-2) !important; border: 1px solid var(--nb-line-2) !important;
   border-radius: var(--nb-r-pill) !important; box-shadow: none !important;
 }
-.pz-chip:hover, .area-chip:hover, .cat-tab.active, .cat-tab[aria-selected="true"] { color: var(--nb-night) !important; background: var(--nb-text) !important; }
+.pz-chip:hover, .area-chip:hover, .cat-tab.active, .cat-tab[aria-selected="true"] { color: #fff !important; background: var(--nb-text) !important; }
 .sac-badge { background: var(--nb-marigold) !important; color: #2A1A00 !important; border-radius: var(--nb-r-pill) !important; font-weight: 700 !important; }
 
 /* offer: a marigold ribbon instead of a green slab */
-.offer-banner { background: linear-gradient(120deg, rgba(255, 178, 36, 0.12), rgba(61, 214, 140, 0.06)) !important; }
-.offer-tag { background: transparent !important; color: var(--nb-marigold) !important; letter-spacing: 0 !important; text-transform: none !important; padding: 0 !important; }
+.offer-banner { background: linear-gradient(120deg, rgba(255, 178, 36, 0.12), rgba(31, 157, 92, 0.06)) !important; }
+.offer-tag { background: transparent !important; color: var(--nb-marigold-ink) !important; letter-spacing: 0 !important; text-transform: none !important; padding: 0 !important; }
 .offer-sub, .pricing-app-sub { color: var(--nb-text-2) !important; }
 
 /* pricing: rows read like a receipt */
 .pricing-app-header { background: transparent !important; border-bottom: 1px solid var(--nb-line) !important; }
 .pricing-row { border-color: var(--nb-line) !important; color: var(--nb-text-2) !important; }
-.price-val { color: var(--nb-marigold) !important; font-variant-numeric: tabular-nums; font-weight: 700 !important; }
+.price-val { color: var(--nb-marigold-ink) !important; font-variant-numeric: tabular-nums; font-weight: 700 !important; }
 .pricing-note { background: transparent !important; color: var(--nb-muted) !important; border: 0 !important; }
 
 .wcs-accent { color: inherit !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
@@ -169,21 +171,21 @@ a { color: inherit; }
 
 /* active booking tracker */
 #trackOrderBanner .tob-inner { background: var(--nb-glass-2) !important; border: 1px solid var(--nb-line-2) !important; border-radius: var(--nb-r-lg) !important; color: var(--nb-text) !important; }
-#tobOtpRow { background: rgba(61, 214, 140, 0.08) !important; border-color: var(--nb-green) !important; }
+#tobOtpRow { background: rgba(31, 157, 92, 0.08) !important; border-color: var(--nb-green) !important; }
 #tobOtpValue { color: var(--nb-green) !important; }
 
 /* ---------- forms (booking sheet, modals, auth, services checkout) ---------- */
 input, select, textarea {
-  background-color: rgba(255, 255, 255, 0.04) !important; color: var(--nb-text) !important;
+  background-color: #fff !important; color: var(--nb-text) !important;
   border: 1px solid var(--nb-line-2) !important; border-radius: 12px !important;
 }
 input::placeholder, textarea::placeholder { color: var(--nb-muted) !important; }
-input:focus, select:focus, textarea:focus { border-color: var(--nb-green) !important; box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.18) !important; outline: none !important; }
-select option { background: #0D1F18; color: var(--nb-text); }
+input:focus, select:focus, textarea:focus { border-color: var(--nb-green) !important; box-shadow: 0 0 0 3px rgba(31, 157, 92, 0.18) !important; outline: none !important; }
+select option { background: #fff; color: var(--nb-text); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
-.modal-overlay, .sheet-overlay { background: rgba(2, 8, 6, 0.72) !important; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.modal-overlay, .sheet-overlay { background: rgba(12, 26, 20, 0.45) !important; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .modal-box, .action-modal, .booking-sheet, .bottom-sheet, .sheet, .cat-modal, .cat-dialog {
-  background: #0B1C15 !important; color: var(--nb-text) !important; border: 1px solid var(--nb-line-2) !important;
+  background: #fff !important; color: var(--nb-text) !important; border: 1px solid var(--nb-line-2) !important;
 }
 .modal-title, .sheet-title, .modal-sub { color: var(--nb-text) !important; }
 .modal-x, .modal-close { color: var(--nb-text-2) !important; background: transparent !important; }
@@ -191,14 +193,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
 /* ---------- local SEO + footer ---------- */
 .local-seo, .local-seo a { color: var(--nb-text-2) !important; }
 .local-seo h2, .local-seo h3 { color: var(--nb-text) !important; }
-.app-footer, footer, .footer-inner { background: #040C09 !important; border-top: 1px solid var(--nb-line) !important; color: var(--nb-text-2) !important; }
+.app-footer, footer, .footer-inner { background: var(--nb-night-2) !important; border-top: 1px solid var(--nb-line) !important; color: var(--nb-text-2) !important; }
 .app-footer a, footer a { color: var(--nb-text-2) !important; }
 .app-footer a:hover, footer a:hover { color: var(--nb-text) !important; }
 .app-footer-logo, .app-footer-logo span { color: var(--nb-text) !important; }
 .app-footer-bottom { border-top: 1px solid var(--nb-line) !important; color: var(--nb-muted) !important; }
 
 /* ---------- mobile bottom nav ---------- */
-.bottom-nav { background: rgba(6, 17, 13, 0.82) !important; border-top: 1px solid var(--nb-line) !important; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: none !important; }
+.bottom-nav { background: rgba(255, 255, 255, 0.86) !important; border-top: 1px solid var(--nb-line) !important; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: none !important; }
 .bnav-item { color: var(--nb-muted) !important; }
 .bnav-item.active { color: var(--nb-green) !important; }
 .bnav-book-icon { background: var(--nb-green) !important; color: var(--nb-ink-on-green) !important; }
@@ -216,13 +218,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
 .faq-app-list, .faq-list { background: transparent !important; border: 0 !important; box-shadow: none !important; }
 .faq-item { margin-bottom: 10px !important; }
 .faq-q { background: transparent !important; font-weight: 600 !important; }
-.app-footer::before { opacity: 0.14 !important; filter: grayscale(0.4); -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 85%); mask-image: linear-gradient(to top, #000 10%, transparent 85%); }
+.app-footer::before { opacity: 0.10 !important; filter: grayscale(0.2); -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 85%); mask-image: linear-gradient(to top, #000 10%, transparent 85%); }
 .app-footer-inner-desktop, .app-footer-bottom { background: transparent !important; }
 .home-section:has(> .areas-wrap) { display: none !important; } /* duplicate of the service-areas section above */
 .qa-card { overflow: hidden; }
 .qa-img-wrap img, .sac-img-wrap img { border-radius: var(--nb-r-md) !important; }
 .chatbot-cta { padding: 20px !important; }
 .pz-review-card .pz-btn, .pz-review-card a { border-radius: var(--nb-r-pill) !important; }
-.app-bar .app-login-pill, .app-bar .app-login-pill * { color: var(--nb-night) !important; text-decoration: none !important; }
+.app-bar .app-login-pill, .app-bar .app-login-pill * { color: #fff !important; text-decoration: none !important; }
 .navbar .logo-img, .logo-wrap img { height: 36px !important; width: auto !important; max-width: 160px !important; }
 .navbar .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+.app-bar .app-logo-text, .app-bar .app-logo-text * { color: var(--nb-text) !important; -webkit-text-fill-color: currentColor !important; background: none !important; }
