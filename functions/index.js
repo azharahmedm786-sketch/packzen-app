@@ -612,3 +612,6 @@ Object.assign(exports, require("./catalog-booking"));
 // Parcel delivery (additive — parcel-booking.js): quote + online payment; verification uses the shared core
 const { _parcel, ...parcelExports } = require("./parcel-booking");
 Object.assign(exports, parcelExports);
+// Website virtual assistant (grounded answers + human handoff)
+const { _assistant, ...assistantExports } = require("./assistant-functions");
+Object.assign(exports, assistantExports);

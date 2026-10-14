@@ -439,11 +439,48 @@
     els.quickReplies.innerHTML = "";
     showTyping();
 
+    // Typed questions go to the server assistant (verified answers, booking
+    // status for the signed-in user, human handoff). Quick-reply chips and any
+    // server/network failure use the local knowledge base below.
+    var fb = window._firebase && window._firebase.functions;
+    if (!forcedIntent && fb) {
+      var done = false;
+      var fallback = window.setTimeout(function () { if (done) return; done = true; hideTyping(); respondToIntent(matchIntent(displayText)); }, 8000);
+      fb.httpsCallable("assistantAsk")({ message: displayText.slice(0, 600), lastService: state.lastService || null })
+        .then(function (res) {
+          if (done) return; done = true; window.clearTimeout(fallback); hideTyping();
+          var d = res && res.data || {};
+          if (d.service) state.lastService = d.service;
+          appendMessage("bot", d.reply || KB.fallback);
+          renderServerActions(d.actions || []);
+        })
+        .catch(function () { if (done) return; done = true; window.clearTimeout(fallback); hideTyping(); respondToIntent(matchIntent(displayText)); });
+      return;
+    }
+
     window.setTimeout(function () {
       hideTyping();
       var intentKey = forcedIntent || matchIntent(displayText);
       respondToIntent(intentKey);
     }, 550 + Math.random() * 350);
+  }
+
+  var state = { lastService: null };
+  function renderServerActions(actions) {
+    els.quickReplies.innerHTML = "";
+    if (!actions.length) { renderQuickReplies(); return; }
+    actions.slice(0, 3).forEach(function (a) {
+      var chip = document.createElement("button");
+      chip.type = "button"; chip.className = "pz-chip";
+      chip.textContent = String(a.label || "Open").slice(0, 40);
+      chip.addEventListener("click", function () {
+        if (a.type === "book") goToBookingForm();
+        else if (a.type === "escalate") renderLeadForm();
+        else if (a.type === "signin") { closeChat(); var b = document.querySelector(".app-login-pill"); if (b) b.click(); }
+        else if (a.type === "link" && typeof a.href === "string" && a.href.charAt(0) === "/") window.location.href = a.href;
+      });
+      els.quickReplies.appendChild(chip);
+    });
   }
 
   function respondToIntent(intentKey) {
@@ -496,6 +533,7 @@
     wrap.innerHTML =
       '<input type="text" id="pzLeadName" placeholder="Your name" autocomplete="name" />' +
       '<input type="tel" id="pzLeadPhone" placeholder="Your phone number" autocomplete="tel" />' +
+      '<label class="pz-lead-consent"><input type="checkbox" id="pzLeadConsent" checked /> PackZen may call or message me about this request</label>' +
       '<div class="pz-lead-error" id="pzLeadError">Please enter a valid name and 10-digit phone number.</div>' +
       '<button class="pz-cta-btn" id="pzLeadSubmit" type="button">Request a Call Back</button>';
 
@@ -531,7 +569,16 @@
       source: "chatbot",
     };
 
-    saveLeadToFirestore(leadDoc);
+    var consentEl = document.getElementById("pzLeadConsent");
+    var fbf = window._firebase && window._firebase.functions;
+    if (fbf && consentEl && consentEl.checked) {
+      // Server-side handoff: creates a support request + lead and alerts the team.
+      fbf.httpsCallable("assistantSupportRequest")({ name: name, phone: phone, message: (getLastUserMessage() || "Callback request").slice(0, 600), topic: "callback", consent: true })
+        .then(function (res) { if (res && res.data && res.data.message) appendMessage("bot", res.data.message); })
+        .catch(function (e) { appendMessage("bot", (e && e.message) || "We couldn't save your request — please WhatsApp or call us on " + CONFIG.supportPhone + "."); });
+    } else {
+      saveLeadToFirestore(leadDoc);
+    }
 
     var waText = encodeURIComponent(
       "Hi PackZen, I'm " + name + ". I was chatting with your website assistant and would like help with my move."
@@ -540,7 +587,7 @@
 
     appendMessage(
       "bot",
-      "Thanks, " + name + "! Our team will call you shortly at " + phone + ". You can also message us directly right now on WhatsApp.",
+      "Thanks, " + name + "! You can also message us right now on WhatsApp.",
       { whatsappLink: waLink }
     );
 

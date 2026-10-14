@@ -94,6 +94,20 @@ async function collectIssues(db, now) {
   ff.docs.forEach((d) => { const f = d.data() || {}; const k = (f.source || "?") + " / " + (f.code || "?"); agg[k] = (agg[k] || 0) + 1; });
   Object.keys(agg).forEach((k) => add("function_failures", k + "|" + istDate(now), agg[k] + "× " + k + " in the last 24 h"));
 
+  // 6. customer support requests still open (from the website assistant)
+  const sr = await db.collection("supportRequests").where("status", "==", "open").limit(100).get();
+  sr.docs.forEach((d) => {
+    const r = d.data() || {};
+    const at = toMs(r.createdAt);
+    const age = at === null ? null : Math.round((now - at) / 3600000);
+    add("support_request_open", d.id, (r.urgent ? "URGENT " : "") + "Support request " + d.id + " (" + (r.topic || "general") + ") open" + (age !== null ? " for " + age + " h" : ""));
+  });
+
+  // 7. stale "sending" SMS (claimed but never finished — e.g. the function crashed)
+  const ss = await db.collection("smsQueue").where("status", "==", "sending").limit(200).get();
+  const stale = ss.docs.filter((d) => { const t = toMs((d.data() || {}).claimedAt); return t !== null && now - t > 30 * 60 * 1000; }).length;
+  if (stale) add("sms_stuck", "sending|" + istDate(now), stale + " SMS stuck in 'sending' for over 30 min");
+
   return issues;
 }
 

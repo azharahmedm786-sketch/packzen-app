@@ -360,6 +360,17 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Website assistant: support requests and unanswered-question log are
+    // written only by Cloud Functions (assistant-functions.js); admins manage them.
+    match /supportRequests/{requestId} {
+      allow create, delete: if false;
+      allow read, update: if isAdmin();
+    }
+    match /assistantGaps/{gapId} {
+      allow create, update: if false;
+      allow read, delete: if isAdmin();
+    }
+
     // PARCEL DELIVERY SYSTEM — 🔒 Release 1: parcel delivery is not live
     // (parcel.html is "coming soon"). Customers could create "paid" parcel
     // bookings with any fare and any driver could edit any parcel, so writes
