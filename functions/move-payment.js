@@ -295,6 +295,46 @@ function existingResponse(b, uid, paymentId) {
  * Booking document for a captured catalog (service) payment. Same field names
  * the existing dashboards read; money fields follow bookingMoney().
  */
+// Parcel delivery booking (flow:"parcel", created by parcel-booking.js).
+function buildParcelBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp }) {
+  const d = p.details || {};
+  const pc = p.parcel || {};
+  const br = pc.breakdown || {};
+  const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: "full" });
+  return Object.assign({
+    bookingType: "parcel",
+    bookingRef: bookingRefFromOrder(orderId),
+    requestId: p.requestId || null,
+    customerUid: p.uid,
+    customerName: d.senderName || "",
+    phone: d.senderPhone || "",
+    email: p.email || null,
+    receiverName: d.receiverName || "",
+    receiverPhone: d.receiverPhone || "",
+    pickup: d.pickup || "",
+    drop: d.drop || "",
+    date: d.date || "",
+    shiftTime: d.timeSlot || "",
+    shiftTimeLabel: d.timeSlotLabel || "",
+    moveType: "parcel",
+    vehicleId: "two_wheeler",
+    vehicleUsed: "Two-wheeler",
+    distance: br.km || 0,
+    remarks: d.notes || "",
+    parcel: { itemDescription: d.itemDescription || "", weightKg: d.weightKg || 0, breakdown: br,
+              pickupPincode: pc.pickupPincode || null, dropPincode: pc.dropPincode || null },
+    paymentType: "full",
+    currency: p.currency || CURRENCY,
+    paymentId,
+    orderId,
+    source: "parcel-page",
+    status: "confirmed",
+    confirmedVia: via || "verify",
+    createdAt: serverTimestamp(),
+    paidAt: serverTimestamp(),
+  }, money);
+}
+
 function buildServiceBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp }) {
   const d = p.details || {};
   const money = bookingMoney({ grandTotal: p.grandTotal, paid: amountPaise / 100, paymentType: "full" });
@@ -351,6 +391,12 @@ async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expected
 
       // Catalog (service) payments share this exact transition: same idempotency,
       // same booking id = order id, same pending → consumed state machine.
+      if (p.flow === "parcel") {
+        const pcl = buildParcelBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp: deps.serverTimestamp });
+        if (typeof tx.create === "function") tx.create(bookingRef, pcl); else tx.set(bookingRef, pcl);
+        tx.update(pendingRef, { status: "consumed", bookingId: orderId, paymentId, consumedAt: deps.serverTimestamp() });
+        return { created: pcl };
+      }
       if (p.flow === "service") {
         const svc = buildServiceBooking(p, { orderId, paymentId, amountPaise, via, serverTimestamp: deps.serverTimestamp });
         if (typeof tx.create === "function") tx.create(bookingRef, svc); else tx.set(bookingRef, svc);
@@ -493,6 +539,7 @@ module.exports = {
   handleVerifyPayment,
   finalizeCapture,
   buildServiceBooking,
+  buildParcelBooking,
   authenticate,
   PaymentError,
   MSG,

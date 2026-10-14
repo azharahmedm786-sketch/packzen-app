@@ -74,7 +74,7 @@ async function offerNext(deps, bookingId, cfg) {
       return { needsManual: reason };
     }
     const offer = { bookingId, driverUid: pick.uid, state: "offered", attempt, offeredAt: now, expiresAt: now + cfg.offerTimeoutMin * 60e3, score: pick.score,
-      summary: { date: c.date || null, shiftTime: c.shiftTime || null, area: areaOf(c.pickup), vehicle: c.vehicleUsed || c.vehicleId || null, kind: c.bookingType === "service" ? "service" : "move" } };
+      summary: { date: c.date || null, shiftTime: c.shiftTime || null, area: areaOf(c.pickup), vehicle: c.vehicleUsed || c.vehicleId || null, kind: c.bookingType === "service" ? "service" : c.bookingType === "parcel" ? "parcel" : "move" } };
     tx.set(offerRef, offer);
     tx.update(bRef, { assignment: { state: "offering", method: "auto", offerId: offerRef.id, attempt, candidatesTried: tried.concat([pick.uid]), lastChangedAt: now } });
     if (p && p.exists) { const acc = Object.assign({ offered: 0, accepted: 0, declined: 0, expired: 0 }, (p.data() || {}).acceptance || {}); acc.offered += 1; tx.update(pRef, { lastOfferedAt: now, acceptance: acc }); }

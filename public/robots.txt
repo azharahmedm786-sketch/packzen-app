@@ -37,7 +37,6 @@ Disallow: /delete-account.html
 Disallow: /msg91-setup-guide.html
 
 # Parcel delivery — feature not yet live, thin/placeholder content
-Disallow: /parcel.html
 Disallow: /parcel1.html
 Disallow: /parcel-tracking.html
 

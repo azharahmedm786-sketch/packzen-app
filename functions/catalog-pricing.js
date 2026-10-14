@@ -130,7 +130,8 @@ function validateDetails(details, now) {
   if (customerName.length < 2) errors.push("Please enter your name.");
 
   let phone = str(d.phone, 20).replace(/[\s()-]/g, "");
-  phone = phone.replace(/^\+?91/, "");
+  phone = phone.replace(/^\+/, "");
+  if (phone.length === 12 && phone.startsWith("91")) phone = phone.slice(2); // keep 10-digit numbers starting with 91 intact
   if (!/^[6-9]\d{9}$/.test(phone)) errors.push("Enter a valid 10-digit Indian mobile number.");
 
   const email = str(d.email, 120);

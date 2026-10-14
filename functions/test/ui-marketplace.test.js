@@ -67,7 +67,7 @@ test("routing: moving uses existing quote flow / SEO pages; other services go to
   assert.strictEqual(mk.hrefFor(find("Electrical")), "services.html?q=Electrician", "search wording matches the catalog item");
   assert.strictEqual(mk.hrefFor(find("AC repair")), "services.html?q=AC%20Repair", "approved + priced → catalog");
   assert.strictEqual(mk.hrefFor(find("Painting")), null, "not offered → no booking link");
-  assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), null);
+  assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), "parcel.html"); // parcel delivery launched (Oct 2026)
   for (const s of mk.CATEGORIES.flatMap((c) => c.services)) if (s.href && !s.href.includes("#")) assert.ok(fs.existsSync(path.join(PUB, s.href.split("?")[0])), "missing page " + s.href);
 });
 
@@ -150,7 +150,8 @@ test("availability: every service has an honest status; only real booking paths 
   for (const n of ["House shifting", "Office relocation", "Single item", "Single-item delivery", "AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill",
                    "Home deep cleaning", "Kitchen cleaning", "Bathroom cleaning", "TV wall mount", "Electrical", "Carpentry", "Plumbing"]) assert.strictEqual(st(n), "book", n);
   for (const n of ["Packing & unpacking", "Bike transport"]) assert.strictEqual(st(n), "addon", n);
-  for (const n of ["Painting", "Pest control", "Appliance repair", "Two-wheeler parcel", "Car transport"]) assert.strictEqual(st(n), "soon", n);
+  for (const n of ["Painting", "Pest control", "Appliance repair", "Car transport"]) assert.strictEqual(st(n), "soon", n);
+  assert.strictEqual(st("Two-wheeler parcel"), "book");
   const seed = fs.readFileSync(path.join(__dirname, "..", "..", "tools", "seedCatalog.js"), "utf8");
   // every catalog-backed "book" service has a priced catalog item (owner-approved prices)
   for (const id of ["ac-installation", "ac-uninstallation", "ac-service-standard", "ac-service-deep", "ac-gas-refill", "ac-repair-inspection", "tv-wall-mount", "carpenter", "electrician",
@@ -161,8 +162,8 @@ test("availability: rendered chips — 'Coming soon' is never a link; no unsuppo
   const html = renderHtml();
   const soon = mk.CATEGORIES.flatMap((c) => c.services).filter((x) => x.status === "soon").length;
   assert.strictEqual((html.match(/pz-chip--soon/g) || []).length, 0, "no Coming-soon chips in the grid");
-  assert.ok(soon > 0 && html.includes('class="pz-soon-line"') && html.includes("Coming later to Bangalore: Car transport, Painting, Pest control, Appliance repair, Two-wheeler parcel."));
-  assert.ok(!/<a [^>]*pz-chip--soon/.test(html) && !/href="parcel\.html"/.test(html) && !/car-transport-bangalore\.html/.test(html));
+  assert.ok(soon > 0 && html.includes('class="pz-soon-line"') && html.includes("Coming later to Bangalore: Car transport, Painting, Pest control, Appliance repair."));
+  assert.ok(!/<a [^>]*pz-chip--soon/.test(html) && !/car-transport-bangalore\.html/.test(html));
   const src = read("marketplace.js");
   assert.ok(!/verified technicians|trusted professionals|same-city parcels|we'll arrange it/i.test(src));
 });

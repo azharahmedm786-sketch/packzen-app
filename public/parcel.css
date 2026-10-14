@@ -1,0 +1,20 @@
+:root{--bg:#050d1a;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.12);--text:#f0f4ff;--muted:#a8b3c7;--brand:#2F9E5C;--err:#ff8a8a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;line-height:1.5}
+a{color:inherit}.pc-top{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;max-width:880px;margin:0 auto}
+.pc-brand{display:flex;gap:8px;align-items:center;font-weight:800;text-decoration:none}.pc-call{font-weight:700;text-decoration:none;color:var(--brand)}
+.pc-wrap{max-width:880px;margin:0 auto;padding:8px 18px 40px}.pc-hero h1{font-size:clamp(1.6rem,4vw,2.2rem);margin:.4em 0 .2em}
+.pc-hero p{color:var(--muted);margin:0 0 .6em}.pc-facts{color:var(--muted);font-size:.92rem;padding-left:1.1em;margin:0 0 18px}
+.pc-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+fieldset{border:0;padding:0;margin:0 0 18px}legend{font-weight:800;font-size:1.05rem;margin-bottom:8px}
+label{display:block;font-weight:700;font-size:.9rem;margin-bottom:10px}label small{font-weight:600;color:var(--muted)}
+input,select{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:16px}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:1px}
+.pc-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.pc-row{grid-template-columns:1fr}}
+.pc-small{color:var(--muted);font-size:.85rem;margin:0}.pc-error{color:var(--err);min-height:1.2em;font-weight:700}
+.pc-price{border-radius:12px}.pc-price:not(:empty){padding:14px;background:rgba(47,158,92,.12);border:1px solid rgba(47,158,92,.4);margin-bottom:10px}
+.pc-price strong{font-size:1.4rem}.pc-price ul{margin:6px 0 0;padding-left:1.1em;color:var(--muted);font-size:.9rem}
+.pc-actions{display:flex;gap:10px;flex-wrap:wrap}.pc-btn{flex:1;min-width:150px;padding:13px 16px;border-radius:12px;border:0;background:var(--brand);color:#fff;font:inherit;font-weight:800;cursor:pointer}
+.pc-btn[disabled]{opacity:.5;cursor:not-allowed}.pc-btn-ghost{background:transparent;border:1px solid var(--brand);color:var(--text)}
+.pc-auth{margin-bottom:14px;font-size:.92rem;color:var(--muted)}.pc-auth button{margin-top:6px}
+.pc-done{text-align:center}.pc-done h2{margin-top:0}.pc-ref{font-size:1.1rem;margin:10px 0}
+.pc-foot{text-align:center;color:var(--muted);font-size:.85rem;padding:20px}

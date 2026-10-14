@@ -46,7 +46,7 @@
       { name: "Appliance repair", keywords: "fridge refrigerator washing machine geyser ro purifier", status: "soon" } ] },
     { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
       { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
-      { name: "Two-wheeler parcel", keywords: "courier package documents", status: "soon" } ] }
+      { name: "Two-wheeler parcel", href: "parcel.html", keywords: "courier package documents parcel delivery", status: "book" } ] }
   ];
 
   /** WhatsApp link from the single existing source (catalog-public.js); null if unavailable. */

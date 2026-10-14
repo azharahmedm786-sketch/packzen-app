@@ -72,8 +72,11 @@ const validPoint = (p) => p && typeof p.lat === "number" && typeof p.lng === "nu
 /** What the booking needs. */
 function requirementFor(booking, cfg) {
   const isService = booking.bookingType === "service";
-  const req = { kind: isService ? "service" : "move", area: "bangalore", vehicleId: null, minCapacity: 0, skills: [] };
-  if (isService) {
+  const isParcel = booking.bookingType === "parcel";
+  const req = { kind: isService ? "service" : isParcel ? "parcel" : "move", area: "bangalore", vehicleId: null, minCapacity: 0, skills: [] };
+  if (isParcel) {
+    req.skills = [cfg.categorySkill.parcel || "parcel"]; // two-wheeler riders with the parcel skill
+  } else if (isService) {
     const cats = (Array.isArray(booking.items) ? booking.items : []).map((i) => i && i.categoryId).filter(Boolean);
     const skills = [...new Set(cats.map((c) => cfg.categorySkill[c] || null))];
     req.skills = skills.includes(null) || !skills.length ? ["__unmapped__"] : skills.sort();

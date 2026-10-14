@@ -609,3 +609,6 @@ Object.assign(exports, require("./auth-emails"));
 Object.assign(exports, require("./oauth-profile"));
 // Catalog bookings (additive — catalog-booking.js): pay-later, online payment, verification
 Object.assign(exports, require("./catalog-booking"));
+// Parcel delivery (additive — parcel-booking.js): quote + online payment; verification uses the shared core
+const { _parcel, ...parcelExports } = require("./parcel-booking");
+Object.assign(exports, parcelExports);

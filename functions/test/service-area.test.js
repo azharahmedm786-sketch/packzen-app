@@ -33,6 +33,9 @@ assert.ok(validateDetails(Object.assign({ address: "14, HSR Layout Sector 2, Ben
 const bad = validateDetails(Object.assign({ address: "22 Brigade Road, Chennai 600002" }, base), now);
 assert.ok(!bad.ok && bad.errors.some((e) => /outside our service area/.test(e)));
 ok("home/appliance services: service address outside the area is refused with a clear message");
+assert.strictEqual(validateDetails(Object.assign({ address: "14, HSR Layout, Bengaluru 560102" }, base, { phone: "9123456780" }), now).value.phone, "9123456780");
+assert.strictEqual(validateDetails(Object.assign({ address: "14, HSR Layout, Bengaluru 560102" }, base, { phone: "+91 91234 56780" }), now).value.phone, "9123456780");
+ok("services: 10-digit mobiles starting with 91 are no longer mangled (country code stripped only when present)");
 
 const idx = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
 assert.ok(/serviceArea\.checkAddress\(route\.originAddress, pickup\)/.test(idx));
