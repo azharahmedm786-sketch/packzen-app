@@ -2951,28 +2951,44 @@ async function _handleOAuthUser(functionsRef) {
   const result = await functionsRef.httpsCallable("syncOAuthUserProfile")();
   return result?.data?.role || "customer";
 }
+// After a successful Google/Apple popup the user IS signed in, so the login
+// window closes straight away. The profile sync runs in the background; only a
+// staff account (driver/advisor/admin) is signed back out with a message.
+function _afterOAuthSignIn(result, functions, auth) {
+  closeAuthModal();
+  const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
+  showToast(`👋 Welcome, ${name}!`);
+  _handleOAuthUser(functions).then(async (role) => {
+    if (role !== "customer") {
+      await auth.signOut();
+      openAuthModal("login");
+      showError("loginError", roleRedirectMessage(role));
+      return;
+    }
+    checkAndPromptPhone();
+  }).catch(() => {
+    // Profile sync failed (network / cold start). The sign-in itself worked, so
+    // keep the user signed in; the profile is synced again on the next visit.
+    checkAndPromptPhone();
+  });
+}
+function _oauthError(err, unauthorizedMsg) {
+  if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
+  else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
+  else if (err.code === "auth/unauthorized-domain") showError("loginError", unauthorizedMsg);
+  else showError("loginError", getAuthErrorMessage(err.code));
+}
+
 window.signInWithGoogle = async function () {
   waitForFirebase(async () => {
     const { auth, functions } = window._firebase;
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
- const result = await auth.signInWithPopup(provider);
-      const role = await _handleOAuthUser(functions);
-      if (role !== "customer") {
-        await auth.signOut();
-        showError("loginError", roleRedirectMessage(role));
-        return;
-      }
-      closeAuthModal();
-      const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
-      showToast(`👋 Welcome, ${name}!`);
-      checkAndPromptPhone();
+      const result = await auth.signInWithPopup(provider);
+      _afterOAuthSignIn(result, functions, auth);
     } catch (err) {
-      if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
-      else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
-      else if (err.code === "auth/unauthorized-domain") showError("loginError", "⚠️ Domain not authorized. Add it in Firebase Console → Authentication → Authorized Domains.");
-      else showError("loginError", getAuthErrorMessage(err.code));
+      _oauthError(err, "⚠️ Domain not authorized. Add it in Firebase Console → Authentication → Authorized Domains.");
     }
   });
 };
@@ -2984,22 +3000,10 @@ window.signInWithApple = async function () {
     provider.addScope('email');
     provider.addScope('name');
     try {
-const result = await auth.signInWithPopup(provider);
-      const role = await _handleOAuthUser(functions);
-      if (role !== "customer") {
-        await auth.signOut();
-        showError("loginError", roleRedirectMessage(role));
-        return;
-      }
-      closeAuthModal();
-      const name = (result.user.displayName || result.user.email?.split("@")[0] || "User").split(" ")[0];
-          showToast(`👋 Welcome, ${name}!`);
-      checkAndPromptPhone();
+      const result = await auth.signInWithPopup(provider);
+      _afterOAuthSignIn(result, functions, auth);
     } catch (err) {
-      if (err.code === "auth/popup-blocked") showError("loginError", "⚠️ Popup blocked — please allow popups for this site and try again.");
-      else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {}
-      else if (err.code === "auth/unauthorized-domain") showError("loginError", "⚠️ Domain not authorized.");
-      else showError("loginError", getAuthErrorMessage(err.code));
+      _oauthError(err, "⚠️ Domain not authorized.");
     }
   });
 };
@@ -4331,13 +4335,24 @@ document.addEventListener("DOMContentLoaded", () => {
     priceEl.classList.remove("updated"); void priceEl.offsetWidth; priceEl.classList.add("updated");
   }).observe(priceEl, { childList: true });
 
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener("click", function (e) {
-      const href = this.getAttribute("href");
-      if (!href || href === "#") return;
-      const t = document.querySelector(href);
-      if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth" }); }
-    });
+  // In-page links (#services, #pricing, …): one delegated handler so links added
+  // later work too; scrolls the target just below the fixed header and closes
+  // any open dropdown first.
+  document.addEventListener("click", function (e) {
+    const a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const href = a.getAttribute("href");
+    // "#" links are buttons in disguise (My Bookings, Sign Out, …): run their
+    // onclick but never let the page jump back to the top.
+    if (href === "#") { e.preventDefault(); return; }
+    if (!href || href.length < 2) return;
+    let t = null;
+    try { t = document.querySelector(href); } catch (_) { return; }
+    if (!t || t.offsetParent === null && getComputedStyle(t).position !== "fixed") return;
+    e.preventDefault();
+    document.getElementById("userDropdown")?.classList.remove("open");
+    pzScrollToEl(t);
+    if (history.replaceState) history.replaceState(null, "", href);
   });
 
   const navbar = document.querySelector(".navbar");
@@ -4358,6 +4373,9 @@ document.addEventListener("DOMContentLoaded", () => {
       currentUser = user;
       updateNavForUser(user);
       if (user) {
+        // Signed in by any route (Google, email, OTP, another tab): no login window should stay open.
+        const am = document.getElementById("authModal");
+        if (am && am.style.display !== "none" && am.style.display !== "") closeAuthModal();
         window._firebase.db.collection("users").doc(user.uid).get().then(doc => {
           if (doc.exists) prefillBookingForm(doc.data());
         });
@@ -4590,3 +4608,18 @@ window.addEventListener("load", () => {
 /* ============================================
 END OF FILE
 ============================================ */
+
+/* Scroll an element into view just below the fixed header (desktop capsule or mobile bar). */
+function pzScrollToEl(el) {
+  const bar = document.querySelector(".app-bar, .navbar");
+  const offset = (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
+  const y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: Math.max(0, y), behavior: reduce ? "auto" : "smooth" });
+}
+// Opening the page with a #hash (e.g. packzenblr.in/#pricing) lands correctly too.
+window.addEventListener("load", function () {
+  if (location.hash && location.hash.length > 1) {
+    try { const t = document.querySelector(location.hash); if (t) setTimeout(() => pzScrollToEl(t), 150); } catch (_) {}
+  }
+});

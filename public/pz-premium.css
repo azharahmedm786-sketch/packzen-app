@@ -338,3 +338,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nb-green); }
 .svc-section .pricing-row span:last-child { text-align: right; white-space: nowrap; }
 @media (max-width: 480px) { .svc-section .pricing-row span:last-child { white-space: normal; max-width: 45%; } }
 .svc-section .pricing-note { padding: 14px 0 0 !important; font-size: 0.9rem; }
+
+/* in-page links land below the fixed header (works even without JS) */
+html { scroll-padding-top: 96px; }
+@media (max-width: 899px) { html { scroll-padding-top: 72px; } }
