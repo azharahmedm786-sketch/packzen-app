@@ -377,3 +377,8 @@ html { scroll-padding-top: 96px; }
 .pz-cb-x:hover { background: var(--nb-night-2); }
 .pz-cb-done { padding: 16px 0 8px; text-align: center; }
 .pz-cb-done a { color: var(--nb-green-deep); font-weight: 700; }
+
+/* Assistant launcher: hidden on the homepage (it has its own entry points),
+   visible everywhere else; kept above the sticky Call/Quote bar on phones. */
+body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; align-items: center; justify-content: center; }
+@media (max-width: 768px) { body:has(.svc-sticky-cta) #pz-chat-root { bottom: 84px !important; } }

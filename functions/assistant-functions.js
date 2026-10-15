@@ -11,6 +11,12 @@ const admin = require("firebase-admin");
 const assistant = require("./assistant");
 const rateLimit = require("./rate-limit");
 const { sendAdminEmail } = require("./notification-service");
+const { defineSecret } = require("firebase-functions/params");
+const assistantAi = require("./assistant-ai");
+// Optional: natural conversation in English/Hindi/Kannada. Set with
+//   firebase functions:secrets:set ANTHROPIC_API_KEY
+// Use the value "none" to keep the grounded engine only.
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
 const REGION = "asia-south1";
 let catalogCache = { at: 0, items: [] };
@@ -45,6 +51,25 @@ async function handleAsk(data, context, deps) {
   const lastService = ["moving", "parcel", "home_services"].includes(data && data.lastService) ? data.lastService : null;
   const catalog = await deps.loadCatalog();
   const out = assistant.answer(text, { signedIn: !!uid, lastService, catalog });
+  const refused = (out.intents || []).some((i) => i.startsWith("refuse_"));
+
+  // Conversational layer (optional). Hard refusals never reach it; any failure falls back.
+  if (!refused && deps.ai) {
+    const fetchMine = async () => {
+      if (!uid) return [];
+      const snap = await deps.db.collection("bookings").where("customerUid", "==", uid).limit(20).get();
+      return snap.docs.map((d) => d.data() || {})
+        .sort((a, b) => ((b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0) - (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0)))
+        .map((b) => ({ bookingRef: b.bookingRef, bookingType: b.bookingType, date: b.date, status: b.status, balanceDue: b.balanceDue, driverName: b.driverName }));
+    };
+    const ai = await deps.ai(text, data && data.history, { catalog, signedIn: !!uid, myBookings: fetchMine, lang: data && data.lang,
+      createLead: (l) => deps.createLead(Object.assign({ uid }, l)) }).catch(() => null);
+    if (ai && ai.reply) {
+      const actions = (out.intents || []).includes("unknown") ? [] : (out.actions || []);
+      return { reply: ai.reply, actions, service: out.service || null, escalate: !!out.escalate && !ai.usedTools.includes("request_callback"),
+        urgent: !!out.urgent, lang: ai.lang, ai: true };
+    }
+  }
 
   if (out.needs === "booking_status" && uid) {
     const snap = await deps.db.collection("bookings").where("customerUid", "==", uid).limit(20).get();
@@ -108,9 +133,21 @@ function liveDeps(context) {
     consumeAll: (checks) => rateLimit.consumeAll(db, checks, functions.logger),
     loadCatalog: () => loadCatalog(db, Date.now()),
     alert: (subject, rows) => sendAdminEmail(subject, rows),
+    ai: aiFor(),
+    createLead: (l) => require("./leads")._leads.upsertLead({ db, now: () => Date.now(),
+      serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(), arrayUnion: (x) => admin.firestore.FieldValue.arrayUnion(x) },
+    { name: l.name, phone: l.phone, service: l.service in require("./leads")._leads.SERVICES ? l.service : "other",
+      serviceLabel: require("./leads")._leads.SERVICES[l.service] || "Something else", notes: l.note || "", area: "", date: "", lang: "en", page: "assistant" },
+    { source: "website-assistant", attribution: {}, uid: l.uid || null }),
   };
 }
+function aiFor() {
+  let key = "";
+  try { key = ANTHROPIC_API_KEY.value() || ""; } catch (_) { key = ""; }
+  if (!key || key === "none") return null;
+  return (text, history, d) => assistantAi.converse(text, history, Object.assign({ apiKey: key, model: process.env.ASSISTANT_MODEL || assistantAi.DEFAULT_MODEL, logger: functions.logger }, d));
+}
 
-exports.assistantAsk = functions.region(REGION).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
+exports.assistantAsk = functions.region(REGION).runWith({ secrets: [ANTHROPIC_API_KEY] }).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
 exports.assistantSupportRequest = functions.region(REGION).https.onCall((data, context) => handleSupportRequest(data, context, liveDeps(context)));
 exports._assistant = { handleAsk, handleSupportRequest, redact };

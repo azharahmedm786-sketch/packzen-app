@@ -56,11 +56,14 @@
      ====================================================================== */
   var KB = {
     greeting:
-      "Hi there! 👋 I'm the PackZen Assistant.\nPack Smart. Move Calm. — ask me about pricing, vehicles, booking, or service areas, and I'll help right away.",
+      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC service, deep cleaning, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
 
     menu: [
       { label: "💰 Pricing & Rates", intent: "pricing" },
-      { label: "🚚 Vehicle Options", intent: "vehicles" },
+      { label: "🏠 Shifting price", ask: "How much does house shifting cost?" },
+      { label: "📦 Parcel delivery", ask: "How much is parcel delivery?" },
+      { label: "❄️ AC & home services", ask: "What home services do you offer and what are the prices?" },
+      { label: "🔎 My booking", ask: "What is my booking status?" },
       { label: "📋 How Booking Works", intent: "booking_steps" },
       { label: "📍 Service Areas", intent: "service_area" },
       { label: "💬 Talk to Support", intent: "human" },
@@ -247,11 +250,14 @@
       '    <div class="pz-chat-avatar">' + iconBox() + "</div>" +
       '    <div class="pz-chat-header-text">' +
       '      <div class="pz-brand">PackZen Assistant</div>' +
-      '      <div class="pz-chat-status"><span class="pz-dot"></span>Online now</div>' +
+      '      <div class="pz-chat-status"><span class="pz-dot"></span>Online now · English · हिंदी · ಕನ್ನಡ</div>' +
       "    </div>" +
       '    <button class="pz-chat-header-close" id="pzCloseBtn" aria-label="Close chat">' + iconClose() + "</button>" +
       "  </div>" +
       '  <div class="pz-chat-messages" id="pzMessages" aria-live="polite"></div>' +
+      '  <div class="pz-lang-row" role="group" aria-label="Reply language">' +
+      '    <button type="button" data-lang="en" aria-pressed="false">English</button><button type="button" data-lang="hi" aria-pressed="false">हिंदी</button><button type="button" data-lang="kn" aria-pressed="false">ಕನ್ನಡ</button>' +
+      '  </div>' +
       '  <div class="pz-quick-replies" id="pzQuickReplies"></div>' +
       '  <div class="pz-chat-input-row">' +
       '    <textarea class="pz-chat-input" id="pzInput" rows="1" placeholder="Type your question..." aria-label="Type your message"></textarea>' +
@@ -273,6 +279,14 @@
     els.window = document.getElementById("pzChatWindow");
     els.messages = document.getElementById("pzMessages");
     els.quickReplies = document.getElementById("pzQuickReplies");
+    var GREET = { en: "Sure — I'll reply in English. What do you need help with?", hi: "ज़रूर — मैं हिंदी में जवाब दूँगा। बताइए, किस चीज़ में मदद चाहिए?", kn: "ಖಂಡಿತ — ನಾನು ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸುತ್ತೇನೆ. ಏನು ಸಹಾಯ ಬೇಕು?" };
+    Array.prototype.forEach.call(document.querySelectorAll(".pz-lang-row button"), function (b) {
+      b.addEventListener("click", function () {
+        state.lang = b.getAttribute("data-lang");
+        Array.prototype.forEach.call(document.querySelectorAll(".pz-lang-row button"), function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        appendMessage("bot", GREET[state.lang]); pushHistory("assistant", GREET[state.lang]);
+      });
+    });
     els.input = document.getElementById("pzInput");
     els.sendBtn = document.getElementById("pzSendBtn");
     els.badge = document.getElementById("pzBadge");
@@ -389,7 +403,7 @@
       chip.className = "pz-chip";
       chip.textContent = item.label;
       chip.addEventListener("click", function () {
-        handleUserInput(item.label, item.intent);
+        if (item.ask) handleUserInput(item.ask); else handleUserInput(item.label, item.intent);
       });
       els.quickReplies.appendChild(chip);
     });
@@ -429,6 +443,17 @@
     return bestScore > 0 ? bestKey : null;
   }
 
+  /* Call a Cloud Function: Firebase SDK when the page has it (signed-in customers
+     get booking status), otherwise the public HTTPS endpoint (guests, any page). */
+  var FN_BASE = "https://asia-south1-packzen-e7539.cloudfunctions.net/";
+  function callFn(name, payload) {
+    var fb = window._firebase && window._firebase.functions;
+    if (fb) return fb.httpsCallable(name)(payload).then(function (r) { return r && r.data || {}; });
+    return fetch(FN_BASE + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j && j.error) throw new Error(j.error.message || "error"); return (j && j.result) || {}; });
+  }
+  function pushHistory(role, text) { state.history.push({ role: role, text: String(text || "").slice(0, 600) }); if (state.history.length > 12) state.history = state.history.slice(-12); }
+
   /* ======================================================================
      7. CONVERSATION FLOW
      ====================================================================== */
@@ -442,16 +467,17 @@
     // Typed questions go to the server assistant (verified answers, booking
     // status for the signed-in user, human handoff). Quick-reply chips and any
     // server/network failure use the local knowledge base below.
-    var fb = window._firebase && window._firebase.functions;
-    if (!forcedIntent && fb) {
+    if (!forcedIntent) {
       var done = false;
-      var fallback = window.setTimeout(function () { if (done) return; done = true; hideTyping(); respondToIntent(matchIntent(displayText)); }, 8000);
-      fb.httpsCallable("assistantAsk")({ message: displayText.slice(0, 600), lastService: state.lastService || null })
-        .then(function (res) {
+      var history = state.history.slice();
+      pushHistory("user", displayText);
+      var fallback = window.setTimeout(function () { if (done) return; done = true; hideTyping(); respondToIntent(matchIntent(displayText)); }, 15000);
+      callFn("assistantAsk", { message: displayText.slice(0, 600), lastService: state.lastService || null, history: history, lang: state.lang || null })
+        .then(function (d) {
           if (done) return; done = true; window.clearTimeout(fallback); hideTyping();
-          var d = res && res.data || {};
           if (d.service) state.lastService = d.service;
           appendMessage("bot", d.reply || KB.fallback);
+          pushHistory("assistant", d.reply || "");
           renderServerActions(d.actions || []);
         })
         .catch(function () { if (done) return; done = true; window.clearTimeout(fallback); hideTyping(); respondToIntent(matchIntent(displayText)); });
@@ -465,7 +491,7 @@
     }, 550 + Math.random() * 350);
   }
 
-  var state = { lastService: null };
+  var state = { lastService: null, history: [], lang: null };
   function renderServerActions(actions) {
     els.quickReplies.innerHTML = "";
     if (!actions.length) { renderQuickReplies(); return; }
@@ -476,6 +502,7 @@
       chip.addEventListener("click", function () {
         if (a.type === "book") goToBookingForm();
         else if (a.type === "escalate") renderLeadForm();
+        else if (a.type === "callback" && window.pzOpenCallback) { closeChat(); window.pzOpenCallback(); }
         else if (a.type === "signin") { closeChat(); var b = document.querySelector(".app-login-pill"); if (b) b.click(); }
         else if (a.type === "link" && typeof a.href === "string" && a.href.charAt(0) === "/") window.location.href = a.href;
       });
@@ -570,11 +597,10 @@
     };
 
     var consentEl = document.getElementById("pzLeadConsent");
-    var fbf = window._firebase && window._firebase.functions;
-    if (fbf && consentEl && consentEl.checked) {
+    if (consentEl && consentEl.checked) {
       // Server-side handoff: creates a support request + lead and alerts the team.
-      fbf.httpsCallable("assistantSupportRequest")({ name: name, phone: phone, message: (getLastUserMessage() || "Callback request").slice(0, 600), topic: "callback", consent: true })
-        .then(function (res) { if (res && res.data && res.data.message) appendMessage("bot", res.data.message); })
+      callFn("assistantSupportRequest", { name: name, phone: phone, message: (getLastUserMessage() || "Callback request").slice(0, 600), topic: "callback", consent: true })
+        .then(function (res) { if (res && res.message) appendMessage("bot", res.message); })
         .catch(function (e) { appendMessage("bot", (e && e.message) || "We couldn't save your request — please WhatsApp or call us on " + CONFIG.supportPhone + "."); });
     } else {
       saveLeadToFirestore(leadDoc);

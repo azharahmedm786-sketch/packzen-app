@@ -571,3 +571,8 @@
     transition: none !important;
   }
 }
+
+/* language chooser (Level-100 assistant) */
+.pz-lang-row { display: flex; gap: 6px; padding: 6px 12px 0; flex-wrap: wrap; }
+.pz-lang-row button { border: 1px solid rgba(10, 40, 28, 0.16); background: #fff; color: #0C1A14; border-radius: 999px; padding: 5px 12px; font: 600 0.82rem inherit; cursor: pointer; }
+.pz-lang-row button[aria-pressed="true"] { background: #1F9D5C; border-color: #1F9D5C; color: #fff; }
