@@ -83,6 +83,20 @@ async function sendOtpEmail(deps, bookingId, b) {
   return { sent: true };
 }
 
+/**
+ * Parcels: the RECEIVER hands the rider the code (proof of delivery), so the code goes
+ * to the receiver's mobile by SMS. Text contains no address or price.
+ * deps.queueSms(mobile, message, bookingRef) must be provided.
+ */
+async function sendReceiverOtpSms(deps, bookingId, b) {
+  if (b.bookingType !== "parcel" || !b.receiverPhone || typeof deps.queueSms !== "function") return { sent: false, reason: "not_parcel_or_no_receiver" };
+  const nonce = await ensureNonce(deps, bookingId);
+  const otp = deriveOtp(deps.pepper, bookingId, nonce);
+  const from = String(b.customerName || "a PackZen customer").slice(0, 40);
+  await deps.queueSms(b.receiverPhone, `PackZen: a parcel from ${from} is on its way to you (ref ${b.bookingRef || bookingId}). Share code ${otp} with the rider ONLY when you receive it.`, b.bookingRef || null);
+  return { sent: true };
+}
+
 async function handleSendOtp(data, context, deps) {
   const uid = context && context.auth && context.auth.uid;
   if (!uid) throw new OtpError("unauthenticated", "Please sign in.");
@@ -94,7 +108,8 @@ async function handleSendOtp(data, context, deps) {
   if (!OTP_STATUSES.includes(b.status)) throw new OtpError("failed-precondition", "This job is not in progress.");
   if (deps.rateLimit && !(await deps.rateLimit("completionOtpSend", bookingId)).ok) throw new OtpError("resource-exhausted", "The code was sent recently. Please ask the customer to check their email or My Bookings.");
   const r = await sendOtpEmail(deps, bookingId, b);
-  return { sent: r.sent, reason: r.reason || null };
+  const sms = await sendReceiverOtpSms(deps, bookingId, b).catch(() => ({ sent: false }));
+  return { sent: r.sent || sms.sent, reason: r.sent || sms.sent ? null : (r.reason || null) };
 }
 
 /** Assigned driver (or admin) submits the OTP; only success marks the booking delivered. */
@@ -190,4 +205,4 @@ function callable(handler, depsFactory, toHttpsError) {
   };
 }
 
-module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, handleAdminOverride, sendOtpEmail, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };
+module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, handleAdminOverride, sendOtpEmail, sendReceiverOtpSms, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };

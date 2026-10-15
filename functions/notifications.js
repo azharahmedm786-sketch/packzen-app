@@ -237,6 +237,13 @@ exports.onBookingUpdatedNotify = functions
           }, context.params.bookingId, Object.assign({}, after, { email }));
         } catch (e) { functions.logger.warn("completion_otp_email_failed", { bookingId: context.params.bookingId }); }
       }
+      // Parcels: the receiver gets the delivery code by SMS when the rider picks up.
+      if (statusChanged && after.status === "transit" && after.bookingType === "parcel" && after.receiverPhone) {
+        try {
+          await completionOtp.sendReceiverOtpSms({ db: admin.firestore(), now: () => Date.now(), pepper: COMPLETION_OTP_PEPPER.value(),
+            queueSms: (m, t, r) => queueSMS(m, t, r) }, context.params.bookingId, after);
+        } catch (e) { functions.logger.warn("receiver_otp_sms_failed", { bookingId: context.params.bookingId }); }
+      }
 
       if (statusChanged) {
         // ── BOOKING COMPLETED ──
@@ -249,9 +256,15 @@ exports.onBookingUpdatedNotify = functions
             // job (scheduled-notifications.js) also re-checks and
             // is idempotent via feedbackRequestSent flag below.
           }
-          const msgCustomer = `Hi ${after.customerName}, your PackZen move ${after.bookingRef} is complete! Please rate your driver on packzenblr.in. Thank you for choosing PackZen!`;
+          const isParcel = after.bookingType === "parcel";
+          const msgCustomer = isParcel
+            ? `Hi ${after.customerName}, your PackZen parcel ${after.bookingRef} has been delivered to ${after.receiverName || "the receiver"}. Thank you for choosing PackZen!`
+            : `Hi ${after.customerName}, your PackZen move ${after.bookingRef} is complete! Please rate your driver on packzenblr.in. Thank you for choosing PackZen!`;
           await queueSMS(after.phone, msgCustomer, after.bookingRef);
           await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+          if (isParcel && after.receiverPhone && after.receiverPhone !== after.phone) {
+            await queueSMS(after.receiverPhone, `PackZen: parcel ${after.bookingRef} has been delivered to you. Thank you!`, after.bookingRef);
+          }
         }
 
         // ── BOOKING CANCELLED ──

@@ -382,3 +382,16 @@ html { scroll-padding-top: 96px; }
    visible everywhere else; kept above the sticky Call/Quote bar on phones. */
 body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; align-items: center; justify-content: center; }
 @media (max-width: 768px) { body:has(.svc-sticky-cta) #pz-chat-root { bottom: 84px !important; } }
+
+/* approved customer reviews on the homepage */
+.pz-reviews-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.pz-reviews-grid:empty { display: none; }
+.pz-reviews-grid .review-card { background: #fff !important; border: 1px solid var(--nb-line) !important; border-radius: var(--nb-r-lg) !important; padding: 18px !important; box-shadow: var(--nb-shadow) !important; }
+.pz-reviews-grid .review-stars { color: var(--nb-marigold) !important; letter-spacing: 2px; font-size: 1.05rem; }
+.pz-reviews-grid .review-text { color: var(--nb-text) !important; margin: 8px 0 12px !important; font-size: 0.96rem; }
+.pz-reviews-grid .review-author { display: flex; align-items: center; gap: 10px; }
+.pz-reviews-grid .review-avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(31,157,92,0.12); color: var(--nb-green-deep); font-weight: 800; }
+.pz-reviews-grid .review-name { font-weight: 700; color: var(--nb-text); }
+.pz-reviews-grid .review-meta { font-size: 0.8rem; color: var(--nb-muted); }
+.pz-est-pill { margin-left: auto; padding: 5px 12px; border-radius: 999px; background: rgba(255,178,36,0.16); color: var(--nb-marigold-ink); font-weight: 800; font-size: 0.9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step-header-top { display: flex; align-items: center; gap: 10px; }

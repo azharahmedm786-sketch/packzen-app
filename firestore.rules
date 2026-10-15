@@ -241,10 +241,14 @@ service cloud.firestore {
     // REVIEWS
     match /reviews/{reviewId} {
       allow read: if true;
+      // New reviews wait for admin approval: a customer can't publish (or self-approve) a review.
       allow create: if isAuth()
         && request.resource.data.keys().hasAll(['name','text','rating'])
         && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
+        && request.resource.data.rating <= 5
+        && request.resource.data.get('status', 'pending') == 'pending'
+        && request.resource.data.get('uid', request.auth.uid) == request.auth.uid
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
       allow update, delete: if isAdmin();
     }
 

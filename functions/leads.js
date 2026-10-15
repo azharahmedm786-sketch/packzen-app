@@ -168,4 +168,51 @@ exports.leadSlaSweep = functions.region(REGION).pubsub.schedule("every 5 minutes
   return null;
 });
 
-exports._leads = { validateLead, upsertLead, pickLeadForBooking, channelOf, cleanAttribution, normalizePhone, STATUSES, SERVICES };
+/**
+ * Abandoned quotes → leads. A signed-in customer who got a moving price but did not
+ * book within 2 hours becomes a lead (one per customer per day via upsertLead's
+ * de-duplication), with the quote in the notes. Pure core for testing.
+ * deps: { db, now, serverTimestamp, arrayUnion }
+ */
+async function sweepAbandonedQuotes(deps) {
+  const nowMs = deps.now();
+  const from = new Date(nowMs - 24 * 3600e3), to = new Date(nowMs - 2 * 3600e3);
+  const q = await deps.db.collection("quotes").where("createdAt", ">=", from).where("createdAt", "<=", to).limit(300).get();
+  const byUid = new Map();
+  for (const d of q.docs) {
+    const x = d.data() || {};
+    if (x.leadProcessed || !x.uid) continue;
+    const cur = byUid.get(x.uid);
+    if (!cur || (x.createdAt && cur.data.createdAt && x.createdAt.toMillis() > cur.data.createdAt.toMillis())) byUid.set(x.uid, { ref: d.ref, data: x, refs: (cur ? cur.refs : []).concat(d.ref) });
+    else cur.refs.push(d.ref);
+  }
+  let created = 0;
+  for (const [uid, item] of byUid) {
+    const quoteMs = item.data.createdAt && item.data.createdAt.toMillis ? item.data.createdAt.toMillis() : nowMs;
+    const booked = await deps.db.collection("bookings").where("customerUid", "==", uid).limit(10).get();
+    const bookedAfter = booked.docs.some((b) => { const c = b.data().createdAt; return c && c.toMillis && c.toMillis() >= quoteMs - 3600e3; });
+    if (!bookedAfter) {
+      const u = await deps.db.collection("users").doc(uid).get();
+      const ud = u.exists ? u.data() : {};
+      const phone = normalizePhone(ud.phone || ud.phoneNumber || "");
+      if (phone) {
+        const total = Number(item.data.total) || 0;
+        await upsertLead(deps, { name: str(ud.name || ud.displayName || "Customer", 80), phone, service: "move", serviceLabel: SERVICES.move,
+          area: str(item.data.pickup, 200), notes: `Got a quote of ₹${total.toLocaleString("en-IN")} (${str(item.data.house, 40)}${item.data.vehicle ? ", " + str(item.data.vehicle, 40) : ""}) for ${str(item.data.pickup, 80)} → ${str(item.data.drop, 80)} but didn't book.`,
+          date: "", lang: "en", page: "quote" }, { source: "abandoned-quote", attribution: {}, uid });
+        created++;
+      }
+    }
+    for (const r of item.refs) await r.update({ leadProcessed: true }).catch(() => {});
+  }
+  return { created };
+}
+
+exports.abandonedQuoteSweep = functions.region(REGION).pubsub.schedule("every 60 minutes").timeZone("Asia/Kolkata").onRun(async () => {
+  const r = await sweepAbandonedQuotes({ db: admin.firestore(), now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    arrayUnion: (x) => admin.firestore.FieldValue.arrayUnion(x) });
+  functions.logger.info("abandoned_quotes_swept", r);
+  return null;
+});
+
+exports._leads = { sweepAbandonedQuotes,  validateLead, upsertLead, pickLeadForBooking, channelOf, cleanAttribution, normalizePhone, STATUSES, SERVICES };

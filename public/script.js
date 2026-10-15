@@ -2567,9 +2567,9 @@ async function submitReview() {
     try {
       await window._firebase.db.collection("reviews").add({
         text, name, rating: currentRating, uid: currentUser?.uid || null, email: currentUser?.email || null,
-        status: "approved", date: new Date().toLocaleDateString("en-IN"), createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        status: "pending", date: new Date().toLocaleDateString("en-IN"), createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      closeReviewModal(); showToast("🌟 Thank you for your review!"); loadReviewsPublic();
+      closeReviewModal(); showToast("🌟 Thank you! Your review will appear after a quick check.");
     } catch(e) { showError("reviewMsg", "Error submitting: " + e.message); }
   });
 }
@@ -2577,7 +2577,10 @@ async function submitReview() {
 async function loadReviewsPublic() {
   waitForFirebase(async () => {
     try {
-      const snap = await window._firebase.db.collection("reviews").where("status","==","approved").orderBy("createdAt","desc").limit(6).get();
+      // newest first; only reviews an admin approved are shown (no composite index needed)
+      const all = await window._firebase.db.collection("reviews").orderBy("createdAt","desc").limit(40).get();
+      const snap = { docs: all.docs.filter(d => (d.data() || {}).status === "approved" && Number((d.data() || {}).rating) >= 1).slice(0, 6) };
+      snap.size = snap.docs.length; snap.empty = !snap.size; snap.forEach = (fn) => snap.docs.forEach(fn);
       if (snap.empty) return;
       const grid = document.getElementById("reviewsGrid");
       const countEl = document.getElementById("reviewCountLabel");
@@ -2585,7 +2588,8 @@ async function loadReviewsPublic() {
       let html = "";
       snap.forEach(d => {
         const r = d.data();
-        html += `<div class="review-card"><div class="review-stars">${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</div><p class="review-text">"${escapeHTML(r.text)}"</p><div class="review-author"><div class="review-avatar">${escapeHTML(r.name).charAt(0).toUpperCase()}</div><div><div class="review-name">${escapeHTML(r.name)}</div><div class="review-meta">${escapeHTML(r.date) || ""}</div></div></div></div>`;
+        const stars = Math.max(1, Math.min(5, Math.round(Number(r.rating) || 0)));
+        html += `<div class="review-card"><div class="review-stars" aria-label="${stars} out of 5 stars">${"★".repeat(stars)}${"☆".repeat(5-stars)}</div><p class="review-text">"${escapeHTML(r.text)}"</p><div class="review-author"><div class="review-avatar">${escapeHTML(r.name).charAt(0).toUpperCase()}</div><div><div class="review-name">${escapeHTML(r.name)}</div><div class="review-meta">${escapeHTML(r.date) || ""}</div></div></div></div>`;
       });
       if (grid) grid.innerHTML = html;
     } catch(e) {}
@@ -4623,3 +4627,27 @@ window.addEventListener("load", function () {
     try { const t = document.querySelector(location.hash); if (t) setTimeout(() => pzScrollToEl(t), 150); } catch (_) {}
   }
 });
+
+/* Live estimate in the booking header: from the Details step on, show the running
+   price so customers see it before the last step (same engine, same numbers). */
+(function () {
+  function paintEstimate() {
+    const pill = document.getElementById("pzEstPill");
+    if (!pill) return;
+    const t = Number(typeof lastCalculatedTotal !== "undefined" ? lastCalculatedTotal : 0);
+    if (t > 0) { pill.textContent = "Est. ₹" + t.toLocaleString("en-IN"); pill.hidden = false; }
+    else pill.hidden = true;
+  }
+  if (typeof updatePriceDisplay === "function") {
+    const orig = updatePriceDisplay;
+    updatePriceDisplay = function () { const r = orig.apply(this, arguments); try { paintEstimate(); } catch (_) {} return r; };
+  }
+  if (typeof showStep === "function") {
+    const origShow = showStep;
+    showStep = function (n) {
+      const r = origShow.apply(this, arguments);
+      try { if (n >= 2 && n < getSteps().length - 1) calculateQuote(true); paintEstimate(); } catch (_) {}
+      return r;
+    };
+  }
+})();

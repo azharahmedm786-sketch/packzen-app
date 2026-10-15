@@ -497,6 +497,7 @@ function completionOtpDeps() {
     pepper: COMPLETION_OTP_PEPPER.value(),
     logger: functions.logger,
     sendCustomerEmail,
+    queueSms: (mobile, message, bookingRef) => admin.firestore().collection("smsQueue").add({ mobile, message, bookingRef: bookingRef || null, status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
     isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
     isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
     rateLimit: (scope, subject) => rateLimit.consume(admin.firestore(), Object.assign({ scope, subject }, rateLimit.LIMITS[scope])),

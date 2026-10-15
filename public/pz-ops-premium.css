@@ -1,0 +1,71 @@
+/* =====================================================================
+   PackZen — premium layer for staff dashboards (admin, driver, advisor, partner)
+   Same language as the customer site (white, green + marigold, Bricolage/Geist),
+   tuned for dense data. Restyle only: no markup, ids, permissions or logic.
+   ===================================================================== */
+:root {
+  --ops-bg: #F6F8F7; --ops-surface: #FFFFFF; --ops-line: rgba(10, 40, 28, 0.10); --ops-line-2: rgba(10, 40, 28, 0.18);
+  --ops-text: #0C1A14; --ops-text-2: #3E5248; --ops-muted: #6B7D74;
+  --ops-green: #1F9D5C; --ops-green-deep: #157A47; --ops-green-soft: rgba(31, 157, 92, 0.10);
+  --ops-marigold: #FFB224; --ops-marigold-ink: #9A5B00;
+  --ops-display: "Bricolage Grotesque", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ops-body: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ops-shadow: 0 1px 2px rgba(12, 26, 20, 0.04), 0 8px 24px -14px rgba(12, 26, 20, 0.16);
+}
+body { font-family: var(--ops-body) !important; -webkit-font-smoothing: antialiased; color: var(--ops-text); }
+h1, h2, h3, .table-title, .page-title, .section-title, .topbar-title { font-family: var(--ops-display) !important; letter-spacing: -0.02em; }
+
+/* ---------- login screens: light, calm, on brand ---------- */
+#adminLogin, #driverLogin, #loginWrap, .login-screen, .auth-wrap, .partner-auth {
+  background: radial-gradient(800px 500px at 80% 10%, rgba(31,157,92,0.14), transparent 60%),
+              radial-gradient(600px 400px at 10% 90%, rgba(255,178,36,0.14), transparent 60%), #F6F8F7 !important;
+}
+#adminLogin > *, #driverLogin > *, #loginWrap > * {
+  border-radius: 24px !important; border: 1px solid var(--ops-line) !important; box-shadow: 0 30px 80px -40px rgba(12,26,20,0.45) !important;
+}
+#loginWrap > * { background: #fff !important; color: var(--ops-text) !important; }
+#loginWrap label, #loginWrap .nb-label, #loginWrap small, #loginWrap p { color: var(--ops-text-2) !important; }
+#loginWrap input { background: #fff !important; color: var(--ops-text) !important; border: 1px solid var(--ops-line-2) !important; }
+
+/* ---------- surfaces ---------- */
+.stat-card, .table-card, .chart-card, .nb-card, .earn-card, .hist-card, .card, .job-card, .booking-card, .lead-kpi {
+  background: var(--ops-surface) !important; border: 1px solid var(--ops-line) !important; border-radius: 18px !important; box-shadow: var(--ops-shadow) !important;
+}
+.sc-val, .stat-value, .earn-val, .lead-kpi-v { font-family: var(--ops-display) !important; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--ops-text) !important; }
+.sc-lbl, .stat-label, .earn-lbl, .sc-sub, .stat-sub { color: var(--ops-muted) !important; }
+
+/* ---------- navigation ---------- */
+.nav-item { border-radius: 12px !important; font-weight: 500 !important; transition: background-color .15s ease, color .15s ease; }
+.nav-item:hover { background: var(--ops-green-soft) !important; }
+.nav-item.active { background: var(--ops-green-soft) !important; color: var(--ops-green-deep) !important; font-weight: 700 !important; box-shadow: inset 3px 0 0 var(--ops-green); }
+.drv-tab.active, .bn-item.active { color: var(--ops-green-deep) !important; }
+
+/* ---------- tables ---------- */
+.table-hdr { border-bottom: 1px solid var(--ops-line) !important; }
+table th { font-family: var(--ops-body) !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--ops-muted) !important; background: #FAFBFA !important; }
+table td { border-color: var(--ops-line) !important; }
+tbody tr:hover { background: #F3F8F5 !important; }
+.empty-row td, .empty-td, .hist-empty, .chat-empty { color: var(--ops-muted) !important; }
+
+/* ---------- buttons & inputs ---------- */
+.btn-primary-sm, .btn-assign, .btn-update, .btn-action, .btn-export, .nb-btn, .btn-primary {
+  border-radius: 999px !important; font-weight: 600 !important; box-shadow: none !important;
+}
+.btn-primary-sm, .btn-assign, .btn-update, .btn-primary { background: var(--ops-green) !important; color: #fff !important; border: 0 !important; }
+.btn-primary-sm:hover, .btn-assign:hover, .btn-update:hover, .btn-primary:hover { background: var(--ops-green-deep) !important; }
+.btn-export, .btn-action { background: #fff !important; color: var(--ops-text) !important; border: 1px solid var(--ops-line-2) !important; }
+.btn-cancel { border-radius: 999px !important; }
+.field-input, .nb-field input, .nb-field select, #sectionLeads select, #sectionLeads input { border-radius: 12px !important; border: 1px solid var(--ops-line-2) !important; }
+.field-input:focus, input:focus, select:focus, textarea:focus { outline: none !important; border-color: var(--ops-green) !important; box-shadow: 0 0 0 3px rgba(31,157,92,0.18) !important; }
+
+/* ---------- badges ---------- */
+.badge, .status-badge { border-radius: 999px !important; font-weight: 700 !important; letter-spacing: 0 !important; }
+.svc-count { background: var(--ops-marigold) !important; color: #2A1A00 !important; border-radius: 999px !important; font-weight: 800 !important; }
+
+/* partner portal sign-in / register pages */
+body.partner-body[data-page="login"], body.partner-body[data-page="register"], body.partner-body[data-page="forgot"], .auth-page-wrap {
+  background: radial-gradient(800px 500px at 80% 10%, rgba(31,157,92,0.14), transparent 60%),
+              radial-gradient(600px 400px at 10% 90%, rgba(255,178,36,0.14), transparent 60%), #F6F8F7 !important;
+}
+.auth-page-card { border-radius: 24px !important; border: 1px solid var(--ops-line) !important; box-shadow: 0 30px 80px -40px rgba(12,26,20,0.45) !important; }
+.auth-page-title { font-family: var(--ops-display) !important; }
