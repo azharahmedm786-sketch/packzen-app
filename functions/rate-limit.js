@@ -66,6 +66,8 @@ const LIMITS = {
   bookingIp: { limit: 20, windowMs: 10 * 60 * 1000 },
   serviceOrderUid: { limit: 10, windowMs: 10 * 60 * 1000 },
   serviceOrderIp: { limit: 30, windowMs: 10 * 60 * 1000 },
+  leadIp: { limit: 8, windowMs: 60 * 60 * 1000 },
+  leadGlobal: { limit: 400, windowMs: 60 * 60 * 1000 },
   parcelQuoteUid: { limit: 30, windowMs: 10 * 60 * 1000 },
   parcelQuoteIp: { limit: 60, windowMs: 10 * 60 * 1000 },
   assistantIp: { limit: 40, windowMs: 10 * 60 * 1000 },

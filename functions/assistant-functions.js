@@ -87,7 +87,13 @@ async function handleSupportRequest(data, context, deps) {
     createdAt: deps.serverTimestamp(), history: [{ at: deps.nowMs(), event: "created" }] };
   await ref.set(record);
   // Lead record for conversion tracking (one per request; duplicates are OK — they're separate enquiries).
-  await deps.db.collection("leads").doc(ref.id).set({ name, phone, source: "website-assistant", topic, uid, supportRequestId: ref.id, status: "new", createdAt: deps.serverTimestamp() });
+  // Same shape as the lead engine (leads.js) so these show in the admin pipeline.
+  const svcFromTopic = { moving: "move", move: "move", parcel: "parcel", ac: "ac", cleaning: "cleaning", electrician: "electrician", plumber: "plumber", carpenter: "carpenter", tv: "tv" }[String(topic || "").toLowerCase()] || "other";
+  const LABELS = { move: "House / office shifting", parcel: "Parcel delivery", ac: "AC service & repair", cleaning: "Deep cleaning", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", other: "Something else" };
+  const nowMs = deps.nowMs();
+  await deps.db.collection("leads").doc(ref.id).set({ name, phone, service: svcFromTopic, serviceLabel: LABELS[svcFromTopic], notes: message, topic, uid,
+    source: "website-assistant", channel: "assistant", supportRequestId: ref.id, status: "new", slaAlerted: false,
+    createdAt: deps.serverTimestamp(), createdAtMs: nowMs, lastTouchAtMs: nowMs, history: [{ at: nowMs, status: "new", by: "system" }] });
   await deps.alert((urgent ? "URGENT " : "") + "Support request from website assistant", [["Name", name], ["Phone", phone], ["Topic", topic], ["Message", message], ["Request ID", ref.id]]).catch(() => {});
   return { ok: true, requestId: ref.id, message: urgent
     ? "Thanks — we've flagged this as urgent and will call you as soon as possible. If it can't wait, call 9945095453."

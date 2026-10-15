@@ -1,0 +1,33 @@
+name: Uptime check
+
+# Every 30 minutes: are the website and key pages up? If a check fails, this run
+# fails and GitHub emails you (Settings → Notifications → Actions).
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pages
+        run: |
+          set -e
+          fail=0
+          for url in \
+            https://packzenblr.in/ \
+            https://packzenblr.in/services.html \
+            https://packzenblr.in/parcel.html \
+            https://packzenblr.in/packers-and-movers-bangalore.html \
+            https://packzenblr.in/pz-premium.css \
+            https://packzenblr.in/script.js ; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$url" || echo 000)
+            echo "$code $url"
+            if [ "$code" != "200" ]; then fail=1; fi
+          done
+          # Cloud Functions reachable (a GET to a callable answers 4xx when healthy, 5xx/000 when down)
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead || echo 000)
+          echo "$code submitLead"
+          case "$code" in 000|5*) fail=1 ;; esac
+          exit $fail

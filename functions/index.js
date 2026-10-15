@@ -612,6 +612,12 @@ Object.assign(exports, require("./catalog-booking"));
 // Parcel delivery (additive — parcel-booking.js): quote + online payment; verification uses the shared core
 const { _parcel, ...parcelExports } = require("./parcel-booking");
 Object.assign(exports, parcelExports);
+// Lead engine (Level-100 Phase 1): callback form, booking→lead linking, 10-minute SLA alert
+const { _leads, ...leadExports } = require("./leads");
+Object.assign(exports, leadExports);
+// Daily Firestore backup to Cloud Storage (Level-100 Phase 0)
+const { _backups, ...backupExports } = require("./backups");
+Object.assign(exports, backupExports);
 // Website virtual assistant (grounded answers + human handoff)
 const { _assistant, ...assistantExports } = require("./assistant-functions");
 Object.assign(exports, assistantExports);

@@ -435,6 +435,7 @@ function buildShell(adminName) {
     <div class="sidebar-logo"><span>📦 Pack<b>Zen</b></span><br><small style="color:rgba(255,255,255,.35);font-size:.72rem;">Admin Panel</small></div>
     <div class="sb-role">Main</div>
     <div class="nav-item active" onclick="showSection('overview',this)"><span class="ni">📊</span> Overview</div>
+    <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
     <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcel</div>
     <div class="nav-item" onclick="showSection('drivers',this)"><span class="ni">🚚</span> Drivers</div>
@@ -603,6 +604,24 @@ function buildShell(adminName) {
       </div>
     </div>
     <!-- REVIEWS -->
+    <!-- LEADS PIPELINE -->
+    <div class="section" id="sectionLeads">
+      <div class="lead-kpis" id="leadKpis"></div>
+      <div class="table-card">
+        <div class="table-hdr" style="flex-wrap:wrap;gap:8px">
+          <div class="table-title">Leads</div>
+          <div class="lead-filters" style="display:flex;gap:6px;flex-wrap:wrap">
+            <select id="leadStatusFilter" onchange="renderLeads()"><option value="open">Open (new · contacted · quoted)</option><option value="new">New</option><option value="contacted">Contacted</option><option value="quoted">Quoted</option><option value="booked">Booked</option><option value="lost">Lost</option><option value="all">All</option></select>
+            <select id="leadChannelFilter" onchange="renderLeads()"><option value="all">All sources</option></select>
+            <input id="leadSearch" placeholder="Search name / phone / area" oninput="renderLeads()" style="min-width:200px">
+          </div>
+        </div>
+        <table><thead><tr><th>When</th><th>Customer</th><th>Service</th><th>Area · Date</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead>
+        <tbody id="leadsTable"><tr class="empty-row"><td colspan="8">Loading...</td></tr></tbody></table>
+      </div>
+      <div class="table-card"><div class="table-hdr"><div class="table-title">Last 30 days by source</div></div>
+        <table><thead><tr><th>Source</th><th>Leads</th><th>Booked</th><th>Conversion</th><th>Booked value</th></tr></thead><tbody id="leadSourceTable"></tbody></table></div>
+    </div>
     <div class="section" id="sectionReviews">
       <div class="table-card">
         <div class="table-hdr"><div class="table-title">Customer Reviews</div></div>
@@ -1491,11 +1510,12 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
   if (name==="parcel")   loadParcelBookings();
+  if (name==="leads")    loadLeads();
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
@@ -2087,6 +2107,91 @@ async function emailInvoice(docId) {
   });
 </script>
 
+
+<script>
+/* ── Leads pipeline (lead engine, Level-100 Phase 1) ── */
+let _leads = [], _leadsUnsub = null;
+const LEAD_STATUSES = ["new","contacted","quoted","booked","lost"];
+const LEAD_STATUS_LABEL = { new:"🆕 New", contacted:"📞 Contacted", quoted:"💬 Quoted", booked:"✅ Booked", lost:"✕ Lost" };
+function _lesc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function _lago(ms){ if(!ms) return "-"; const m=Math.round((Date.now()-ms)/60000); if(m<60) return m+" min ago"; const h=Math.round(m/60); if(h<48) return h+" h ago"; return new Date(ms).toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
+function loadLeads(){
+  if (_leadsUnsub) return renderLeads();
+  _leadsUnsub = window._firebase.db.collection("leads").orderBy("createdAtMs","desc").limit(500).onSnapshot(snap=>{
+    _leads = snap.docs.map(d=>Object.assign({ id:d.id }, d.data()));
+    const sel = document.getElementById("leadChannelFilter"), cur = sel.value;
+    const chans = [...new Set(_leads.map(l=>l.channel||l.source||"direct"))].sort();
+    sel.innerHTML = '<option value="all">All sources</option>' + chans.map(c=>'<option value="'+_lesc(c)+'">'+_lesc(c)+'</option>').join("");
+    sel.value = chans.includes(cur) ? cur : "all";
+    renderLeads();
+  }, err=>{ document.getElementById("leadsTable").innerHTML='<tr class="empty-row"><td colspan="8">Could not load leads: '+_lesc(err.message)+'</td></tr>'; });
+}
+function renderLeads(){
+  const st = document.getElementById("leadStatusFilter").value, ch = document.getElementById("leadChannelFilter").value;
+  const q = (document.getElementById("leadSearch").value||"").toLowerCase().trim();
+  const rows = _leads.filter(l=>{
+    if (st==="open" && !["new","contacted","quoted"].includes(l.status)) return false;
+    if (!["open","all"].includes(st) && l.status!==st) return false;
+    if (ch!=="all" && (l.channel||l.source||"direct")!==ch) return false;
+    if (q && !((l.name||"")+" "+(l.phone||"")+" "+(l.area||"")).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const newCount = _leads.filter(l=>l.status==="new").length;
+  const badge = document.getElementById("leadsNewCount"); if (badge) badge.textContent = newCount ? String(newCount) : "";
+  const tb = document.getElementById("leadsTable");
+  tb.innerHTML = rows.length ? rows.map(l=>{
+    const late = l.status==="new" && (Date.now()-(l.createdAtMs||0)) > 10*60000;
+    const wa = "https://wa.me/91"+_lesc(l.phone)+"?text="+encodeURIComponent("Hi "+(l.name||"")+", this is PackZen about your "+(l.serviceLabel||"request")+".");
+    return '<tr'+(late?' style="background:#FFF7E6"':'')+'>'+
+      '<td title="'+_lesc(new Date(l.createdAtMs||0).toLocaleString("en-IN"))+'">'+_lago(l.createdAtMs)+(late?' <b style="color:#B45309">late</b>':'')+'</td>'+
+      '<td><b>'+_lesc(l.name)+'</b><br><a href="tel:'+_lesc(l.phone)+'">'+_lesc(l.phone)+'</a></td>'+
+      '<td>'+_lesc(l.serviceLabel||l.service||"-")+'</td>'+
+      '<td>'+_lesc(l.area||"-")+(l.inServiceArea===false?' <span style="color:#B42318">(outside area)</span>':'')+'<br><small>'+_lesc(l.date||"")+'</small></td>'+
+      '<td>'+_lesc(l.channel||l.source||"direct")+'</td>'+
+      '<td><select onchange="setLeadStatus(\''+l.id+'\',this.value)">'+LEAD_STATUSES.map(s=>'<option value="'+s+'"'+(s===l.status?' selected':'')+'>'+LEAD_STATUS_LABEL[s]+'</option>').join("")+'</select>'+(l.bookingRef?'<br><small>'+_lesc(l.bookingRef)+'</small>':'')+'</td>'+
+      '<td style="max-width:240px;white-space:pre-wrap"><small>'+_lesc(l.notes||"")+'</small></td>'+
+      '<td style="white-space:nowrap"><a class="btn-primary-sm" href="tel:'+_lesc(l.phone)+'" onclick="setLeadStatus(\''+l.id+'\',\'contacted\',true)">Call</a> '+
+        '<a class="btn-primary-sm" target="_blank" rel="noopener" href="'+wa+'">WhatsApp</a> '+
+        '<button class="btn-primary-sm" onclick="addLeadNote(\''+l.id+'\')">Note</button></td></tr>';
+  }).join("") : '<tr class="empty-row"><td colspan="8">No leads here yet.</td></tr>';
+  renderLeadKpis();
+}
+function renderLeadKpis(){
+  const since = Date.now()-30*86400e3, recent = _leads.filter(l=>(l.createdAtMs||0)>=since);
+  const booked = recent.filter(l=>l.status==="booked");
+  const conv = recent.length ? Math.round(booked.length*100/recent.length) : 0;
+  const value = booked.reduce((s,l)=>s+(Number(l.bookedValue)||0),0);
+  const open = _leads.filter(l=>["new","contacted","quoted"].includes(l.status)).length;
+  const late = _leads.filter(l=>l.status==="new" && Date.now()-(l.createdAtMs||0)>10*60000).length;
+  document.getElementById("leadKpis").innerHTML = [["Leads (30 days)",recent.length],["Open now",open],["Waiting > 10 min",late],["Booked (30 days)",booked.length],["Conversion",conv+"%"],["Booked value","₹"+value.toLocaleString("en-IN")]]
+    .map(k=>'<div class="lead-kpi"><div class="lead-kpi-v">'+k[1]+'</div><div class="lead-kpi-l">'+k[0]+'</div></div>').join("");
+  const by = {};
+  recent.forEach(l=>{ const c=l.channel||l.source||"direct"; by[c]=by[c]||{n:0,b:0,v:0}; by[c].n++; if(l.status==="booked"){ by[c].b++; by[c].v+=Number(l.bookedValue)||0; } });
+  document.getElementById("leadSourceTable").innerHTML = Object.keys(by).sort((a,b)=>by[b].n-by[a].n).map(c=>'<tr><td>'+_lesc(c)+'</td><td>'+by[c].n+'</td><td>'+by[c].b+'</td><td>'+Math.round(by[c].b*100/by[c].n)+'%</td><td>₹'+by[c].v.toLocaleString("en-IN")+'</td></tr>').join("") || '<tr class="empty-row"><td colspan="5">No leads in the last 30 days.</td></tr>';
+}
+function setLeadStatus(id, status, onlyIfNew){
+  const l = _leads.find(x=>x.id===id); if (!l) return;
+  if (onlyIfNew && l.status!=="new") return;
+  let extra = {};
+  if (status==="lost"){ const why = prompt("Why was this lead lost? (price, date, no answer, went elsewhere…)",""); if (why===null){ renderLeads(); return; } extra.lostReason = why.slice(0,200); }
+  requireAdmin(()=>window._firebase.db.collection("leads").doc(id).update(Object.assign({ status, updatedAtMs: Date.now(),
+    history: firebase.firestore.FieldValue.arrayUnion({ at: Date.now(), status, by: (window._firebase.auth.currentUser||{}).email||"admin" }) }, extra))
+    .then(()=>toast("Lead → "+(LEAD_STATUS_LABEL[status]||status))).catch(e=>toast("❌ "+e.message)));
+}
+function addLeadNote(id){
+  const l = _leads.find(x=>x.id===id); if (!l) return;
+  const note = prompt("Add a note for "+(l.name||"this lead"),""); if (!note) return;
+  const stamp = new Date().toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  requireAdmin(()=>window._firebase.db.collection("leads").doc(id).update({ notes: ((l.notes?l.notes+"\n":"")+"["+stamp+"] "+note).slice(-3000), updatedAtMs: Date.now() })
+    .then(()=>toast("📝 Note saved")).catch(e=>toast("❌ "+e.message)));
+}
+</script>
+<style>
+.lead-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.lead-kpi{background:#fff;border:1px solid #e5ece8;border-radius:14px;padding:12px 14px}
+.lead-kpi-v{font-size:1.4rem;font-weight:800;color:#0C1A14}.lead-kpi-l{font-size:.8rem;color:#6B7D74}
+#sectionLeads select,#sectionLeads input{padding:7px 10px;border:1px solid #d6e2dc;border-radius:10px;font:inherit}
+</style>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>

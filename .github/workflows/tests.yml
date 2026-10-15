@@ -1,0 +1,27 @@
+name: Tests
+
+# Runs the full test suite on every pull request and every push to main, so a
+# change that breaks payments, pricing, auth, leads or the assistant can't slip in.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Install function dependencies
+        working-directory: functions
+        run: npm ci
+      - name: Cloud Functions tests
+        working-directory: functions
+        run: npm test
+      - name: Pricing scenario sweep
+        run: node tests/test_50_scenarios.js
