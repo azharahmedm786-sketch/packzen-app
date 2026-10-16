@@ -11,12 +11,11 @@ const admin = require("firebase-admin");
 const assistant = require("./assistant");
 const rateLimit = require("./rate-limit");
 const { sendAdminEmail } = require("./notification-service");
-const { defineSecret } = require("firebase-functions/params");
 const assistantAi = require("./assistant-ai");
-// Optional: natural conversation in English/Hindi/Kannada. Set with
-//   firebase functions:secrets:set ANTHROPIC_API_KEY
-// Use the value "none" to keep the grounded engine only.
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const i18n = require("./assistant-i18n");
+// Hindi and Kannada are built in (assistant-i18n.js) — no paid AI needed.
+// Optional extra: free-form AI conversation if ANTHROPIC_API_KEY is ever added to
+// functions/.env.packzen-e7539. Nothing to set up otherwise; deploys never need it.
 
 const REGION = "asia-south1";
 let catalogCache = { at: 0, items: [] };
@@ -50,7 +49,14 @@ async function handleAsk(data, context, deps) {
 
   const lastService = ["moving", "parcel", "home_services"].includes(data && data.lastService) ? data.lastService : null;
   const catalog = await deps.loadCatalog();
-  const out = assistant.answer(text, { signedIn: !!uid, lastService, catalog });
+  // Built-in Hindi/Kannada (no paid AI needed): understand the question in any of the
+  // three languages, answer from the same verified engine, reply in the customer's language.
+  const scriptLang = i18n.detectLang(text);
+  const lang = scriptLang !== "en" ? scriptLang : (["en", "hi", "kn"].includes(data && data.lang) ? data.lang : "en");
+  const out = assistant.answer(i18n.understand(text), { signedIn: !!uid, lastService, catalog });
+  const understood = i18n.understand(text);
+  const sizeAsked = assistant.detectSize(understood);
+  const i18nCtx = { size: sizeAsked, km: assistant.detectKm(understood), kg: assistant.detectKg(understood) };
   const refused = (out.intents || []).some((i) => i.startsWith("refuse_"));
 
   // Conversational layer (optional). Hard refusals never reach it; any failure falls back.
@@ -82,7 +88,9 @@ async function handleAsk(data, context, deps) {
   if (out.intents && out.intents.includes("unknown")) {
     await deps.db.collection("assistantGaps").add({ text: redact(text), at: deps.serverTimestamp() }).catch(() => {});
   }
-  return { reply: out.reply, actions: out.actions || [], service: out.service || null, escalate: !!out.escalate, urgent: !!out.urgent };
+  // booking details are computed per customer: keep them exact (no template)
+  const shown = out.needs === "booking_status" && uid ? out : i18n.localize(out, lang, i18nCtx);
+  return { reply: shown.reply, actions: out.actions || [], service: out.service || null, escalate: !!out.escalate, urgent: !!out.urgent, lang };
 }
 
 const TOPICS = new Set(["booking", "payment", "refund", "damage", "complaint", "callback", "service", "other"]);
@@ -142,12 +150,11 @@ function liveDeps(context) {
   };
 }
 function aiFor() {
-  let key = "";
-  try { key = ANTHROPIC_API_KEY.value() || ""; } catch (_) { key = ""; }
+  const key = process.env.ANTHROPIC_API_KEY || "";
   if (!key || key === "none") return null;
   return (text, history, d) => assistantAi.converse(text, history, Object.assign({ apiKey: key, model: process.env.ASSISTANT_MODEL || assistantAi.DEFAULT_MODEL, logger: functions.logger }, d));
 }
 
-exports.assistantAsk = functions.region(REGION).runWith({ secrets: [ANTHROPIC_API_KEY] }).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
+exports.assistantAsk = functions.region(REGION).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
 exports.assistantSupportRequest = functions.region(REGION).https.onCall((data, context) => handleSupportRequest(data, context, liveDeps(context)));
 exports._assistant = { handleAsk, handleSupportRequest, redact };

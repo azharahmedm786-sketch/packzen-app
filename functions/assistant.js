@@ -206,4 +206,4 @@ function describeBookings(bookings) {
   }).join("\n") + "\nOpen My Bookings for full details and live updates.";
 }
 
-module.exports = { answer, describeBookings, normalize, splitQuestions, detectSize, levenshtein1, priceForSize, parcelQuote, MAX_INPUT, INJECTION_RE, OTHERS_DATA_RE, MANIPULATE_RE };
+module.exports = { answer, describeBookings, normalize, splitQuestions, detectSize, detectKm, detectKg, levenshtein1, priceForSize, parcelQuote, MAX_INPUT, INJECTION_RE, OTHERS_DATA_RE, MANIPULATE_RE };
