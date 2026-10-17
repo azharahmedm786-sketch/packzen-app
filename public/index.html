@@ -158,7 +158,7 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
-  <link rel="stylesheet" href="pz-premium.css?v=9">
+  <link rel="stylesheet" href="pz-premium.css?v=10">
 </head>
 
 <body class="app-body">
@@ -247,6 +247,7 @@
          <button class="hero-cta-btn primary" onclick="openBookingSheet()">Get Moving Quote</button>
          <a href="#marketplace" class="hero-cta-btn secondary">Explore Services</a>
        </div>
+       <p class="pz-hero-price"><b>Home shifting from ₹2,150</b> · parcels from ₹49 · AC service from ₹429 · all-inclusive, no hidden charges</p>
      </div>
    <div class="hero-premium-illustration">
        <div class="illustration-bg"></div>
@@ -254,7 +255,7 @@
      </div>
    </div>
 <div class="trust-signals-card">
-     <div class="trust-item"><i data-lucide="star"></i> 4.9/5 Customer Rating</div>
+     <div class="trust-item"><i data-lucide="badge-indian-rupee"></i> From ₹2,150, all-inclusive</div>
      <div class="trust-divider"></div>
      <div class="trust-item"><i data-lucide="shield-check"></i> Insured Moves</div>
      <div class="trust-divider"></div>
@@ -478,21 +479,29 @@
 
     <!-- Pricing Section -->
     <div class="home-section" id="pricing">
-      <div class="section-label">Transparent Pricing</div>
-      <div class="pricing-app-card">
+      <div class="section-label">Honest, all-inclusive pricing</div>
+      <div class="pricing-app-card pz-price-card">
         <div class="pricing-app-header">
-          <div class="pricing-app-title">Estimated Charges</div>
-          <div class="pricing-app-sub">No surprises. Ever.</div>
+          <div class="pricing-app-title">Home shifting starts at just <span class="pz-price-hero">₹2,150</span></div>
+          <div class="pricing-app-sub">One price covers packing, loading, the truck and unloading. No hidden charges.</div>
         </div>
         <div class="pricing-rows">
-          <div class="pricing-row"><span>1 BHK Local</span><span class="price-val">₹4,200 – ₹6,500</span></div>
-          <div class="pricing-row"><span>2 BHK Local</span><span class="price-val">₹6,500 – ₹9,500</span></div>
-          <div class="pricing-row"><span>3 BHK Local</span><span class="price-val">₹9,100 – ₹13,000</span></div>
-          <div class="pricing-row"><span>Office Relocation</span><span class="price-val">Custom</span></div>
-          <div class="pricing-row last"><span>Intercity</span><span class="price-val">By distance</span></div>
+          <div class="pricing-row"><span>1 RK / single room <small>Tata Ace</small></span><span class="price-val">from ₹2,150</span></div>
+          <div class="pricing-row"><span>1 BHK <small>14 ft truck</small></span><span class="price-val">from ₹4,200</span></div>
+          <div class="pricing-row"><span>2 BHK <small>17 ft truck</small></span><span class="price-val">from ₹6,500</span></div>
+          <div class="pricing-row"><span>3 BHK <small>22 ft truck</small></span><span class="price-val">from ₹9,100</span></div>
+          <div class="pricing-row"><span>Parcel delivery <small>two-wheeler</small></span><span class="price-val">from ₹49</span></div>
+          <div class="pricing-row last"><span>Office &amp; intercity</span><span class="price-val">Instant quote</span></div>
         </div>
-        <div class="pricing-note"><i data-lucide="lightbulb"></i> Final price depends on distance, floors, and inventory.</div>
-        <button class="pricing-cta" onclick="openBookingSheet()">Get Exact Quote →</button>
+        <ul class="pz-included" aria-label="Included in every move">
+          <li>Packing material</li><li>Loading &amp; unloading</li><li>Truck &amp; fuel</li><li>Floors with lift</li><li>Damage cover up to ₹10,000</li><li>Price fixed before you pay</li>
+        </ul>
+        <p class="pz-compare">Bangalore market quotes for a 2 BHK move commonly run ₹8,000–₹14,000. PackZen starts at ₹6,500, and the price you see before paying is the price you pay.</p>
+        <div class="pricing-note"><i data-lucide="lightbulb"></i> Your exact price depends on distance, floors and how much you're moving.</div>
+        <div class="pz-price-ctas">
+          <button class="pricing-cta" onclick="openBookingSheet()">See my exact price in 1 minute →</button>
+          <button type="button" class="pz-price-call" onclick="window.pzOpenCallback && window.pzOpenCallback('move')">Get a price on a call</button>
+        </div>
       </div>
     </div>
 

@@ -418,3 +418,20 @@ body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; ali
 .pz-mb-addon-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .pz-mb-addon { background: #fff; border: 1px solid var(--nb-line-2); border-radius: 999px; padding: 7px 12px; font-weight: 600; font-size: 0.86rem; color: var(--nb-text) !important; text-decoration: none; }
 .pz-mb-addon:hover { border-color: var(--nb-green); }
+
+/* affordable-first pricing presentation */
+.pz-hero-price { margin: 14px 0 0 !important; font-size: 0.95rem !important; color: var(--nb-text-2) !important; }
+.pz-hero-price b { color: var(--nb-green-deep); }
+.pz-price-card .pricing-app-title { font-family: var(--nb-display) !important; font-size: clamp(1.3rem, 1rem + 1.2vw, 1.8rem) !important; line-height: 1.15; }
+.pz-price-hero { color: var(--nb-green-deep); white-space: nowrap; }
+.pz-price-card .pricing-row small { display: block; color: var(--nb-muted); font-size: 0.78rem; font-weight: 500; }
+.pz-included { list-style: none; padding: 0; margin: 14px 0 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.pz-included li { font-size: 0.82rem; font-weight: 600; color: var(--nb-green-deep); background: rgba(31,157,92,0.08); border: 1px solid rgba(31,157,92,0.22); border-radius: 999px; padding: 5px 10px; }
+.pz-included li::before { content: "✓ "; }
+.pz-compare { font-size: 0.9rem; color: var(--nb-text-2) !important; background: rgba(255,178,36,0.10); border-radius: 12px; padding: 10px 12px; margin: 10px 0 !important; }
+.pz-price-ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.pz-price-ctas .pricing-cta { flex: 1 1 220px; }
+.pz-price-call { flex: 1 1 180px; border: 1px solid var(--nb-line-2); background: #fff; color: var(--nb-text); border-radius: 999px; padding: 12px 16px; font: 700 0.95rem var(--nb-body); cursor: pointer; }
+.pz-price-call:hover { border-color: var(--nb-green); }
+.pz-price-card .pz-included, .pz-price-card .pz-compare, .pz-price-card .pz-price-ctas { margin-left: 20px !important; margin-right: 20px !important; }
+.pz-price-card .pz-price-ctas { margin-bottom: 20px !important; }
