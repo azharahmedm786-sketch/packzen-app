@@ -355,7 +355,7 @@ html { scroll-padding-top: 96px; }
 .pz-cb-fab:hover { border-color: var(--nb-green); }
 .pz-cb-fab--above-nav { bottom: 84px; }
 @media (max-width: 480px) { .pz-cb-fab span { display: none; } .pz-cb-fab { padding: 13px; } }
-.pz-cb-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(12, 26, 20, 0.45); display: grid; place-items: center; padding: 16px;
+.pz-cb-overlay { position: fixed; inset: 0; z-index: 2147483000; background: rgba(12, 26, 20, 0.45); display: grid; place-items: center; padding: 16px;
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 .pz-cb-overlay[hidden] { display: none; }
 .pz-cb-card { position: relative; width: min(460px, 100%); max-height: calc(100dvh - 32px); overflow: auto; background: #fff; border-radius: var(--nb-r-xl);
@@ -395,3 +395,26 @@ body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; ali
 .pz-reviews-grid .review-meta { font-size: 0.8rem; color: var(--nb-muted); }
 .pz-est-pill { margin-left: auto; padding: 5px 12px; border-radius: 999px; background: rgba(255,178,36,0.16); color: var(--nb-marigold-ink); font-weight: 800; font-size: 0.9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .step-header-top { display: flex; align-items: center; gap: 10px; }
+
+/* unified "Book" picker */
+.pz-header-book { border: 0; border-radius: 999px; background: var(--nb-green); color: #fff; font: 700 0.92rem var(--nb-body); padding: 9px 16px; cursor: pointer; margin-right: 8px; }
+.pz-header-book:hover { background: var(--nb-green-deep); }
+.pz-book-card { width: min(560px, 100%); }
+.pz-book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
+@media (max-width: 460px) { .pz-book-grid { grid-template-columns: 1fr; } }
+.pz-book-opt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border: 1px solid var(--nb-line-2); border-radius: 16px; background: #fff; cursor: pointer; font: inherit; color: var(--nb-text); min-height: 64px; }
+.pz-book-opt:hover, .pz-book-opt:focus-visible { border-color: var(--nb-green); background: rgba(31,157,92,0.05); }
+.pz-book-opt svg { flex: none; color: var(--nb-green-deep); }
+.pz-book-opt b { display: block; font-weight: 700; font-size: 0.95rem; }
+.pz-book-opt small { display: block; color: var(--nb-muted); font-size: 0.8rem; margin-top: 2px; }
+
+/* My Bookings: one list for every service */
+.pz-mb-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.pz-mb-chip { border: 1px solid var(--nb-line-2); background: #fff; border-radius: 999px; padding: 7px 12px; font: 600 0.86rem var(--nb-body); color: var(--nb-text-2); cursor: pointer; min-height: 36px; }
+.pz-mb-chip span { color: var(--nb-muted); font-weight: 700; margin-left: 2px; }
+.pz-mb-chip.is-active { background: var(--nb-text); border-color: var(--nb-text); color: #fff; }
+.pz-mb-chip.is-active span { color: rgba(255,255,255,0.75); }
+.pz-mb-addons { border: 1px solid rgba(255,178,36,0.4); background: rgba(255,178,36,0.08); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; color: var(--nb-text); font-size: 0.92rem; }
+.pz-mb-addon-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.pz-mb-addon { background: #fff; border: 1px solid var(--nb-line-2); border-radius: 999px; padding: 7px 12px; font-weight: 600; font-size: 0.86rem; color: var(--nb-text) !important; text-decoration: none; }
+.pz-mb-addon:hover { border-color: var(--nb-green); }

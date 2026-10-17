@@ -438,6 +438,7 @@ function buildShell(adminName) {
     <div class="sidebar-logo"><span>📦 Pack<b>Zen</b></span><br><small style="color:rgba(255,255,255,.35);font-size:.72rem;">Admin Panel</small></div>
     <div class="sb-role">Main</div>
     <div class="nav-item active" onclick="showSection('overview',this)"><span class="ni">📊</span> Overview</div>
+    <div class="nav-item" onclick="showSection('ops',this)"><span class="ni">🗂️</span> Operations board</div>
     <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
     <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcel</div>
@@ -607,6 +608,26 @@ function buildShell(adminName) {
       </div>
     </div>
     <!-- REVIEWS -->
+    <!-- OPERATIONS BOARD: every service in one place -->
+    <div class="section" id="sectionOps">
+      <div class="ops-money" id="opsMoney"></div>
+      <div class="table-card" style="padding:12px 14px">
+        <div class="ops-filters">
+          <div class="ops-seg" role="group" aria-label="View">
+            <button type="button" class="ops-segbtn active" data-view="board" onclick="opsSetView('board',this)">Board</button>
+            <button type="button" class="ops-segbtn" data-view="calendar" onclick="opsSetView('calendar',this)">Calendar</button>
+          </div>
+          <select id="opsRange" onchange="opsRender()"><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="week" selected>Next 7 days</option><option value="all">All upcoming</option><option value="past">Last 7 days</option></select>
+          <select id="opsType" onchange="opsRender()"><option value="all">All services</option><option value="move">Moves</option><option value="parcel">Parcels</option><option value="service">Home services</option></select>
+          <select id="opsRider" onchange="opsRender()"><option value="all">All riders</option><option value="none">Unassigned</option></select>
+          <input id="opsSearch" placeholder="Search name, phone, area, ref" oninput="opsRender()">
+          <label style="font-size:.85rem;display:flex;gap:6px;align-items:center"><input type="checkbox" id="opsShowCancelled" onchange="opsRender()"> Show cancelled</label>
+        </div>
+      </div>
+      <div id="opsBoard" class="ops-board"></div>
+      <div id="opsCalendar" class="ops-cal" hidden></div>
+    </div>
+
     <!-- LEADS PIPELINE -->
     <div class="section" id="sectionLeads">
       <div class="lead-kpis" id="leadKpis"></div>
@@ -1513,12 +1534,13 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", ops:"Operations board", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
   if (name==="parcel")   loadParcelBookings();
   if (name==="leads")    loadLeads();
+  if (name==="ops")      loadOps();
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
@@ -2194,6 +2216,123 @@ function addLeadNote(id){
 .lead-kpi{background:#fff;border:1px solid #e5ece8;border-radius:14px;padding:12px 14px}
 .lead-kpi-v{font-size:1.4rem;font-weight:800;color:#0C1A14}.lead-kpi-l{font-size:.8rem;color:#6B7D74}
 #sectionLeads select,#sectionLeads input{padding:7px 10px;border:1px solid #d6e2dc;border-radius:10px;font:inherit}
+</style>
+
+<script>
+/* ── Operations board: moves, parcels and home services together ── */
+let _ops = [], _opsUnsub = null, _opsView = "board";
+const OPS_COLS = [
+  { id: "new", title: "New", hint: "Needs a worker", match: b => ["pending","confirmed"].includes(b.status) && !b.driverUid },
+  { id: "assigned", title: "Assigned", hint: "Worker ready", match: b => (b.status === "assigned") || (b.status === "confirmed" && !!b.driverUid) },
+  { id: "active", title: "In progress", hint: "Packing / on the way", match: b => ["packing","transit"].includes(b.status) },
+  { id: "done", title: "Done", hint: "Completed", match: b => ["delivered","completed"].includes(b.status) },
+];
+const OPS_TYPE = b => b.bookingType === "parcel" ? "parcel" : b.bookingType === "service" ? "service" : "move";
+const OPS_TYPE_LABEL = { move: "Move", parcel: "Parcel", service: "Service" };
+function _oesc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function _oday(offset){ const d = new Date(Date.now() + 5.5*3600e3 + offset*86400e3); return d.toISOString().slice(0,10); }
+function _orup(n){ const v = Number(n)||0; return "₹" + Math.round(v).toLocaleString("en-IN"); }
+function loadOps(){
+  if (_opsUnsub) return opsRender();
+  _opsUnsub = window._firebase.db.collection("bookings").where("date", ">=", _oday(-7)).orderBy("date").limit(600).onSnapshot(snap => {
+    _ops = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    const sel = document.getElementById("opsRider"), cur = sel.value;
+    const riders = [...new Map(_ops.filter(b => b.driverUid).map(b => [b.driverUid, b.driverName || b.driverUid])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
+    sel.innerHTML = '<option value="all">All riders</option><option value="none">Unassigned</option>' + riders.map(([u,n]) => '<option value="'+_oesc(u)+'">'+_oesc(n)+'</option>').join("");
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : "all";
+    opsRender();
+  }, err => { document.getElementById("opsBoard").innerHTML = '<div class="empty-td" style="padding:20px">Could not load bookings: '+_oesc(err.message)+'</div>'; });
+}
+function opsSetView(v, btn){
+  _opsView = v;
+  document.querySelectorAll(".ops-segbtn").forEach(b => b.classList.toggle("active", b === btn));
+  document.getElementById("opsBoard").hidden = v !== "board";
+  document.getElementById("opsCalendar").hidden = v !== "calendar";
+  opsRender();
+}
+function _opsFiltered(){
+  const range = document.getElementById("opsRange").value, type = document.getElementById("opsType").value;
+  const rider = document.getElementById("opsRider").value, q = (document.getElementById("opsSearch").value||"").toLowerCase().trim();
+  const showCancelled = document.getElementById("opsShowCancelled").checked;
+  const t0 = _oday(0), t1 = _oday(1), t7 = _oday(7), p7 = _oday(-7);
+  return _ops.filter(b => {
+    const d = b.date || "";
+    if (range === "today" && d !== t0) return false;
+    if (range === "tomorrow" && d !== t1) return false;
+    if (range === "week" && !(d >= t0 && d < t7)) return false;
+    if (range === "all" && d < t0) return false;
+    if (range === "past" && !(d >= p7 && d < t0)) return false;
+    if (type !== "all" && OPS_TYPE(b) !== type) return false;
+    if (rider === "none" && b.driverUid) return false;
+    if (!["all","none"].includes(rider) && b.driverUid !== rider) return false;
+    if (!showCancelled && b.status === "cancelled") return false;
+    if (q && !((b.customerName||"")+" "+(b.phone||"")+" "+(b.pickup||"")+" "+(b.drop||"")+" "+(b.bookingRef||"")).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function _opsCard(b){
+  const t = OPS_TYPE(b);
+  const what = t === "service" ? ((b.items||[]).map(i=>i&&i.name).filter(Boolean).slice(0,2).join(", ") || "Service") : t === "parcel" ? "Parcel → " + ((b.drop||"").split(",")[0]) : ((b.pickup||"").split(",")[0] + " → " + (b.drop||"").split(",")[0]);
+  const due = Number(b.balanceDue)||0;
+  return '<div class="ops-card ops-'+t+'">'+
+    '<div class="ops-card-top"><span class="ops-tag ops-tag-'+t+'">'+OPS_TYPE_LABEL[t]+'</span><span class="ops-when">'+_oesc((b.date||"").slice(5))+' · '+_oesc(b.shiftTimeLabel||b.timeSlotLabel||b.shiftTime||b.timeSlot||"")+'</span></div>'+
+    '<div class="ops-what">'+_oesc(what)+'</div>'+
+    '<div class="ops-who">'+_oesc(b.customerName||"-")+' · <a href="tel:'+_oesc(b.phone)+'">'+_oesc(b.phone||"")+'</a></div>'+
+    '<div class="ops-meta">'+_oesc(b.bookingRef||b.id)+' · '+_orup(b.total)+(due>0?' · <b class="ops-due">'+_orup(due)+' due</b>':'')+(b.driverName?' · 🧑‍🔧 '+_oesc(b.driverName):'')+'</div>'+
+    '<div class="ops-actions">'+
+      (b.status !== "cancelled" && !["delivered","completed"].includes(b.status) ? '<button class="btn-primary-sm" onclick="openAssignModal(\''+b.id+'\')">'+(b.driverUid?'Reassign':'Assign')+'</button>' : '')+
+      '<select onchange="updateStatus(\''+b.id+'\',this.value)">'+["confirmed","assigned","packing","transit","delivered","cancelled"].map(s=>'<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>').join("")+'</select>'+
+    '</div></div>';
+}
+function opsRender(){
+  if (!document.getElementById("opsBoard")) return;
+  const rows = _opsFiltered();
+  // money strip for the filtered set
+  const live = rows.filter(b => b.status !== "cancelled");
+  const value = live.reduce((s,b)=>s+(Number(b.total)||0),0), paid = live.reduce((s,b)=>s+(Number(b.paid)||0),0);
+  const due = live.reduce((s,b)=>s+(Number(b.balanceDue)||0),0), refundsPending = rows.reduce((s,b)=>s+(Number(b.refundPendingAmount)||0),0);
+  const unassigned = live.filter(b => !b.driverUid && !["delivered","completed"].includes(b.status)).length;
+  document.getElementById("opsMoney").innerHTML = [["Jobs",live.length],["Unassigned",unassigned],["Booked value",_orup(value)],["Collected",_orup(paid)],["Balance due",_orup(due)],["Refunds pending",_orup(refundsPending)]]
+    .map(k=>'<div class="lead-kpi"><div class="lead-kpi-v">'+k[1]+'</div><div class="lead-kpi-l">'+k[0]+'</div></div>').join("");
+  if (_opsView === "board") {
+    const cancelled = rows.filter(b => b.status === "cancelled");
+    const cols = OPS_COLS.map(c => ({ c, list: rows.filter(c.match).sort((a,b)=>String(a.date+(a.shiftTime||"")).localeCompare(String(b.date+(b.shiftTime||"")))) }));
+    if (cancelled.length) cols.push({ c: { id: "cancelled", title: "Cancelled", hint: "" }, list: cancelled });
+    document.getElementById("opsBoard").innerHTML = cols.map(({c,list}) =>
+      '<div class="ops-col"><div class="ops-col-h"><b>'+c.title+'</b> <span class="svc-count">'+list.length+'</span><small>'+c.hint+'</small></div>'+
+      (list.length ? list.map(_opsCard).join("") : '<div class="ops-empty">Nothing here</div>')+'</div>').join("");
+  } else {
+    const days = [...new Set(rows.map(b=>b.date).filter(Boolean))].sort();
+    const slotOf = b => { const s = String(b.shiftTime||b.timeSlot||"").toLowerCase(); return /morn|^0?[6-9]|^1[01]/.test(s) ? "Morning" : /after|^1[2-5]/.test(s) ? "Afternoon" : /even|night|^1[6-9]|^2/.test(s) ? "Evening" : "Any time"; };
+    const slots = ["Morning","Afternoon","Evening","Any time"];
+    document.getElementById("opsCalendar").innerHTML = days.length ? '<div class="ops-cal-grid" style="grid-template-columns:110px repeat('+days.length+',minmax(180px,1fr))"><div></div>'+
+      days.map(d=>'<div class="ops-cal-h">'+new Date(d+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})+' <span class="svc-count">'+rows.filter(b=>b.date===d).length+'</span></div>').join("")+
+      slots.map(sl => '<div class="ops-cal-slot">'+sl+'</div>'+days.map(d => { const l = rows.filter(b=>b.date===d && slotOf(b)===sl); return '<div class="ops-cal-cell'+(l.length>3?' ops-busy':'')+'">'+l.map(_opsCard).join("")+'</div>'; }).join("")).join("")+'</div>'
+      : '<div class="ops-empty" style="padding:24px">No bookings in this range.</div>';
+  }
+}
+</script>
+<style>
+.ops-money{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.ops-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ops-filters select,.ops-filters input[type=text],.ops-filters #opsSearch{padding:7px 10px;border:1px solid #d6e2dc;border-radius:10px;font:inherit}
+.ops-seg{display:inline-flex;border:1px solid #d6e2dc;border-radius:999px;overflow:hidden}
+.ops-segbtn{border:0;background:#fff;padding:7px 14px;font:inherit;cursor:pointer}.ops-segbtn.active{background:#1F9D5C;color:#fff}
+.ops-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:12px;align-items:start}
+.ops-col{background:#F6F8F7;border:1px solid #e5ece8;border-radius:16px;padding:10px;min-height:120px}
+.ops-col-h{display:flex;align-items:center;gap:8px;margin:2px 4px 10px}.ops-col-h small{margin-left:auto;color:#6B7D74}
+.ops-card{background:#fff;border:1px solid #e5ece8;border-radius:14px;padding:10px 12px;margin-bottom:8px;font-size:.88rem;border-left:4px solid #1F9D5C}
+.ops-card.ops-parcel{border-left-color:#FFB224}.ops-card.ops-service{border-left-color:#7F77DD}
+.ops-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.ops-tag{font-size:.72rem;font-weight:800;border-radius:999px;padding:2px 8px;background:#E8F5EE;color:#157A47}
+.ops-tag-parcel{background:#FFF3DC;color:#9A5B00}.ops-tag-service{background:#EEEDFE;color:#3C3489}
+.ops-when{color:#6B7D74;font-size:.8rem}.ops-what{font-weight:700;margin:2px 0}.ops-who,.ops-meta{color:#3E5248;font-size:.82rem}
+.ops-due{color:#B42318}.ops-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.ops-actions select{padding:5px 8px;border-radius:999px;border:1px solid #d6e2dc;font:inherit;font-size:.8rem}
+.ops-empty{color:#6B7D74;font-size:.85rem;padding:10px 6px}
+.ops-board[hidden],.ops-cal[hidden]{display:none!important}
+.ops-cal{overflow-x:auto;margin-top:12px}.ops-cal-grid{display:grid;gap:8px;min-width:max-content}
+.ops-cal-h{font-weight:700;padding:6px 4px}.ops-cal-slot{font-weight:600;color:#3E5248;padding-top:10px}
+.ops-cal-cell{background:#F6F8F7;border:1px solid #e5ece8;border-radius:12px;padding:6px;min-height:70px}.ops-cal-cell.ops-busy{background:#FFF7E6}
 </style>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>

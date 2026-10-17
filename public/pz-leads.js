@@ -106,3 +106,73 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
 })();
+
+/* PackZen — one "Book" button for every service (unified booking, phase 2).
+ * Opens a picker; each choice goes to that service's own short flow:
+ *   moves → the moving booking sheet, parcels → parcel.html, home services → services.html?category=…
+ * On any page: window.pzOpenBook(). On the homepage, ?book=move opens the moving form directly. */
+(function () {
+  "use strict";
+  var CHOICES = [
+    { id: "move", icon: "M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", title: "Home shifting", sub: "1 RK to villa · from ₹2,150" },
+    { id: "office", icon: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M8 8h3M8 12h3M8 16h3", title: "Office move", sub: "Desks, IT, files" },
+    { id: "vehicle", icon: "M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M9 17h6M3 12l2-5h9l3 5h3a1 1 0 0 1 1 1v4h-2M3 12v5h2", title: "Bike / car transport", sub: "Safe vehicle moves" },
+    { id: "parcel", icon: "M12 3 3 7.5v9L12 21l9-4.5v-9zM3 7.5 12 12l9-4.5M12 12v9", title: "Parcel delivery", sub: "Two-wheeler · from ₹49" },
+    { id: "ac", icon: "M3 6h18v7H3zM6 17l-1 3M12 16v4M18 17l1 3M7 10h10", title: "AC service & repair", sub: "Service from ₹429" },
+    { id: "cleaning", icon: "M7 21l1-9h8l1 9zM9 12V6a3 3 0 0 1 6 0v6M5 21h14", title: "Deep cleaning", sub: "Home, kitchen, bathroom" },
+    { id: "home", icon: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z", title: "Electrician · plumber · carpenter", sub: "Fixed visit prices" },
+    { id: "tv", icon: "M3 5h18v11H3zM8 21h8M12 16v5", title: "TV wall mounting", sub: "All screen sizes" },
+  ];
+  function go(id) {
+    var onHome = typeof window.openBookingSheet === "function";
+    if (id === "move" || id === "office" || id === "vehicle") {
+      if (onHome) { close(); window.openBookingSheet(); return; }
+      location.href = "/index.html?book=move"; return;
+    }
+    if (id === "parcel") { location.href = "/parcel.html"; return; }
+    location.href = "/services.html?category=" + encodeURIComponent(id === "tv" ? "home" : id);
+  }
+  var dlg = null;
+  function close() { if (dlg) dlg.hidden = true; }
+  function build() {
+    if (document.getElementById("pzBookDialog") || /admin|advisor|driver|partner/.test(location.pathname)) return;
+    dlg = document.createElement("div");
+    dlg.id = "pzBookDialog"; dlg.className = "pz-cb-overlay"; dlg.hidden = true;
+    dlg.setAttribute("role", "dialog"); dlg.setAttribute("aria-modal", "true"); dlg.setAttribute("aria-labelledby", "pzBookTitle");
+    dlg.innerHTML = '<div class="pz-cb-card pz-book-card"><button type="button" class="pz-cb-x" aria-label="Close">×</button>' +
+      '<h2 id="pzBookTitle">What would you like to book?</h2><p class="pz-cb-sub">Bangalore · instant prices · pay securely online</p>' +
+      '<div class="pz-book-grid">' + CHOICES.map(function (c) {
+        return '<button type="button" class="pz-book-opt" data-id="' + c.id + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + c.icon + '"/></svg>' +
+          '<span><b>' + c.title + '</b><small>' + c.sub + '</small></span></button>';
+      }).join("") + '</div><p class="pz-cb-legal">Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
+    document.body.appendChild(dlg);
+    dlg.addEventListener("click", function (e) {
+      var opt = e.target.closest && e.target.closest(".pz-book-opt");
+      if (opt) { go(opt.getAttribute("data-id")); return; }
+      if (e.target.closest && e.target.closest("[data-callback]")) { e.preventDefault(); close(); if (window.pzOpenCallback) window.pzOpenCallback(); return; }
+      if (e.target === dlg || (e.target.closest && e.target.closest(".pz-cb-x"))) close();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && dlg && !dlg.hidden) close(); });
+    window.pzOpenBook = function () { dlg.hidden = false; var f = dlg.querySelector(".pz-book-opt"); if (f) setTimeout(function () { f.focus(); }, 30); };
+
+    // Header "Book" button on every customer page
+    var right = document.querySelector(".app-bar-right");
+    if (right && !document.getElementById("pzHeaderBook")) {
+      var b = document.createElement("button");
+      b.type = "button"; b.id = "pzHeaderBook"; b.className = "pz-header-book"; b.textContent = "Book";
+      b.addEventListener("click", window.pzOpenBook);
+      right.insertBefore(b, right.firstChild);
+    }
+    // Homepage bottom-nav "Book" opens the picker instead of only the moving form
+    var bnav = document.getElementById("bnavBook");
+    if (bnav) { bnav.removeAttribute("onclick"); bnav.setAttribute("aria-label", "Book a service"); bnav.addEventListener("click", function (e) { e.preventDefault(); window.pzOpenBook(); }); }
+    // /index.html?book=move → open the moving form straight away
+    if (/[?&]book=move\b/.test(location.search)) {
+      var tries = 0, t = setInterval(function () {
+        if (typeof window.openBookingSheet === "function") { clearInterval(t); try { window.openBookingSheet(); } catch (x) {} }
+        else if (++tries > 40) clearInterval(t);
+      }, 150);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
+})();

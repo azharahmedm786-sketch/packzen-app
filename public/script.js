@@ -3245,7 +3245,7 @@ function loadUserBookings() {
   if (!currentUser || !window._firebase) return;
   const list = document.getElementById("bookingsList");
   if (list) list.innerHTML = '<div class="pz-state" role="status"><p>Loading your bookings…</p></div>';
-  window._firebase.db.collection("bookings").where("customerUid","==",currentUser.uid).orderBy("createdAt","desc").limit(10).get()
+  window._firebase.db.collection("bookings").where("customerUid","==",currentUser.uid).orderBy("createdAt","desc").limit(30).get()
     .then(snap => {
       if (!list) return;
       if (snap.empty) {
@@ -3256,9 +3256,9 @@ function loadUserBookings() {
       }
       const statusColors = {confirmed:"#0057ff",assigned:"#7c3aed",packing:"#0ea5e9",transit:"#f97316",delivered:"#16a34a",cancelled:"#dc2626"};
       const statusIcons = {confirmed:"📋",assigned:"🚛",packing:"📦",transit:"🚚",delivered:"✅",cancelled:"❌"};
-      list.innerHTML = snap.docs.map(d => renderBookingCard(d.data(), d.id)).join("");
-      attachBookingButtonListeners();
-      _hydrateCompletionOtps(list);
+      // One list for every service: filter chips + a helpful add-on suggestion for upcoming moves.
+      window._pzMyBookings = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+      _renderMyBookings("all");
 }).catch((err) => {
       console.error("loadUserBookings failed:", err && err.code ? err.code : "error");
       if (list) list.innerHTML = '<div class="pz-state" role="alert"><h3>We couldn\'t load your bookings</h3>' +
@@ -3280,7 +3280,33 @@ function _rupees(n) {
   return Number.isFinite(v) ? "₹" + Math.round(v).toLocaleString("en-IN") : "—";
 }
 
+function _pzTypeOf(b) { return b.bookingType === "parcel" ? "parcel" : b.bookingType === "service" ? "service" : "move"; }
+
+function _renderMyBookings(filter) {
+  const list = document.getElementById("bookingsList");
+  const all = window._pzMyBookings || [];
+  if (!list) return;
+  const counts = { all: all.length, move: 0, parcel: 0, service: 0 };
+  all.forEach(x => { counts[_pzTypeOf(x.data)]++; });
+  const chips = [["all","All"],["move","Moves"],["parcel","Parcels"],["service","Home services"]].filter(([k]) => k === "all" || counts[k] > 0)
+    .map(([k,l]) => '<button type="button" class="pz-mb-chip' + (k === filter ? ' is-active' : '') + '" onclick="_renderMyBookings(\'' + k + '\')">' + l + ' <span>' + counts[k] + '</span></button>').join("");
+  const shown = all.filter(x => filter === "all" || _pzTypeOf(x.data) === filter);
+  // Upcoming, active move → suggest the services people usually need on moving day.
+  const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const upcomingMove = all.find(x => _pzTypeOf(x.data) === "move" && !["cancelled","delivered","completed"].includes(x.data.status) && (x.data.date || "") >= today);
+  const addons = upcomingMove ? '<div class="pz-mb-addons"><b>Moving on ' + escapeHTML(upcomingMove.data.date || "") + '?</b> Book these for your new home, same app, same checkout:' +
+    '<div class="pz-mb-addon-row"><a class="pz-mb-addon" href="services.html?category=cleaning">🧹 Deep cleaning</a><a class="pz-mb-addon" href="services.html?category=ac">❄️ AC install / uninstall</a><a class="pz-mb-addon" href="services.html?category=home">🔧 Electrician · carpenter · TV mounting</a></div></div>' : "";
+  list.innerHTML = (all.length > 1 ? '<div class="pz-mb-chips" role="group" aria-label="Filter bookings">' + chips + '</div>' : "") + addons +
+    (shown.length ? shown.map(x => renderBookingCard(x.data, x.id)).join("") : '<div class="pz-state"><p>No bookings of this type yet.</p></div>');
+  attachBookingButtonListeners();
+  _hydrateCompletionOtps(list);
+}
+
 function _bookingTitle(b) {
+  if (b.bookingType === "parcel") {
+    const to = (typeof b.drop === "string" && b.drop.trim()) ? b.drop.split(",")[0].trim() : "";
+    return "Parcel" + (to ? " → " + to : "") + (b.receiverName ? " (for " + b.receiverName + ")" : "");
+  }
   if (b.bookingType === "service") {
     const names = Array.isArray(b.items) ? b.items.map(i => i && i.name).filter(n => typeof n === "string" && n.trim()) : [];
     if (names.length) return names.slice(0, 2).join(", ") + (names.length > 2 ? " +" + (names.length - 2) + " more" : "");
