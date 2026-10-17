@@ -158,7 +158,7 @@ test("15c. invalid promo → 400 invalid_promo with a clear message, and NO Razo
 });
 test("16. createBooking (pay-later) prices via the same server path and stores server promo values", () => {
   const src = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
-  assert.ok(src.includes("calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop, { uid: context.auth.uid })"));
+  assert.ok(src.includes("calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop, { uid: context.auth.uid, date: bookingDetails.date })"));
   assert.ok(src.includes("return promo.priceWithPromo(quoteInput, calc, { db: admin.firestore(), now: () => Date.now(), uid: (opts && opts.uid) || null });"));
   assert.ok(src.includes("finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;"));
   assert.ok(src.includes("quote: (quoteInput, pickup, drop, opts) => calculateServerQuote(quoteInput, pickup, drop, opts)"));

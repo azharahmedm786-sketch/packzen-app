@@ -259,6 +259,9 @@ const pricingGuard = require("./pricing-guard");
 const serviceArea = require("./service-area");
 
 async function calculateServerQuote(quoteInput, pickup, drop, opts) {
+  // Offers that depend on the move date (weekday saver) use the BOOKING's date,
+  // never a date the browser put in the price input.
+  quoteInput.moveDate = (opts && typeof opts.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(opts.date)) ? opts.date : "";
   // Pricing integrity: distance always comes from the server. If Maps can't
   // measure the route we refuse to price rather than fall back to 0 km.
   const route = await getGoogleMapsRoute(pickup, drop);
@@ -334,7 +337,7 @@ exports.createBooking = functions
 
     let quote;
     try {
-      quote = await calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop, { uid: context.auth.uid });
+      quote = await calculateServerQuote(quoteInput, bookingDetails.pickup, bookingDetails.drop, { uid: context.auth.uid, date: bookingDetails.date });
     } catch (e) {
       throw new functions.https.HttpsError("invalid-argument", e.message);
     }

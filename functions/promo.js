@@ -9,7 +9,7 @@
  * Existing model (unchanged, same collection the admin panel writes):
  *   promos/{CODE} { code, type: "flat"|"percent", value, max (max uses), used, active }
  * Optional fields honoured when present (set in the console; no admin UI change):
- *   expiresAt, startsAt (Timestamp | Date | ISO string), minOrder (₹), maxDiscount (₹)
+ *   expiresAt, startsAt (Timestamp | Date | ISO string), minOrder (₹), maxDiscount (₹), firstBookingOnly (bool)
  * Referral codes (users.referralCode of ANOTHER user) keep today's ₹100 flat value.
  */
 "use strict";
@@ -53,6 +53,12 @@ async function resolvePromo(code, baseTotal, deps) {
     if (expires !== null && now > expires) throw new PromoError("This promo code has expired.");
     const max = Number(p.max), used = Number(p.used || 0);
     if (Number.isFinite(max) && max > 0 && used >= max) throw new PromoError("This promo code has reached its usage limit.");
+    // First-booking codes (e.g. FIRSTMOVE): only for customers with no earlier active booking.
+    if (p.firstBookingOnly === true) {
+      if (!deps.uid) throw new PromoError("Please sign in to use this code.");
+      const prev = await deps.db.collection("bookings").where("customerUid", "==", deps.uid).limit(10).get();
+      if (prev.docs.some((d) => (d.data() || {}).status !== "cancelled")) throw new PromoError("This code is for your first PackZen booking only.");
+    }
     const minOrder = Number(p.minOrder);
     if (Number.isFinite(minOrder) && minOrder > 0 && baseTotal < minOrder) throw new PromoError("This promo code needs a booking of at least ₹" + minOrder + ".");
     const value = Number(p.value);

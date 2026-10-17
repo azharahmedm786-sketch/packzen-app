@@ -50,6 +50,9 @@ const ENTRIES = [
   { id: "advance_booking", phrases: ["how early", "book in advance", "same day", "today itself", "urgent move", "tomorrow"], words: ["advance", "early", "urgent"],
     answer: () => "We recommend booking at least 1–3 days in advance to secure your preferred date. For a same-day or next-day move, call " + CONTACT.phone + " and we'll check availability — I can't confirm a slot myself." },
 
+  { id: "offers", phrases: ["any offer", "any discount", "coupon code", "promo code", "first move", "mini move", "weekday saver", "cheaper option", "lowest price", "best price", "too expensive", "reduce price", "small move"], words: ["offer", "offers", "discount", "coupon", "cheaper", "expensive", "costly", "deal"],
+    answer: () => "Current PackZen offers (one discount per booking — you automatically get the bigger one):\n• Mini move ₹1,499 — up to 5 items, within 10 km, no packing (Tata Ace + driver + helper). Applied automatically.\n• Weekday saver 3% off — move Tuesday to Thursday between the 5th and 25th. Applied automatically.\n• ₹200 off your first move — code FIRSTMOVE on bookings above ₹4,000.\nThe booking form shows your final price before you pay." },
+
   { id: "payment", phrases: ["payment options", "how to pay", "pay online", "pay later", "cash on", "upi"], words: ["payment", "pay", "razorpay", "upi", "card", "gpay", "phonepe", "netbanking"],
     answer: () => "Payments are taken securely through Razorpay — UPI, cards and net banking. Depending on the booking you can pay an advance or the full amount online; any balance is collected at the end of the job (online or recorded by the crew). Parcel deliveries are prepaid online only." },
 

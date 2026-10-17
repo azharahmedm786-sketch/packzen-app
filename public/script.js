@@ -1320,6 +1320,7 @@ function buildQuoteRawPayload(km) {
     extraHelpers: parseInt(document.getElementById("extraHelpers")?.value || "0", 10),
     isInterstate: !!isIntercityMove,
     promoCode: appliedPromoCode || null,
+    moveDate: document.getElementById("shiftDate")?.value || "",   // weekday saver (the server re-checks against the booking date)
     promoDiscount: promoDiscount || 0 // ignored by the server; kept for older backends during rollout
   };
 }
@@ -4661,7 +4662,9 @@ window.addEventListener("load", function () {
     const pill = document.getElementById("pzEstPill");
     if (!pill) return;
     const t = Number(typeof lastCalculatedTotal !== "undefined" ? lastCalculatedTotal : 0);
-    if (t > 0) { pill.textContent = "Est. ₹" + t.toLocaleString("en-IN"); pill.hidden = false; }
+    const kind = window._lastQuoteResult && window._lastQuoteResult.breakdown && window._lastQuoteResult.breakdown.discountKind;
+    const tag = kind === "weekday" ? " · weekday saver" : kind === "mini_move" ? " · mini move" : "";
+    if (t > 0) { pill.textContent = "Est. ₹" + t.toLocaleString("en-IN") + tag; pill.hidden = false; }
     else pill.hidden = true;
   }
   if (typeof updatePriceDisplay === "function") {

@@ -152,6 +152,14 @@
     storage: { pricePerDay: 250 },
 
     discounts: { maxPromoFraction: 0.30 },
+
+    // Offers (Oct 2026). One discount per booking: the customer gets the bigger of
+    // a promo code and the weekday saver, never both. Mini move is a flat price for
+    // small loads and is never combined with other discounts.
+    offers: {
+      weekdaySaver: { percent: 3, days: [2, 3, 4], fromDate: 5, toDate: 25 },   // Tue–Thu, dates 5–25
+      miniMove: { price: 1499, maxItems: 5, maxKm: 10, maxFloorsNoLift: 2 },     // Tata Ace + driver + 1 helper
+    },
 payment: { advancePercent: 10, fullPaymentDiscount: 200 }
   });
 
@@ -241,7 +249,8 @@ payment: { advancePercent: 10, fullPaymentDiscount: 200 }
         needCrane: !!raw.needCrane,
 
         cartonQty: toSafeInt(raw.cartonQty, 0),
-        promoDiscount: toSafeNumber(raw.promoDiscount, 0)
+        promoDiscount: toSafeNumber(raw.promoDiscount, 0),
+        moveDate: typeof raw.moveDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.moveDate) ? raw.moveDate : ""
       }
     };
   }
@@ -358,11 +367,31 @@ payment: { advancePercent: 10, fullPaymentDiscount: 200 }
         serviceSubtotal = toRupees(serviceSubtotal * PRICING_CONFIG.multipliers.interstateTax);
       }
 
-      // Apply Max Promo Discount (Cap at 30% of core service subtotal)
+      // Weekday saver: Tue–Thu, dates 5–25 (the quiet days)
+      const ws = PRICING_CONFIG.offers.weekdaySaver;
+      let weekdaySaver = 0;
+      if (d.moveDate) {
+        const dt = new Date(d.moveDate + "T00:00:00Z");
+        if (!isNaN(dt) && ws.days.includes(dt.getUTCDay()) && dt.getUTCDate() >= ws.fromDate && dt.getUTCDate() <= ws.toDate) {
+          weekdaySaver = toRupees(serviceSubtotal * ws.percent / 100);
+        }
+      }
+      // One discount per booking: the bigger of promo code and weekday saver, capped at 30%
+      const promoRequested = toSafeNumber(d.promoDiscount, 0);
+      const discountKind = weekdaySaver > promoRequested ? "weekday" : (promoRequested > 0 ? "promo" : null);
       const maxDiscount = Math.floor(serviceSubtotal * PRICING_CONFIG.discounts.maxPromoFraction);
-      const cappedDiscount = Math.min(toSafeNumber(d.promoDiscount, 0), maxDiscount);
+      const cappedDiscount = Math.min(Math.max(promoRequested, weekdaySaver), maxDiscount);
 
-      const grandTotal = toRupees(Math.max((serviceSubtotal - cappedDiscount) + passThroughExpenses, PRICING_CONFIG.minimumFare));
+      let grandTotal = toRupees(Math.max((serviceSubtotal - cappedDiscount) + passThroughExpenses, PRICING_CONFIG.minimumFare));
+
+      // Mini move: a few items, small vehicle, short distance, no packing → flat price
+      const mm = PRICING_CONFIG.offers.miniMove;
+      const itemCount = Object.values(d.furniture || {}).reduce((n, v) => n + (Number(v) > 0 ? Number(v) : 0), 0) + d.cartonQty;
+      const floorsOk = d.liftAvailable || (d.pickupFloor <= mm.maxFloorsNoLift && d.dropFloor <= mm.maxFloorsNoLift);
+      const miniMove = selectedVehicle.id === "tata_ace" && !d.packingService && !d.isInterstate && !d.needCrane && specializedTradeCharges === 0 &&
+        itemCount > 0 && itemCount <= mm.maxItems && d.km <= mm.maxKm && floorsOk && (mm.price + passThroughExpenses) < grandTotal;
+      let appliedDiscount = cappedDiscount, appliedKind = cappedDiscount > 0 ? discountKind : null;
+      if (miniMove) { grandTotal = toRupees(mm.price + passThroughExpenses); appliedDiscount = 0; appliedKind = "mini_move"; }
 
       // 10. Partner Payout Engine & Pass-Through Separation
       // CRITICAL TRUST RULE: Pass-through expenses (Tolls/Parking/Society) have ZERO platform commission.
@@ -388,7 +417,10 @@ const advanceAmount = toRupees(grandTotal * (PRICING_CONFIG.payment.advancePerce
           waitingCharge,
           longCarryCharge,
           passThroughExpenses,
-          discount: cappedDiscount,
+          discount: appliedDiscount,
+          discountKind: appliedKind,
+          weekdaySaverEligible: weekdaySaver > 0,
+          miniMove: !!miniMove,
           grandTotal
         },
         financials: {

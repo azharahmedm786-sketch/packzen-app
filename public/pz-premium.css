@@ -435,3 +435,8 @@ body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; ali
 .pz-price-call:hover { border-color: var(--nb-green); }
 .pz-price-card .pz-included, .pz-price-card .pz-compare, .pz-price-card .pz-price-ctas { margin-left: 20px !important; margin-right: 20px !important; }
 .pz-price-card .pz-price-ctas { margin-bottom: 20px !important; }
+.pz-price-card .pz-offers { display: grid; gap: 8px; margin: 12px 20px 0; }
+.pz-offer { border: 1px dashed rgba(31,157,92,0.45); border-radius: 14px; padding: 10px 12px; background: #fff; }
+.pz-offer b { display: block; color: var(--nb-green-deep); font-size: 0.95rem; }
+.pz-offer span { color: var(--nb-text-2); font-size: 0.85rem; }
+.pz-offer code { background: rgba(255,178,36,0.18); color: var(--nb-marigold-ink); padding: 1px 6px; border-radius: 6px; font-weight: 800; }
