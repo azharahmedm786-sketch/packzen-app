@@ -48,5 +48,17 @@ const ask = (message, extra) => _assistant.handleAsk(Object.assign({ message }, 
   }
   ok(`all ${Object.keys(i18n.TEMPLATES).length} topics have Hindi + Kannada text with no missing values`);
 
+  // callback details typed into the chat
+  const leads = [];
+  const deps2 = Object.assign({}, base, { createLead: async (l) => leads.push(l) });
+  const asked = [{ role: "user", text: "talk to someone" }, { role: "assistant", text: "I'll get a person from our team to help. Leave your name and number and what it's about…" }];
+  r = await _assistant.handleAsk({ message: "Azhar 9742700167", history: asked }, { auth: null }, deps2);
+  assert.ok(r.callback && leads.length === 1 && leads[0].phone === "9742700167" && leads[0].name === "Azhar" && /97XXXXX167/.test(r.reply));
+  r = await _assistant.handleAsk({ message: "मेरा नंबर +91 98765 43210", history: [{ role: "assistant", text: "अपना नाम और नंबर छोड़ दीजिए" }] }, { auth: null }, deps2);
+  assert.ok(r.callback && leads[1].phone === "9876543210" && /धन्यवाद/.test(r.reply));
+  r = await _assistant.handleAsk({ message: "my order 9742700167 price?", history: [] }, { auth: null }, deps2);
+  assert.ok(!r.callback && leads.length === 2);
+  ok("name + number typed after the assistant asks → callback lead created and confirmed (in the customer's language); random numbers ignored");
+
   console.log(`\nassistant-i18n: ${pass} passed, 0 failed`);
 })().catch((e) => { console.error("FAIL:", e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e); process.exit(1); });

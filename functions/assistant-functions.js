@@ -38,6 +38,22 @@ function redact(text) {
   return String(text || "").slice(0, 200).replace(/\S+@\S+/g, "[email]").replace(/\d[\d\s-]{3,}\d/g, "[number]");
 }
 
+
+/** A message with a 10-digit Indian mobile, sent after the assistant asked for contact details. */
+function callbackFromChat(text, history) {
+  const digits = String(text).replace(/[\s-]/g, "").match(/(?:\+?91|0)?([6-9]\d{9})(?!\d)/);
+  if (!digits) return null;
+  const hist = Array.isArray(history) ? history : [];
+  const lastBot = [...hist].reverse().find((h) => h && h.role === "assistant");
+  const asked = lastBot && /(name and number|your number|number and|leave your|नाम और नंबर|ಹೆಸರು ಮತ್ತು ನಂಬರ್|call you back|वापस कॉल|ವಾಪಸ್ ಕರೆ|pass your question)/i.test(String(lastBot.text || ""));
+  const wantsCall = /\b(call|callback|call back|contact)\b|कॉल|ಕರೆ/i.test(text);
+  if (!asked && !wantsCall) return null;
+  const name = String(text).replace(/(?:\+?91|0)?[6-9][\d\s-]{9,12}/g, " ").replace(/\b(my|name|is|number|call|me|back|please|pls|callback|contact|mobile|phone|no)\b/gi, " ")
+    .replace(/[^A-Za-z\u0900-\u097F\u0C80-\u0CFF .]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  const lastUser = [...hist].reverse().find((h) => h && h.role === "user");
+  return { phone: digits[1], name: name.length >= 2 ? name : "Customer", context: String(lastUser && lastUser.text || "").slice(0, 200) };
+}
+
 async function handleAsk(data, context, deps) {
   const text = typeof (data && data.message) === "string" ? data.message : "";
   if (!text.trim() || text.length > assistant.MAX_INPUT) return { reply: "Please send a shorter question (up to 600 characters).", actions: [] };
@@ -53,6 +69,20 @@ async function handleAsk(data, context, deps) {
   // three languages, answer from the same verified engine, reply in the customer's language.
   const scriptLang = i18n.detectLang(text);
   const lang = scriptLang !== "en" ? scriptLang : (["en", "hi", "kn"].includes(data && data.lang) ? data.lang : "en");
+
+  // Callback details typed straight into the chat ("Azhar 9742700167") right after
+  // the assistant asked for a name and number → create the lead, no form needed.
+  const cb = callbackFromChat(text, data && data.history);
+  if (cb && deps.createLead) {
+    await deps.createLead({ uid, name: cb.name, phone: cb.phone, service: "other", note: "Callback requested in chat. Last question: " + cb.context }).catch(() => null);
+    const masked = cb.phone.replace(/^(\d{2})\d{5}/, "$1XXXXX");
+    const msg = {
+      en: `Thanks${cb.name !== "Customer" ? ", " + cb.name : ""}! Our team will call you on ${masked} during working hours (Mon–Sun, 8 AM – 9 PM). For anything urgent, call 9945095453.`,
+      hi: `धन्यवाद${cb.name !== "Customer" ? " " + cb.name : ""}! हमारी टीम आपको ${masked} पर काम के घंटों में (सोम–रवि, सुबह 8 से रात 9) कॉल करेगी। ज़रूरी हो तो 9945095453 पर कॉल करें।`,
+      kn: `ಧನ್ಯವಾದ${cb.name !== "Customer" ? " " + cb.name : ""}! ನಮ್ಮ ತಂಡ ${masked} ಗೆ ಕೆಲಸದ ಸಮಯದಲ್ಲಿ (ಸೋಮ–ಭಾನು, ಬೆಳಿಗ್ಗೆ 8 ರಿಂದ ರಾತ್ರಿ 9) ಕರೆ ಮಾಡುತ್ತದೆ. ತುರ್ತು ಇದ್ದರೆ 9945095453 ಗೆ ಕರೆ ಮಾಡಿ.`,
+    };
+    return { reply: msg[lang] || msg.en, actions: [], service: null, escalate: false, lang, callback: true };
+  }
   const out = assistant.answer(i18n.understand(text), { signedIn: !!uid, lastService, catalog });
   const understood = i18n.understand(text);
   const sizeAsked = assistant.detectSize(understood);
@@ -157,4 +187,4 @@ function aiFor() {
 
 exports.assistantAsk = functions.region(REGION).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
 exports.assistantSupportRequest = functions.region(REGION).https.onCall((data, context) => handleSupportRequest(data, context, liveDeps(context)));
-exports._assistant = { handleAsk, handleSupportRequest, redact };
+exports._assistant = { handleAsk, handleSupportRequest, redact, callbackFromChat };
