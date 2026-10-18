@@ -470,3 +470,12 @@ body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; ali
 .navbar .nav-links a { text-decoration: none !important; font-weight: 600; font-size: .92rem; color: var(--nb-text) !important; border: 1px solid var(--nb-line-2); border-radius: 999px; padding: 8px 14px; }
 .navbar .nav-links a:hover { border-color: var(--nb-green); color: var(--nb-green-deep) !important; }
 html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !important; color: var(--nb-text) !important; }
+
+/* partner recruitment pages */
+.pz-join-sec { margin-top: 14px; }
+.pz-join-sec h2 { font-family: var(--nb-display); font-size: 1.3rem; margin: 0 0 10px; }
+.pz-join-list { padding-left: 1.1em; margin: 0; } .pz-join-list li { margin: 6px 0; }
+.pz-join-steps { padding-left: 1.2em; margin: 0; } .pz-join-steps li { margin: 8px 0; }
+.pz-join-cta { display: inline-block; text-decoration: none !important; color: #fff !important; padding: 13px 22px !important; }
+.pz-join-faq { border-bottom: 1px solid var(--nb-line); padding: 10px 0; } .pz-join-faq summary { font-weight: 700; cursor: pointer; }
+.pz-join-other { display: inline-block; margin: 4px 4px 0 0; padding: 5px 10px; border: 1px solid var(--nb-line-2); border-radius: 999px; font-size: .82rem; text-decoration: none; color: var(--nb-text) !important; }

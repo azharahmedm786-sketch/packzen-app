@@ -477,10 +477,11 @@
     <div class="reg-card">
       <div class="reg-card-header">
         <div class="reg-card-icon"><i data-lucide="truck"></i></div>
-        <div class="reg-card-title">Vehicle Information</div>
-        <div class="reg-card-sub">Tell us about the vehicles you operate with.</div>
+        <div class="reg-card-title" id="regStep4Title">Vehicle Information</div>
+        <div class="reg-card-sub" id="regStep4Sub">Tell us about the vehicles you operate with.</div>
       </div>
       <div class="reg-card-body">
+        <div id="pzServiceQuestions"></div>
 
         <div class="field-group">
           <label class="field-label"><span class="field-icon"><i data-lucide="truck"></i></span> Primary Vehicle Type <span aria-hidden="true" style="color:#dc2626">*</span></label>
@@ -1153,6 +1154,8 @@ async function submitRegistration() {
         vehicleRegNo:       document.getElementById('vehicleRegNo').value.trim().toUpperCase(),
         // KYC
         aadhaarLast4:       aadRaw.slice(-4),   // full Aadhaar number is never stored (privacy); the card image is in KYC docs
+        partnerCategory:    window.PZ_PARTNER_TYPE || 'movers',
+        serviceDetails:     (window.pzCollectServiceDetails ? window.pzCollectServiceDetails() : {}),
         skills:             Array.prototype.map.call(document.querySelectorAll('input[name="skills"]:checked'), function (c) { return c.value; }),
         panNumber:          panVal,
         // Bank
@@ -1303,5 +1306,94 @@ document.head.appendChild(spinStyle);
 
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
+
+<script>
+/* ── Separate registration per service: partner-register.html?type=movers|ac|cleaning|handyman|parcel ──
+   Same secure sign-up and KYC flow; the form adapts (title, business type, vehicle,
+   skills and trade-specific questions). Saved as partnerCategory + serviceDetails. */
+(function () {
+  var TYPES = {
+    movers:   { title: "Packers & Movers partner", biz: null, vehicle: null, hideVehicle: false, skills: ["moving", "packing"],
+                q: [["team", "Crew size you can send", "select", ["1–2 people", "3–4 people", "5+ people"]],
+                    ["jobs", "Work you take", "checks", ["Local house shifting", "Office relocation", "Intercity moves", "Packing only", "Furniture assembly"]]] },
+    ac:       { title: "AC Technician partner", biz: "technician", vehicle: "none", hideVehicle: true, skills: ["ac"],
+                q: [["exp", "Experience as an AC technician", "select", ["Less than 1 year", "1–3 years", "3–5 years", "5+ years"]],
+                    ["work", "AC work you can do", "checks", ["Split AC service", "Window AC service", "Installation / uninstallation", "Gas refill", "PCB & compressor repair"]],
+                    ["tools", "Tools you own", "checks", ["Vacuum pump & gauge set", "Jet pump / foam wash", "Drill & ladder"]]] },
+    cleaning: { title: "Cleaning partner", biz: "technician", vehicle: "none", hideVehicle: true, skills: ["cleaning"],
+                q: [["team", "Team size", "select", ["Just me", "2–3 people", "4+ people"]],
+                    ["work", "Cleaning you do", "checks", ["Full home deep cleaning", "Kitchen", "Bathroom", "Sofa & carpet", "Move-in / move-out cleaning"]],
+                    ["tools", "Equipment you own", "checks", ["Vacuum cleaner", "Scrubbing machine", "Steam cleaner", "Chemicals & supplies"]]] },
+    handyman: { title: "Electrician / Plumber / Carpenter partner", biz: "technician", vehicle: "none", hideVehicle: true, skills: [],
+                q: [["exp", "Experience", "select", ["Less than 1 year", "1–3 years", "3–5 years", "5+ years"]],
+                    ["trade", "Your trade (pick all)", "checks", ["Electrician", "Plumber", "Carpenter", "TV wall mounting", "Furniture assembly"]]] },
+    parcel:   { title: "Parcel Delivery Rider", biz: "parcel_rider", vehicle: "two_wheeler", hideVehicle: false, skills: ["parcel"],
+                q: [["licence", "Driving licence", "select", ["I have a valid two-wheeler licence", "Applied / in progress"]],
+                    ["hours", "When can you ride?", "checks", ["Mornings", "Afternoons", "Evenings", "Weekends"]]] },
+  };
+  var TRADE_SKILL = { "Electrician": "electrical", "Plumber": "plumbing", "Carpenter": "carpentry", "TV wall mounting": "assembly", "Furniture assembly": "assembly" };
+  var type = (new URLSearchParams(location.search).get("type") || "").toLowerCase();
+  if (!TYPES[type]) type = "movers";
+  window.PZ_PARTNER_TYPE = type;
+  var cfg = TYPES[type];
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function apply() {
+    document.title = "Join PackZen as a " + cfg.title + " | Bangalore";
+    var h = document.querySelector(".reg-card-title"); if (h && document.getElementById("regStep1")) { /* step 1 title stays */ }
+    // service questions
+    var box = document.getElementById("pzServiceQuestions");
+    if (box) {
+      box.innerHTML = '<div class="pz-svcq-head">' + esc(cfg.title) + ' — a few questions</div>' + cfg.q.map(function (q) {
+        if (q[2] === "select") return '<div class="field-group"><label class="field-label">' + esc(q[1]) + '</label><select class="field-input" data-svcq="' + q[0] + '">' +
+          q[3].map(function (o) { return '<option>' + esc(o) + '</option>'; }).join("") + '</select></div>';
+        return '<div class="field-group"><label class="field-label">' + esc(q[1]) + '</label><div class="pz-skill-grid">' +
+          q[3].map(function (o) { return '<label><input type="checkbox" data-svcq="' + q[0] + '" value="' + esc(o) + '"> ' + esc(o) + '</label>'; }).join("") + '</div></div>';
+      }).join("");
+    }
+    // business type + vehicle presets
+    if (cfg.biz) { var b = document.querySelector('#bizTypeGrid .vt-chip[data-value="' + cfg.biz + '"]'); if (b && window.selectBizType) window.selectBizType(b); }
+    if (cfg.vehicle) { var v = document.querySelector('.vehicle-type-grid .vt-chip[data-value="' + cfg.vehicle + '"]'); if (v && window.selectVehicleType) window.selectVehicleType(v); }
+    if (cfg.hideVehicle) {
+      document.body.classList.add("pz-no-vehicle");
+      var t = document.getElementById("regStep4Title"), st = document.getElementById("regStep4Sub");
+      if (t) t.textContent = "Your Work & Skills"; if (st) st.textContent = "Tell us what you do so we send you the right jobs.";
+    }
+    // preset skills for this trade
+    if (cfg.skills.length) document.querySelectorAll('input[name="skills"]').forEach(function (c) { c.checked = cfg.skills.indexOf(c.value) >= 0; });
+    else document.querySelectorAll('input[name="skills"]').forEach(function (c) { c.checked = false; });
+    // handyman: ticking a trade ticks the matching skill
+    document.addEventListener("change", function (e) {
+      var el = e.target; if (!el.matches || !el.matches('[data-svcq="trade"]')) return;
+      var sk = TRADE_SKILL[el.value]; if (!sk) return;
+      var box2 = document.querySelector('input[name="skills"][value="' + sk + '"]'); if (box2 && el.checked) box2.checked = true;
+    });
+    var badge = document.createElement("div"); badge.className = "pz-type-badge"; badge.textContent = "Registering as: " + cfg.title;
+    var wrap = document.getElementById("regProgressWrap"); if (wrap && wrap.parentNode) wrap.parentNode.insertBefore(badge, wrap.nextSibling);
+  }
+  window.pzCollectServiceDetails = function () {
+    var out = {};
+    document.querySelectorAll("[data-svcq]").forEach(function (el) {
+      var k = el.getAttribute("data-svcq");
+      if (el.tagName === "SELECT") out[k] = el.value;
+      else if (el.checked) (out[k] = out[k] || []).push(el.value);
+    });
+    return out;
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply); else apply();
+})();
+</script>
+<style>
+.pz-svcq-head{font-weight:800;margin:0 0 10px;color:#157A47}
+body.pz-no-vehicle #regStep4 .vehicle-type-grid,
+body.pz-no-vehicle #regStep4 .vehicle-type-grid + .field-error,
+body.pz-no-vehicle #regStep4 label[for="vehicleMake"], body.pz-no-vehicle #vehicleMake,
+body.pz-no-vehicle #regStep4 label[for="vehicleYear"], body.pz-no-vehicle #vehicleYear,
+body.pz-no-vehicle #regStep4 label[for="vehicleCount"], body.pz-no-vehicle #vehicleCount,
+body.pz-no-vehicle #regStep4 label[for="vehicleRegNo"], body.pz-no-vehicle #vehicleRegNo, body.pz-no-vehicle #errVehicleReg { display:none !important; }
+body.pz-no-vehicle #regStep4 .field-group:has(> .vehicle-type-grid) > .field-label { display:none !important; }
+.pz-type-badge{max-width:640px;margin:10px auto 0;padding:8px 14px;border-radius:999px;background:rgba(31,157,92,.1);color:#157A47;font-weight:700;font-size:.85rem;text-align:center}
+</style>
+
 </body>
 </html>

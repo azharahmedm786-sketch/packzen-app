@@ -48,6 +48,13 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   const rules = fs.readFileSync(path.join(__dirname, "..", "..", "storage.rules"), "utf8");
   assert.ok(/match \/partner-docs\/\{uid\}\/\{file\}/.test(rules) && /10 \* 1024 \* 1024/.test(rules) && /allow read, write: if false/.test(rules));
   assert.ok(/"storage"/.test(fs.readFileSync(path.join(__dirname, "..", "..", "firebase.json"), "utf8")));
+  // separate sign-up per service
+  assert.ok(/partnerCategory:\s+window\.PZ_PARTNER_TYPE/.test(reg) && /ac:\s+\{ title: "AC Technician partner"/.test(reg) && /parcel:\s+\{ title: "Parcel Delivery Rider"/.test(reg));
+  for (const [f, svc] of [["join-packers-movers-partner-bangalore.html","movers"],["join-ac-technician-bangalore.html","ac"],["join-cleaning-partner-bangalore.html","cleaning"],["join-electrician-plumber-carpenter-bangalore.html","handyman"],["join-parcel-delivery-rider-bangalore.html","parcel"]]) {
+    const h = pub(f); assert.ok(h.includes("partner-register.html?type=" + svc) && /FAQPage/.test(h) && pub("sitemap.xml").includes(f) && pub("partner.html").includes(f), f);
+  }
+  assert.ok(/id="partnerTrack"/.test(pub("admin.html")));
+  ok("separate sign-up per service: 5 recruitment pages (FAQ schema, sitemap) → registration preset per service → admin filter by service");
   ok("wiring: Aadhaar number not stored (last 4 only), skills on sign-up, approved partners go to the crew app, admin Partners tab, storage rules");
 
   console.log(`\npartners: ${pass} passed, 0 failed`);
