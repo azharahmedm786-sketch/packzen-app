@@ -69,3 +69,15 @@ body.partner-body[data-page="login"], body.partner-body[data-page="register"], b
 }
 .auth-page-card { border-radius: 24px !important; border: 1px solid var(--ops-line) !important; box-shadow: 0 30px 80px -40px rgba(12,26,20,0.45) !important; }
 .auth-page-title { font-family: var(--ops-display) !important; }
+
+/* partner portal pages (register, profile, settings, support): light header + progress */
+body.partner-body .app-bar { background: rgba(255,255,255,.92) !important; border-bottom: 1px solid var(--ops-line) !important; box-shadow: none !important; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+body.partner-body .app-bar, body.partner-body .app-bar a, body.partner-body .app-bar span, body.partner-body .app-bar .app-logo-text { color: var(--ops-text) !important; }
+body.partner-body .app-bar .app-login-pill { background: var(--ops-text) !important; color: #fff !important; }
+.reg-progress-wrap { background: #fff !important; border-bottom: 1px solid var(--ops-line) !important; }
+.reg-progress-wrap, .reg-progress-wrap * { color: var(--ops-text-2) !important; }
+.reg-progress-track { background: #E5ECE8 !important; }
+.reg-progress-fill { background: var(--ops-green) !important; box-shadow: none !important; }
+.reg-card { border-radius: 20px !important; border: 1px solid var(--ops-line) !important; box-shadow: var(--ops-shadow) !important; }
+.reg-card-title { font-family: var(--ops-display) !important; }
+.vt-chip.selected, .vt-chip.active { border-color: var(--ops-green) !important; background: var(--ops-green-soft) !important; color: var(--ops-green-deep) !important; }

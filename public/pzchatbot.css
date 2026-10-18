@@ -576,3 +576,48 @@
 .pz-lang-row { display: flex; gap: 6px; padding: 6px 12px 0; flex-wrap: wrap; }
 .pz-lang-row button { border: 1px solid rgba(10, 40, 28, 0.16); background: #fff; color: #0C1A14; border-radius: 999px; padding: 5px 12px; font: 600 0.82rem inherit; cursor: pointer; }
 .pz-lang-row button[aria-pressed="true"] { background: #1F9D5C; border-color: #1F9D5C; color: #fff; }
+
+/* ==========================================================================
+   PackZen premium (white + green) — overrides the old black & gold theme
+   ========================================================================== */
+#pz-chat-root, #pz-chat-root * { font-family: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#pz-chat-root .pz-chat-toggle { background: #1F9D5C; color: #fff; border: 0; box-shadow: 0 14px 34px -14px rgba(21,122,71,.7); }
+#pz-chat-root .pz-chat-toggle:hover { background: #157A47; }
+#pz-chat-root .pz-chat-toggle svg { color: #fff; stroke: currentColor; }
+#pz-chat-root .pz-chat-badge { background: #FFB224; color: #2A1A00; border-color: #fff; }
+#pz-chat-root .pz-chat-teaser { background: #fff; color: #0C1A14; border: 1px solid rgba(10,40,28,.12); box-shadow: 0 16px 40px -18px rgba(12,26,20,.35); }
+#pz-chat-root .pz-chat-window { background: #fff; border: 1px solid rgba(10,40,28,.12); box-shadow: 0 30px 80px -30px rgba(12,26,20,.45); }
+#pz-chat-root .pz-chat-header { background: #fff; color: #0C1A14; border-bottom: 1px solid rgba(10,40,28,.10); }
+#pz-chat-root .pz-chat-avatar { background: rgba(31,157,92,.12); color: #157A47; border: 0; }
+#pz-chat-root .pz-chat-avatar svg { color: #157A47; stroke: currentColor; }
+#pz-chat-root .pz-chat-header-text .pz-brand, #pz-chat-root .pz-chat-header-text h3, #pz-chat-root .pz-chat-header-text strong { color: #0C1A14; font-family: "Bricolage Grotesque", "Geist", sans-serif; letter-spacing: -0.01em; }
+#pz-chat-root .pz-chat-status, #pz-chat-root .pz-chat-header-text .pz-tagline { color: #6B7D74; }
+#pz-chat-root .pz-chat-status .pz-dot { background: #1F9D5C; }
+#pz-chat-root .pz-chat-header-close { background: transparent; color: #3E5248; border-radius: 50%; }
+#pz-chat-root .pz-chat-header-close:hover { background: #F6F8F7; }
+#pz-chat-root .pz-chat-header-close svg { stroke: currentColor; }
+#pz-chat-root .pz-chat-messages { background: #F6F8F7; }
+#pz-chat-root .pz-from-bot .pz-msg-bubble { background: #fff; color: #0C1A14; border: 1px solid rgba(10,40,28,.08); box-shadow: none; }
+#pz-chat-root .pz-from-user .pz-msg-bubble { background: #1F9D5C; color: #fff; border: 0; }
+#pz-chat-root .pz-msg-time, #pz-chat-root .pz-from-user .pz-msg-time { color: #8BA096; }
+#pz-chat-root .pz-typing span { background: #1F9D5C; }
+#pz-chat-root .pz-quick-replies { background: #fff; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 8px 12px; scrollbar-width: none; }
+#pz-chat-root .pz-quick-replies::-webkit-scrollbar { display: none; }
+#pz-chat-root .pz-chip { flex: none; background: #fff; color: #0C1A14; border: 1px solid rgba(10,40,28,.16); border-radius: 999px; font-weight: 600; white-space: nowrap; box-shadow: none; }
+#pz-chat-root .pz-chip:hover { border-color: #1F9D5C; color: #157A47; background: rgba(31,157,92,.05); }
+#pz-chat-root .pz-cta-btn { background: #1F9D5C; color: #fff; border: 0; border-radius: 999px; }
+#pz-chat-root .pz-lead-form { background: #fff; border: 1px solid rgba(10,40,28,.12); }
+#pz-chat-root .pz-lead-form input { background: #fff; color: #0C1A14; border: 1px solid rgba(10,40,28,.18); }
+#pz-chat-root .pz-lang-row { background: #fff; padding-top: 8px; }
+#pz-chat-root .pz-chat-input-row { background: #fff; border-top: 1px solid rgba(10,40,28,.10); }
+#pz-chat-root .pz-chat-input { background: #fff !important; color: #0C1A14 !important; border: 1px solid rgba(10,40,28,.18) !important; border-radius: 999px !important; }
+#pz-chat-root .pz-chat-input:focus { border-color: #1F9D5C !important; box-shadow: 0 0 0 3px rgba(31,157,92,.18) !important; }
+#pz-chat-root .pz-chat-send { background: #1F9D5C; color: #fff; border: 0; }
+#pz-chat-root .pz-chat-send:hover { background: #157A47; }
+#pz-chat-root .pz-chat-send svg { stroke: currentColor; color: #fff; }
+#pz-chat-root .pz-chat-footer { background: #fff; color: #8BA096; }
+/* phones: the open chat is full-height, so hide the floating toggle and callback pill behind it */
+@media (max-width: 640px) {
+  #pz-chat-root.pz-open .pz-chat-toggle { display: none !important; }
+}
+body:has(#pz-chat-root.pz-open) .pz-cb-fab { display: none !important; }
