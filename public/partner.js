@@ -101,6 +101,13 @@ function requirePartner(onReady) {
             window.location.href = "registration-success.html?status=rejected";
             return;
           }
+          // Approved partners work from the crew app (job offers, OTP, earnings, payouts).
+          // Only profile/settings/support stay in the partner portal.
+          var page = (document.body && document.body.getAttribute("data-page")) || "";
+          if (data.verificationStatus === "approved" && ["profile", "settings", "support"].indexOf(page) < 0) {
+            window.location.href = "driver.html";
+            return;
+          }
           PZ.uid = user.uid;
           PZ.user = user;
           PZ.partner = data;
@@ -245,7 +252,7 @@ function initLoginPage() {
       window._firebase.db.collection("partners").doc(user.uid).get().then(function (doc) {
         if (!doc.exists) return;
         var status = doc.data().verificationStatus;
-        if (status === "approved") window.location.href = "partner-dashboard.html";
+        if (status === "approved") window.location.href = "driver.html";
         else if (status === "pending") window.location.href = "registration-success.html?status=pending";
         else if (status === "rejected") window.location.href = "registration-success.html?status=rejected";
       });
@@ -281,7 +288,7 @@ function initLoginPage() {
             return;
           }
           var status = doc.data().verificationStatus;
-          if (status === "approved") window.location.href = "partner-dashboard.html";
+          if (status === "approved") window.location.href = "driver.html";
           else if (status === "pending") window.location.href = "registration-success.html?status=pending";
           else window.location.href = "registration-success.html?status=rejected";
         })
@@ -353,9 +360,9 @@ function initRegistrationStatusPage() {
   function paint(status, reason) {
     if (status === "approved") {
       icon.textContent = "✅"; title.textContent = "You're Approved!";
-      sub.textContent = "Your PackZen Partner account is active. You can now access your dashboard and start receiving bookings.";
-      qs("#statusPrimaryBtn").href = "partner-dashboard.html";
-      qs("#statusPrimaryBtn").textContent = "Go to Dashboard";
+      sub.textContent = "Your PackZen partner account is active. Open the PackZen crew app with the same email and password to go online and receive job offers.";
+      qs("#statusPrimaryBtn").href = "driver.html";
+      qs("#statusPrimaryBtn").textContent = "Open crew app";
     } else if (status === "rejected") {
       icon.textContent = "❌"; title.textContent = "Application Not Approved";
       sub.textContent = "Unfortunately your partner application wasn't approved this time.";

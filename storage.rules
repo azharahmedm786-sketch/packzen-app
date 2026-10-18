@@ -1,0 +1,23 @@
+rules_version = '2';
+// PackZen — Firebase Storage rules.
+// Only partner KYC documents are stored (partner-register.html). Each applicant can
+// upload their own files (images or PDF, max 10 MB) and read them back; admins can
+// read every applicant's documents for review. Everything else is closed.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    match /partner-docs/{uid}/{file} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+      allow delete: if isAdmin();
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

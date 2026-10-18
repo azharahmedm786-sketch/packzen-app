@@ -249,6 +249,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
   <link rel="stylesheet" href="pz-ops-premium.css?v=1">
+<style>
+.pz-skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pz-skill-grid label{display:flex;gap:8px;align-items:center;font-size:.9rem;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer}
+@media(max-width:480px){.pz-skill-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body class="app-body partner-body">
 
@@ -366,6 +371,8 @@
             <div class="vt-chip" data-value="individual_mover" onclick="selectBizType(this)"><span class="vt-icon">🧑‍<i data-lucide="wrench"></i></span> Individual Mover</div>
             <div class="vt-chip" data-value="vehicle_owner" onclick="selectBizType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> Vehicle Owner</div>
             <div class="vt-chip" data-value="loading_team" onclick="selectBizType(this)"><span class="vt-icon">👷</span> Loading Team</div>
+            <div class="vt-chip" data-value="parcel_rider" onclick="selectBizType(this)"><span class="vt-icon">🛵</span> Parcel Rider</div>
+            <div class="vt-chip" data-value="technician" onclick="selectBizType(this)"><span class="vt-icon">🔧</span> Technician</div>
           </div>
           <input type="hidden" id="bizType">
           <div class="field-error" id="errBizType">Please select a business type.</div>
@@ -484,6 +491,24 @@
             <div class="vt-chip" data-value="17ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> 17 ft Truck</div>
             <div class="vt-chip" data-value="22ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon">🚜</span> 22 ft Truck</div>
             <div class="vt-chip" data-value="tempo"       onclick="selectVehicleType(this)"><span class="vt-icon">🚌</span> Tempo</div>
+            <div class="vt-chip" data-value="two_wheeler" onclick="selectVehicleType(this)"><span class="vt-icon">🛵</span> Two-wheeler</div>
+            <div class="vt-chip" data-value="none"        onclick="selectVehicleType(this)"><span class="vt-icon">🧰</span> No vehicle</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Services you can do <small style="font-weight:500;color:#64748b">(pick all that apply)</small></label>
+          <div class="pz-skill-grid">
+            <label><input type="checkbox" name="skills" value="moving" checked> House / office moving</label>
+            <label><input type="checkbox" name="skills" value="packing"> Packing</label>
+            <label><input type="checkbox" name="skills" value="assembly"> Furniture dismantle / assembly</label>
+            <label><input type="checkbox" name="skills" value="vehicle_transport"> Bike / car transport</label>
+            <label><input type="checkbox" name="skills" value="parcel"> Parcel delivery</label>
+            <label><input type="checkbox" name="skills" value="ac"> AC service / repair</label>
+            <label><input type="checkbox" name="skills" value="cleaning"> Deep cleaning</label>
+            <label><input type="checkbox" name="skills" value="electrical"> Electrician</label>
+            <label><input type="checkbox" name="skills" value="plumbing"> Plumbing</label>
+            <label><input type="checkbox" name="skills" value="carpentry"> Carpentry</label>
           </div>
           <input type="hidden" id="vehicleType">
           <div class="field-error" id="errVehicleType">Please select a vehicle type.</div>
@@ -766,7 +791,9 @@ const BIZ_TYPE_LABELS = {
   packers_movers: 'Packers & Movers',
   individual_mover: 'Individual Mover',
   vehicle_owner: 'Vehicle Owner',
-  loading_team: 'Loading Team'
+  loading_team: 'Loading Team',
+  parcel_rider: 'Parcel Rider (two-wheeler)',
+  technician: 'Technician (AC / electrician / plumber / carpenter / cleaning)'
 };
 const VEHICLE_TYPE_LABELS = {
   tata_ace:   'Tata Ace',
@@ -774,7 +801,9 @@ const VEHICLE_TYPE_LABELS = {
   '14ft_truck': '14 ft Truck',
   '17ft_truck': '17 ft Truck',
   '22ft_truck': '22 ft Truck',
-  tempo:      'Tempo'
+  tempo:      'Tempo',
+  two_wheeler: 'Two-wheeler',
+  none:       'No vehicle (technician / helper)'
 };
 const uploadedFiles = {};
 
@@ -925,8 +954,9 @@ function validateStep(step) {
     const vReg   = document.getElementById('vehicleRegNo').value.trim();
     setFieldError('vehicleType', 'errVehicleType', !vType);
     if (!vType) ok = false;
-    setFieldError('vehicleRegNo', 'errVehicleReg', !vReg);
-    if (!vReg) ok = false;
+    const noPlate = ['none'].includes(document.getElementById('vehicleType').value);
+    setFieldError('vehicleRegNo', 'errVehicleReg', !vReg && !noPlate);
+    if (!vReg && !noPlate) ok = false;
   }
 
   if (step === 5) {
@@ -1122,7 +1152,8 @@ async function submitRegistration() {
         vehicleCount:       document.getElementById('vehicleCount').value,
         vehicleRegNo:       document.getElementById('vehicleRegNo').value.trim().toUpperCase(),
         // KYC
-        aadhaarNumber:      aadRaw,
+        aadhaarLast4:       aadRaw.slice(-4),   // full Aadhaar number is never stored (privacy); the card image is in KYC docs
+        skills:             Array.prototype.map.call(document.querySelectorAll('input[name="skills"]:checked'), function (c) { return c.value; }),
         panNumber:          panVal,
         // Bank
         bankName:           document.getElementById('bankName').value.trim(),

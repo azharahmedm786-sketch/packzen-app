@@ -547,6 +547,26 @@ function staffCallable(handler, ErrClass) {
 }
 // Admin creates/updates driverProfiles/{uid} (validated; no client writes allowed by rules).
 exports.adminUpsertDriverProfile = functions.region("asia-south1").https.onCall(staffCallable(driverProfile.handleUpsert, driverProfile.ProfileError));
+// Admin: approve / reject a partner application. Approval makes the partner a working
+// crew member (role driver + active driverProfile) so they receive job offers.
+const partnerReview = require("./partner-review");
+exports.adminReviewPartner = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const deps = Object.assign(staffDeps(), {
+    notify: async ({ phone, name, approved, reason }) => {
+      if (!/^[6-9]\d{9}$/.test(String(phone || ""))) return;
+      const message = approved
+        ? `PackZen: congratulations ${name}, your partner account is approved! Sign in at packzenblr.in/driver.html with your registered email to receive jobs.`
+        : `PackZen: hi ${name}, we couldn't approve your partner application: ${reason}. Reply or call 9945095453 to update your details.`;
+      await admin.firestore().collection("smsQueue").add({ mobile: phone, message, status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    },
+  });
+  try { return await partnerReview.handleReview(data, context, deps); }
+  catch (e) {
+    if (e instanceof partnerReview.ReviewError) throw new functions.https.HttpsError(e.code, e.publicMessage);
+    functions.logger.error("partner_review_error", { message: String(e && e.message).slice(0, 120) });
+    throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+  }
+});
 // Admin: compute (and store) the shadow-mode recommendation for one booking. Never assigns.
 exports.adminGetAssignmentRecommendation = functions.region("asia-south1").https.onCall(staffCallable(assignment.handleRecommend, assignment.AssignError));
 // Admin/advisor: manual assignment in one transaction (booking + schedule lock + users.currentBooking).

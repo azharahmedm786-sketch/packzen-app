@@ -439,6 +439,7 @@ function buildShell(adminName) {
     <div class="sb-role">Main</div>
     <div class="nav-item active" onclick="showSection('overview',this)"><span class="ni">📊</span> Overview</div>
     <div class="nav-item" onclick="showSection('ops',this)"><span class="ni">🗂️</span> Operations board</div>
+    <div class="nav-item" onclick="showSection('partners',this)"><span class="ni">🤝</span> Partners <span class="svc-count" id="partnersPendingCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
     <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcel</div>
@@ -626,6 +627,15 @@ function buildShell(adminName) {
       </div>
       <div id="opsBoard" class="ops-board"></div>
       <div id="opsCalendar" class="ops-cal" hidden></div>
+    </div>
+
+    <!-- PARTNER APPLICATIONS -->
+    <div class="section" id="sectionPartners">
+      <div class="table-card">
+        <div class="table-hdr" style="flex-wrap:wrap;gap:8px"><div class="table-title">Partner applications</div>
+          <select id="partnerFilter" onchange="renderPartners()"><option value="pending">Pending review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option></select></div>
+        <div id="partnersList" style="padding:12px"><div class="empty-td">Loading...</div></div>
+      </div>
     </div>
 
     <!-- LEADS PIPELINE -->
@@ -1534,13 +1544,14 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", ops:"Operations board", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", ops:"Operations board", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
   if (name==="parcel")   loadParcelBookings();
   if (name==="leads")    loadLeads();
   if (name==="ops")      loadOps();
+  if (name==="partners") loadPartners();
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
@@ -2345,6 +2356,49 @@ function opsRender(){
 .ops-cal-h{font-weight:700;padding:6px 4px}.ops-cal-slot{font-weight:600;color:#3E5248;padding-top:10px}
 .ops-cal-cell{background:#F6F8F7;border:1px solid #e5ece8;border-radius:12px;padding:6px;min-height:70px}.ops-cal-cell.ops-busy{background:#FFF7E6}
 </style>
+
+<script>
+/* ── Partner applications: approve → working crew member (role driver + active profile) ── */
+let _partners = [], _partnersUnsub = null;
+function _pesc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function loadPartners(){
+  if (_partnersUnsub) return renderPartners();
+  _partnersUnsub = window._firebase.db.collection("partners").limit(300).onSnapshot(snap => {
+    _partners = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
+      .sort((a,b) => ((b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0) - (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0)));
+    const pend = _partners.filter(p => (p.verificationStatus||"pending") === "pending").length;
+    const el = document.getElementById("partnersPendingCount"); if (el) el.textContent = pend ? String(pend) : "";
+    renderPartners();
+  }, err => { document.getElementById("partnersList").innerHTML = '<div class="empty-td">Could not load partners: '+_pesc(err.message)+'</div>'; });
+}
+function renderPartners(){
+  const f = document.getElementById("partnerFilter").value;
+  const list = _partners.filter(p => f === "all" || (p.verificationStatus||"pending") === f);
+  const docLink = (u, l) => u ? '<a href="'+_pesc(u)+'" target="_blank" rel="noopener" class="btn-export" style="padding:4px 10px">'+l+'</a>' : '<span style="color:#B42318;font-size:.8rem">no '+l+'</span>';
+  document.getElementById("partnersList").innerHTML = list.length ? list.map(p => {
+    const d = p.documents || {}, st = p.verificationStatus || "pending";
+    const when = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "";
+    return '<div class="ops-card" style="border-left-color:'+(st==="approved"?"#1F9D5C":st==="rejected"?"#B42318":"#FFB224")+';margin-bottom:10px">'+
+      '<div class="ops-card-top"><b style="font-size:1rem">'+_pesc(p.ownerName||"-")+' · '+_pesc(p.businessName||"")+'</b><span class="ops-tag">'+_pesc(st)+'</span></div>'+
+      '<div class="ops-who">'+_pesc(p.businessTypeLabel||p.businessType||"")+' · '+_pesc(p.vehicleTypeLabel||p.vehicleType||"no vehicle")+(p.vehicleRegNo?' ('+_pesc(p.vehicleRegNo)+')':'')+'</div>'+
+      '<div class="ops-who"><a href="tel:'+_pesc(String(p.ownerPhone||"").replace(/^\+91/,""))+'">'+_pesc(p.ownerPhone||"")+'</a> · '+_pesc(p.email||"")+' · applied '+when+'</div>'+
+      '<div class="ops-meta">Skills: '+_pesc((p.skills||[]).join(", ")||"(not given — set from business type)")+' · Areas: '+_pesc((p.serviceAreas||[]).join(", ")||"-")+' · PAN '+_pesc(p.panNumber||"-")+' · Aadhaar ••••'+_pesc(p.aadhaarLast4||"")+'</div>'+
+      '<div class="ops-actions">'+docLink(d.aadhaar,"Aadhaar")+docLink(d.pan,"PAN")+docLink(d.vehicleRc,"RC")+docLink(d.insurance,"Insurance")+docLink(d.profilePhoto,"Photo")+'</div>'+
+      (p.rejectionReason && st==="rejected" ? '<div class="ops-meta" style="color:#B42318">Rejected: '+_pesc(p.rejectionReason)+'</div>' : '')+
+      '<div class="ops-actions">'+(st!=="approved"?'<button class="btn-primary-sm" onclick="reviewPartner(\''+p.id+'\',\'approve\')">Approve</button>':'')+
+        (st!=="rejected"?'<button class="btn-export" onclick="reviewPartner(\''+p.id+'\',\'reject\')">Reject</button>':'')+'</div></div>';
+  }).join("") : '<div class="empty-td">No applications here.</div>';
+}
+function reviewPartner(uid, decision){
+  const p = _partners.find(x => x.id === uid); if (!p) return;
+  let reason = "";
+  if (decision === "reject") { reason = prompt("Reason for rejecting "+(p.ownerName||"this partner")+" (they will see it):", "Documents unclear — please re-upload"); if (reason === null) return; }
+  else if (!confirm("Approve "+(p.ownerName||"this partner")+"? They become an active crew member and can receive job offers.")) return;
+  requireAdmin(() => _adminCallable("adminReviewPartner")({ uid, decision, reason })
+    .then(r => toast(decision === "approve" ? "✅ Approved — skills: "+((r.data.profile||{}).skills||[]).join(", ") : "Rejected"))
+    .catch(e => toast("❌ "+(e.message||e))));
+}
+</script>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
