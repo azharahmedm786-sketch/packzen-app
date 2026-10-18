@@ -1699,6 +1699,7 @@ async function startPayment() {
             currentBookingId = d.bookingId || currentBookingId;
             if (d.bookingId) { try { localStorage.setItem("packzen_active_booking", d.bookingId); } catch (e) {} }
             showToast("✅ Booking confirmed!");
+            if (window.pzTrack) window.pzTrack("purchase", { transaction_id: d.bookingRef || d.bookingId, value: Number(d.paid) || 0, currency: "INR", items: [{ item_name: "Moving", item_category: "move", price: Number(d.total) || 0 }] });
             const balanceTxt = Number(d.balanceDue) > 0
               ? "Balance ₹" + Number(d.balanceDue).toLocaleString("en-IN") + " payable on moving day."
               : "Fully paid — nothing to pay on moving day.";
@@ -3122,6 +3123,13 @@ async function loadReferralData() {
     document.getElementById("refEarned").textContent = "₹" + (d.referralCredits || 0);
     document.getElementById("refAvailable").textContent = "₹" + (d.referralCredits || 0);
   } catch (err) { console.error("loadReferralData error:", err); }
+}
+
+function shareReferralWhatsApp() {
+  const code = (document.getElementById("referralCodeText") || {}).textContent || "";
+  const text = "I used PackZen for my move in Bangalore. Use my code " + code + " to get ₹200 off your first booking: https://packzenblr.in/?ref=" + encodeURIComponent(code);
+  if (window.pzTrack) window.pzTrack("share", { method: "whatsapp", content_type: "referral" });
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
 }
 
 function copyReferralCode() {
@@ -4664,7 +4672,8 @@ window.addEventListener("load", function () {
     const t = Number(typeof lastCalculatedTotal !== "undefined" ? lastCalculatedTotal : 0);
     const kind = window._lastQuoteResult && window._lastQuoteResult.breakdown && window._lastQuoteResult.breakdown.discountKind;
     const tag = kind === "weekday" ? " · weekday saver" : kind === "mini_move" ? " · mini move" : "";
-    if (t > 0) { pill.textContent = "Est. ₹" + t.toLocaleString("en-IN") + tag; pill.hidden = false; }
+    if (t > 0) { pill.textContent = "Est. ₹" + t.toLocaleString("en-IN") + tag; pill.hidden = false;
+      if (window.pzTrack && window._pzLastTracked !== t) { window._pzLastTracked = t; window.pzTrack("begin_checkout", { value: t, currency: "INR", items: [{ item_name: "Moving", item_category: "move" }] }); } }
     else pill.hidden = true;
   }
   if (typeof updatePriceDisplay === "function") {

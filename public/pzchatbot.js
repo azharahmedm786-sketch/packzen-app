@@ -478,6 +478,7 @@
           if (d.service) state.lastService = d.service;
           appendMessage("bot", d.reply || KB.fallback);
           pushHistory("assistant", d.reply || "");
+          if (d.callback && window.pzTrack) window.pzTrack("generate_lead", { method: "assistant_chat" });
           renderServerActions(d.actions || []);
         })
         .catch(function () { if (done) return; done = true; window.clearTimeout(fallback); hideTyping(); respondToIntent(matchIntent(displayText)); });

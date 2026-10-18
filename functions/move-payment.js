@@ -435,6 +435,8 @@ async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expected
         liftAvailable: !!qi.liftAvailable,
         packingService: !!qi.packingService,
         distance: qi.km || 0,
+        promoCode: qi.promoCode || null,          // server-validated code (promo or referral)
+        promoDiscount: Number(qi.promoDiscount) || 0,
         quoteBreakdown: p.quoteBreakdown || null,
         createdAt: deps.serverTimestamp(),
         paidAt: deps.serverTimestamp(),

@@ -151,7 +151,7 @@
     longCarry: { pricePerMeter: 15 },
     storage: { pricePerDay: 250 },
 
-    discounts: { maxPromoFraction: 0.30 },
+    discounts: { maxPromoFraction: 0.30, referralAmount: 200 },
 
     // Offers (Oct 2026). One discount per booking: the customer gets the bigger of
     // a promo code and the weekday saver, never both. Mini move is a flat price for

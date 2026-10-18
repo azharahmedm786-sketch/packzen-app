@@ -355,6 +355,7 @@
 
   /* ── Success ─────────────────────────────────────────────── */
   function success(data, paid) {
+    if (paid && window.pzTrack) window.pzTrack("purchase", { transaction_id: data.bookingRef, value: Number(data.total) || 0, currency: "INR", items: [{ item_name: "Home service", item_category: "service", price: Number(data.total) || 0 }] });
     var ref = data.bookingRef || "";
     var pending = data.status === "pending";
     var msg = paid ? "Payment received — your booking is confirmed."

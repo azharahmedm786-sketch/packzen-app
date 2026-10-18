@@ -111,8 +111,8 @@ test("14. applying twice to the same input is idempotent (no stacking)", async (
   const a = await promo.priceWithPromo(qi, calc, env().deps); const b = await promo.priceWithPromo(qi, calc, env().deps);
   assert.strictEqual(a.finalTotal, b.finalTotal); assert.strictEqual(b.finalTotal, BASE.finalTotal - 200);
 });
-test("referral: another customer's code = ₹100; own code / signed out rejected", async () => {
-  const q = await price({ promoCode: "friend123" }, env().deps); assert.deepStrictEqual([q.promo.kind, q.promo.applied], ["referral", 100]);
+test("referral: another customer's code = ₹200 (first booking); own code / signed out rejected", async () => {
+  const q = await price({ promoCode: "friend123" }, env().deps); assert.deepStrictEqual([q.promo.kind, q.promo.applied], ["referral", 200]);
   await rejectsPromo(price({ promoCode: "MYOWNREF" }, env().deps), /own referral/);
   const e = env(); e.deps.uid = null; await rejectsPromo(price({ promoCode: "FRIEND123" }, e.deps), /sign in/);
 });

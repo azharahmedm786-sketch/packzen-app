@@ -123,6 +123,7 @@
   }
 
   function done(ref, total) {
+    if (window.pzTrack) window.pzTrack("purchase", { transaction_id: ref, value: Number(total) || 0, currency: "INR", items: [{ item_name: "Parcel delivery", item_category: "parcel", price: Number(total) || 0 }] });
     var wa = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent("Hi PackZen, my parcel booking reference is " + ref);
     $("pcForm").hidden = true;
     var box = $("pcDone");

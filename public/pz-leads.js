@@ -1,3 +1,27 @@
+/* PackZen — Google Analytics 4 on every customer page + one tracking helper.
+ * Uses the same GA4 property as the homepage. Events: generate_lead (callback form,
+ * chat), select_item (Book picker), begin_checkout (price shown), purchase (paid
+ * booking: move, parcel, home service), contact (WhatsApp / call taps).
+ * Mark generate_lead and purchase as key events in GA4 to use them in Google Ads. */
+(function () {
+  "use strict";
+  var GA_ID = "G-9JXKP58GP3";
+  if (!window.gtag) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", GA_ID);
+    var g = document.createElement("script"); g.async = true; g.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+    document.head.appendChild(g);
+  }
+  window.pzTrack = function (name, params) { try { window.gtag("event", name, params || {}); } catch (e) {} };
+  // taps on call / WhatsApp links anywhere
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href^='tel:'], a[href*='wa.me/']");
+    if (a) window.pzTrack("contact", { method: /wa\.me/.test(a.href) ? "whatsapp" : "phone", page: location.pathname });
+  }, true);
+})();
+
 /* PackZen — lead capture on every customer page.
  * 1) Remembers where a visitor came from (UTM tags, Google Ads click id, referrer,
  *    landing page): first touch + last touch, kept in localStorage.
@@ -22,6 +46,14 @@
     try { localStorage.setItem(KEY, JSON.stringify(stored)); } catch (e) {}
   }
   // last paid/campaign touch wins; otherwise first touch
+  // Referral links (packzenblr.in/?ref=CODE): remember the code and pre-fill it at checkout.
+  try {
+    var ref = new URLSearchParams(location.search).get("ref");
+    if (ref && /^[A-Za-z0-9-]{4,20}$/.test(ref)) localStorage.setItem("pz_ref", ref.toUpperCase());
+  } catch (e) {}
+  document.addEventListener("DOMContentLoaded", function () {
+    try { var r = localStorage.getItem("pz_ref"), pi = document.getElementById("promoInput"); if (r && pi && !pi.value) pi.value = r; } catch (e) {}
+  });
   window.pzAttribution = function () { var a = readAttr(); return a.last || a.first || {}; };
   captureAttr();
 
@@ -99,7 +131,7 @@
           form.innerHTML = '<button type="button" class="pz-cb-x" aria-label="Close">×</button><div class="pz-cb-done"><h2>Thanks! ✓</h2>' +
             "<p>We'll call you on " + phone.replace(/^(\d{2})\d{5}/, "$1XXXXX") + " shortly (8 AM – 9 PM). Need us right now? Call <a href=\"tel:9945095453\">99450 95453</a>.</p></div>";
           form.querySelector(".pz-cb-x").addEventListener("click", close);
-          try { if (window.gtag) window.gtag("event", "generate_lead", { method: "callback_form" }); } catch (x) {}
+          if (window.pzTrack) window.pzTrack("generate_lead", { method: "callback_form", service: payload.service });
         })
         .catch(function (x) { submit.disabled = false; submit.textContent = "Call me back"; err.textContent = (x && x.message) || "Could not send. Please call 9945095453."; });
     });
@@ -144,11 +176,11 @@
       '<div class="pz-book-grid">' + CHOICES.map(function (c) {
         return '<button type="button" class="pz-book-opt" data-id="' + c.id + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + c.icon + '"/></svg>' +
           '<span><b>' + c.title + '</b><small>' + c.sub + '</small></span></button>';
-      }).join("") + '</div><p class="pz-cb-legal">Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
+      }).join("") + '</div><a class="pz-wa-book" target="_blank" rel="noopener" href="https://wa.me/919945095453?text=' + encodeURIComponent("Hi PackZen, I'd like to book: \nService: \nArea / pincode: \nDate: \nHome size or items: ") + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg> Book on WhatsApp instead</a><p class="pz-cb-legal">Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
     document.body.appendChild(dlg);
     dlg.addEventListener("click", function (e) {
       var opt = e.target.closest && e.target.closest(".pz-book-opt");
-      if (opt) { go(opt.getAttribute("data-id")); return; }
+      if (opt) { if (window.pzTrack) window.pzTrack("select_item", { item_list_name: "book_picker", items: [{ item_id: opt.getAttribute("data-id") }] }); go(opt.getAttribute("data-id")); return; }
       if (e.target.closest && e.target.closest("[data-callback]")) { e.preventDefault(); close(); if (window.pzOpenCallback) window.pzOpenCallback(); return; }
       if (e.target === dlg || (e.target.closest && e.target.closest(".pz-cb-x"))) close();
     });

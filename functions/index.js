@@ -622,6 +622,9 @@ Object.assign(exports, leadExports);
 // Daily Firestore backup to Cloud Storage (Level-100 Phase 0)
 const { _backups, ...backupExports } = require("./backups");
 Object.assign(exports, backupExports);
+// Growth automations: referral rewards, post-move follow-up
+const { _growth, ...growthExports } = require("./growth");
+Object.assign(exports, growthExports);
 // Website virtual assistant (grounded answers + human handoff)
 const { _assistant, ...assistantExports } = require("./assistant-functions");
 Object.assign(exports, assistantExports);

@@ -10,11 +10,11 @@
  *   promos/{CODE} { code, type: "flat"|"percent", value, max (max uses), used, active }
  * Optional fields honoured when present (set in the console; no admin UI change):
  *   expiresAt, startsAt (Timestamp | Date | ISO string), minOrder (₹), maxDiscount (₹), firstBookingOnly (bool)
- * Referral codes (users.referralCode of ANOTHER user) keep today's ₹100 flat value.
+ * Referral codes (users.referralCode of ANOTHER user): ₹200 off the friend's first booking.
  */
 "use strict";
 
-const REFERRAL_AMOUNT = 100; // same value the website applied before (config referralAmount was never set)
+const REFERRAL_AMOUNT = 200; // same value the website applied before (config referralAmount was never set)
 const CODE_RE = /^[A-Z0-9_-]{3,32}$/;
 
 class PromoError extends Error {
@@ -54,6 +54,8 @@ async function resolvePromo(code, baseTotal, deps) {
     const max = Number(p.max), used = Number(p.used || 0);
     if (Number.isFinite(max) && max > 0 && used >= max) throw new PromoError("This promo code has reached its usage limit.");
     // First-booking codes (e.g. FIRSTMOVE): only for customers with no earlier active booking.
+    // Personal codes (referral rewards) work only for the customer they were issued to.
+    if (p.ownerUid && p.ownerUid !== deps.uid) throw new PromoError("This code belongs to another PackZen account.");
     if (p.firstBookingOnly === true) {
       if (!deps.uid) throw new PromoError("Please sign in to use this code.");
       const prev = await deps.db.collection("bookings").where("customerUid", "==", deps.uid).limit(10).get();
@@ -76,6 +78,9 @@ async function resolvePromo(code, baseTotal, deps) {
   const ref = await deps.db.collection("users").where("referralCode", "==", code).limit(1).get();
   if (ref.empty) throw new PromoError("That promo code isn't valid.");
   if (ref.docs[0].id === deps.uid) throw new PromoError("You can't use your own referral code.");
+  // A friend's referral code is for your first PackZen booking.
+  const prev = await deps.db.collection("bookings").where("customerUid", "==", deps.uid).limit(10).get();
+  if (prev.docs.some((d) => (d.data() || {}).status !== "cancelled")) throw new PromoError("Referral codes are for your first PackZen booking only.");
   return { code, kind: "referral", amount: Math.min(REFERRAL_AMOUNT, baseTotal) };
 }
 

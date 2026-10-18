@@ -440,3 +440,5 @@ body:not(:has(.home-screen)) #pzToggleBtn { display: inline-flex !important; ali
 .pz-offer b { display: block; color: var(--nb-green-deep); font-size: 0.95rem; }
 .pz-offer span { color: var(--nb-text-2); font-size: 0.85rem; }
 .pz-offer code { background: rgba(255,178,36,0.18); color: var(--nb-marigold-ink); padding: 1px 6px; border-radius: 6px; font-weight: 800; }
+.pz-wa-book { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 8px; padding: 12px; border-radius: 999px; background: #25D366; color: #fff !important; font-weight: 700; text-decoration: none; }
+.pz-wa-book:hover { background: #1EBE5A; }
