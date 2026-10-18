@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com https://www.google.com; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://packzen-e7539.firebaseapp.com;">
+  <title>Fixed Moving Quote from Photos | PackZen Bangalore</title>
+  <meta name="description" content="Send photos of your rooms on WhatsApp and get a fixed moving price from PackZen — no surprises on moving day. Bangalore house and office moves.">
+  <link rel="canonical" href="https://packzenblr.in/estimate.html">
+  <link rel="icon" type="image/png" href="assets/logo/packzen-logo.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
+  <link rel="stylesheet" href="parcel.css?v=1">
+  <link rel="stylesheet" href="pz-premium.css?v=12">
+</head>
+<body>
+<header class="pc-top">
+  <a href="/" class="pc-brand"><img src="assets/logo/packzen-logo.png" alt="" width="32" height="32"> PackZen</a>
+  <a href="tel:9945095453" class="pc-call">Call 99450 95453</a>
+</header>
+<main class="pc-wrap">
+  <section class="pc-hero">
+    <h1>Get a fixed price from photos</h1>
+    <p>Not sure what your move will cost? Tell us a few details and send photos of your rooms on WhatsApp. We reply with a fixed price, so nothing changes on moving day.</p>
+    <ul class="pc-facts"><li>Fixed price, agreed before moving day</li><li>Reply usually within an hour, 8 AM – 9 PM</li><li>Free, no obligation</li></ul>
+  </section>
+  <form id="pzForm" class="pc-card" novalidate>
+    <div class="pc-row">
+      <label>Your name<input name="name" maxlength="80" autocomplete="name" required></label>
+      <label>Mobile number<input name="phone" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit number" required></label>
+    </div>
+    <div class="pc-row">
+      <label>Home size<select name="home"><option>1 RK</option><option>1 BHK</option><option selected>2 BHK</option><option>3 BHK</option><option>4 BHK / villa</option><option>Office</option></select></label>
+      <label>Moving date<input name="date" type="date"></label>
+    </div>
+    <label>Pickup area / pincode<input name="area" maxlength="200" placeholder="e.g. HSR Layout 560102"></label>
+    <label>Drop area / city<input name="drop" maxlength="200" placeholder="e.g. Whitefield, or another city"></label>
+    <div class="pc-row">
+      <label>Floor &amp; lift<select name="floors"><option>Ground floor</option><option>With lift</option><option>1–2 floors, no lift</option><option>3+ floors, no lift</option></select></label>
+      <label>Packing needed?<select name="packing"><option>Yes, full packing</option><option>Only fragile items</option><option>No, I'll pack</option></select></label>
+    </div>
+    <input name="website" tabindex="-1" autocomplete="off" class="pz-cb-hp" aria-hidden="true">
+    <p id="pzErr" class="pc-error" role="alert"></p>
+    <div class="pc-actions"><button type="submit" class="pc-btn" id="pzSubmit">Continue</button></div>
+    <p class="pc-small" style="margin-top:10px">By continuing you agree to be contacted by PackZen about this request. <a href="/legal/privacy.html">Privacy policy</a>.</p>
+  </form>
+  <section id="pzDone" class="pc-card pc-done" hidden></section>
+</main>
+<footer class="pc-foot"><a href="/">Home</a> · <a href="services.html">Services</a> · <a href="legal/terms.html">Terms</a></footer>
+<script>
+(function () {
+  "use strict";
+  var FN = "https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead";
+  var form = document.getElementById("pzForm"), err = document.getElementById("pzErr"), btn = document.getElementById("pzSubmit");
+  var d = form.querySelector("[name=date]"); if (d) d.min = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  form.addEventListener("submit", function (e) {
+    e.preventDefault(); err.textContent = "";
+    var f = {}; Array.prototype.forEach.call(form.elements, function (el) { if (el.name) f[el.name] = el.value.trim(); });
+    var phone = f.phone.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    if (f.name.length < 2) { err.textContent = "Please enter your name."; return; }
+    if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Please enter a valid 10-digit mobile number."; return; }
+    var notes = Object.keys(f).filter(function (k) { return ["name","phone","area","date","website"].indexOf(k) < 0 && f[k]; }).map(function (k) { return k + ": " + f[k]; }).join(" | ");
+    btn.disabled = true; btn.textContent = "Sending…";
+    fetch(FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: {
+      name: f.name, phone: phone, service: "estimate", area: f.area || "", date: f.date || "", notes: notes.slice(0, 480), website: f.website,
+      page: location.pathname, attribution: window.pzAttribution ? window.pzAttribution() : {} } }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.error) throw new Error(j.error.message || "Could not send.");
+        if (window.pzTrack) window.pzTrack("generate_lead", { method: "estimate_page" });
+        form.hidden = true; var done = document.getElementById("pzDone"); done.hidden = false;
+        var msg = "Hi PackZen, I'm " + f.name + ". I'd like a fixed quote for my " + f.home + " move" + (f.area ? " from " + f.area : "") + (f.drop ? " to " + f.drop : "") + (f.date ? " on " + f.date : "") + ". Sending photos of my rooms now.";
+        done.innerHTML = "<h2>Almost done ✓</h2><p>Now send 4–8 photos of your rooms (cupboards open is ideal) on WhatsApp. Our team replies with a <b>fixed price</b>, usually within an hour (8 AM – 9 PM).</p>" +
+          '<a class="pz-wa-book" target="_blank" rel="noopener" href="https://wa.me/919945095453?text=' + encodeURIComponent(msg) + '">Send photos on WhatsApp</a>';
+      })
+      .catch(function (x) { btn.disabled = false; btn.textContent = "Continue"; err.textContent = (x && x.message) || "Could not send. Please call 9945095453."; });
+  });
+})();
+</script>
+<script src="pz-leads.js?v=6" defer></script>
+<link rel="stylesheet" href="pzchatbot.css?v=6">
+<script src="pzchatbot.js?v=6" defer></script>
+</body>
+</html>

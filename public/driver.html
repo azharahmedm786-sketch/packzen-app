@@ -399,7 +399,7 @@
     <div class="earn-summary">
       <div class="earn-card full">
         <div class="earn-val" id="earnTotal">₹0</div>
-        <div class="earn-lbl">Total Earnings</div>
+        <div class="earn-lbl">Your earnings (after 10% PackZen fee)</div>
       </div>
       <div class="earn-card">
         <div class="earn-val green" id="earnJobs">0</div>
@@ -1234,6 +1234,7 @@ function renderHistory(bookings) {
    EARNINGS
    ============================================ */
 let currentEarningsPeriod = "all";
+const RIDER_PLATFORM_PCT = 10;   // same as pricing-engine platformCommissionPercent
 
 function loadEarnings(period) {
   if (!driverUser) return;
@@ -1270,11 +1271,30 @@ function loadEarnings(period) {
       const received = _ps.reduce((s, p) => s + (p.paid || 0), 0);
       const cash     = _ps.reduce((s, p) => s + (p.known ? p.balanceDue : 0), 0);
       const count    = bookings.length;
-      const avg      = count ? Math.round(total / count) : 0;
+      // Rider pay: job value minus PackZen's platform share (10%). Cash the rider
+      // collected is already in their hands, so it is netted off the payout.
+      const shareOf  = (b) => Math.round((Number(b.total) || 0) * (100 - RIDER_PLATFORM_PCT) / 100);
+      const share    = bookings.reduce((s, b) => s + shareOf(b), 0);
+      const cashHeld = bookings.reduce((s, b) => s + (Number(b.cashCollected) || 0), 0);
+      const paidOut  = bookings.reduce((s, b) => s + (Number(b.riderPaidAmount) || 0), 0);
+      const pending  = share - cashHeld - paidOut;
+      const avg      = count ? Math.round(share / count) : 0;
 
-      document.getElementById("earnTotal").textContent = "₹" + total.toLocaleString();
+      document.getElementById("earnTotal").textContent = "₹" + share.toLocaleString("en-IN");
       document.getElementById("earnJobs").textContent  = count;
-      document.getElementById("earnAvg").textContent   = "₹" + avg.toLocaleString();
+      document.getElementById("earnAvg").textContent   = "₹" + avg.toLocaleString("en-IN");
+      let pay = document.getElementById("earnPayout");
+      if (!pay) {
+        document.querySelector(".earn-summary").insertAdjacentHTML("beforeend", `
+          <div class="earn-card full" style="background:#fff;border:1px solid var(--border)">
+            <div class="earn-lbl" style="color:var(--text-muted)">Payout status</div>
+            <div id="earnPayout" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;font-size:.85rem"></div>
+          </div>`);
+        pay = document.getElementById("earnPayout");
+      }
+      const cell = (l, v, c) => '<div><div style="font-size:.7rem;color:var(--text-muted);font-weight:600">' + l + '</div><div style="font-weight:800;color:' + (c || "var(--text)") + '">₹' + Math.abs(v).toLocaleString("en-IN") + '</div></div>';
+      pay.innerHTML = cell("Paid to you", paidOut, "var(--accent)") + cell("Cash you hold", cashHeld, "#f97316") +
+        (pending >= 0 ? cell("Pending payout", pending, "var(--primary)") : cell("You owe PackZen", pending, "#B42318"));
 
       // Update or create received/cash breakdown cards
       let recCard = document.getElementById("earnReceived");
@@ -1320,8 +1340,9 @@ function loadEarnings(period) {
             <div class="hist-route">📍 ${pickup} → 🏁 ${drop}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0">
               <div style="background:var(--surface2);border-radius:8px;padding:6px 8px;text-align:center">
-                <div style="font-size:.65rem;color:var(--text-muted);font-weight:600">TOTAL</div>
-                <div style="font-size:.85rem;font-weight:800;color:var(--text)">₹${total.toLocaleString()}</div>
+                <div style="font-size:.65rem;color:var(--text-muted);font-weight:600">YOUR SHARE</div>
+                <div style="font-size:.85rem;font-weight:800;color:var(--text)">₹${Math.round(total * (100 - RIDER_PLATFORM_PCT) / 100).toLocaleString("en-IN")}</div>
+                <div style="font-size:.62rem;color:var(--text-muted)">${Number(raw.riderPaidAmount) > 0 ? "paid ₹" + Number(raw.riderPaidAmount).toLocaleString("en-IN") : "payout pending"}</div>
               </div>
               <div style="background:rgba(0,201,110,.08);border-radius:8px;padding:6px 8px;text-align:center">
                 <div style="font-size:.65rem;color:var(--accent);font-weight:600">PRE-PAID</div>

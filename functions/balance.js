@@ -40,7 +40,9 @@ async function handleRecordCollection(data, context, deps) {
     const paid = (Number(bd.paid) || 0) + amount;
     const balanceDue = due - amount;
     tx.set(cRef, { amount, method, by: uid, byRole: isAdmin ? "admin" : "driver", at: deps.now(), balanceBefore: due, balanceAfter: balanceDue });
-    tx.update(bRef, { paid, balanceDue, paymentStatus: balanceDue === 0 ? "paid" : "partially_paid", lastCollectionAt: deps.now() });
+    // cashCollected: money the crew physically holds (deducted from their payout)
+    tx.update(bRef, { paid, balanceDue, paymentStatus: balanceDue === 0 ? "paid" : "partially_paid", lastCollectionAt: deps.now(),
+      cashCollected: (Number(bd.cashCollected) || 0) + (method === "cash" ? amount : 0) });
     return { ok: true, balanceDue };
   });
   if (out.error) throw new BalanceError(out.error[0], out.error[1]);

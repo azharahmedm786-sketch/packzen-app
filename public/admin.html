@@ -2281,8 +2281,19 @@ function _opsCard(b){
     '<div class="ops-meta">'+_oesc(b.bookingRef||b.id)+' · '+_orup(b.total)+(due>0?' · <b class="ops-due">'+_orup(due)+' due</b>':'')+(b.driverName?' · 🧑‍🔧 '+_oesc(b.driverName):'')+'</div>'+
     '<div class="ops-actions">'+
       (b.status !== "cancelled" && !["delivered","completed"].includes(b.status) ? '<button class="btn-primary-sm" onclick="openAssignModal(\''+b.id+'\')">'+(b.driverUid?'Reassign':'Assign')+'</button>' : '')+
+      (["delivered","completed"].includes(b.status) && b.driverUid ? '<button class="btn-export" onclick="opsRecordPayout(\''+b.id+'\')">'+(Number(b.riderPaidAmount)>0?'Paid ₹'+Number(b.riderPaidAmount).toLocaleString("en-IN"):'Record payout')+'</button>' : '')+
       '<select onchange="updateStatus(\''+b.id+'\',this.value)">'+["confirmed","assigned","packing","transit","delivered","cancelled"].map(s=>'<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>').join("")+'</select>'+
     '</div></div>';
+}
+// Rider payout = 90% of the job value, minus cash the rider already collected.
+function opsRecordPayout(id){
+  const b = _ops.find(x=>x.id===id); if (!b) return;
+  const share = Math.round((Number(b.total)||0)*0.9), cash = Number(b.cashCollected)||0, already = Number(b.riderPaidAmount)||0;
+  const suggested = Math.max(0, share - cash - already);
+  const v = prompt("Payout to "+(b.driverName||"rider")+" for "+(b.bookingRef||id)+"\nShare ₹"+share+" − cash held ₹"+cash+" − already paid ₹"+already+"\nAmount paid now (₹):", String(suggested));
+  if (v===null) return; const amt = Math.round(Number(v)); if (!(amt>=0)) { toast("Enter a valid amount"); return; }
+  requireAdmin(()=>window._firebase.db.collection("bookings").doc(id).update({ riderPaidAmount: already+amt, riderPaidAt: Date.now() })
+    .then(()=>toast("✅ Payout recorded")).catch(e=>toast("❌ "+e.message)));
 }
 function opsRender(){
   if (!document.getElementById("opsBoard")) return;
