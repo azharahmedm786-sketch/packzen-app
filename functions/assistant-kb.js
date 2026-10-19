@@ -33,7 +33,7 @@ const ENTRIES = [
     answer: () => "You're welcome! Anything else I can help with?" },
 
   { id: "services", phrases: ["what services", "what do you do", "services do you", "do you offer", "what all"], words: ["services", "offer"],
-    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Two-wheeler parcel delivery (up to 20 kg)\n• Home services: AC service/repair/installation, deep cleaning, electrician, carpenter, plumber and TV mounting\nCar transport, painting, pest control and appliance repair are coming later — call us if you need one of those.",
+    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Two-wheeler parcel delivery (up to 20 kg)\n• Home services: AC service/repair/installation, electrician, carpenter, plumber and TV mounting\nWe don't offer cleaning services. Car transport, painting, pest control and appliance repair are coming later — call us if you need one of those.",
     actions: [{ type: "link", label: "See all services", href: "/services.html" }] },
 
   { id: "price_general", phrases: ["how much", "price list", "rate card", "starting price", "minimum charge", "kitna", "estimate", "charges for"], words: ["price", "prices", "pricing", "cost", "costs", "charges", "rate", "rates", "quote", "fare", "expensive", "cheap", "budget"],
@@ -84,8 +84,11 @@ const ENTRIES = [
     answer: () => "Two-wheeler parcel delivery within Bangalore: " + inr(49) + " for the first 2 km, then " + inr(11) + " per km, +" + inr(30) + " if over 10 kg. Up to 20 kg and 40 km, pickup and drop both in Bangalore, paid online.",
     actions: [{ type: "link", label: "Book a parcel", href: "/parcel.html" }] },
 
-  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation", "deep cleaning", "home cleaning"], words: ["ac", "aircon", "cleaning", "electrician", "carpenter", "plumber", "plumbing", "mounting"],
-    answer: () => "We offer AC service, repair, installation and gas refill, deep home/kitchen/bathroom cleaning, electricians, carpenters, plumbers and TV wall mounting in Bangalore, with fixed prices shown before you book.",
+  { id: "no_cleaning", phrases: ["deep cleaning", "home cleaning", "house cleaning", "kitchen cleaning", "bathroom cleaning", "sofa cleaning", "cleaning service", "move in cleaning", "move out cleaning"], words: ["cleaning", "cleaner", "cleaners", "maid", "housekeeping"],
+    answer: () => "Sorry — PackZen doesn't offer cleaning services. We can help with house shifting, parcels, AC service and repair, electricians, carpenters, plumbers and TV mounting in Bangalore." },
+
+  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation"], words: ["ac", "aircon", "electrician", "carpenter", "plumber", "plumbing", "mounting"],
+    answer: () => "We offer AC service, repair, installation and gas refill, electricians, carpenters, plumbers and TV wall mounting in Bangalore, with fixed prices shown before you book.",
     actions: [{ type: "link", label: "Book a home service", href: "/services.html" }] },
 
   { id: "unsupported", phrases: ["car transport", "painting", "pest control", "appliance repair"], words: ["painting", "painter", "pest", "termite"],

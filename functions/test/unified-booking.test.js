@@ -10,10 +10,10 @@ const pub = (f) => fs.readFileSync(path.join(__dirname, "..", "..", "public", f)
 let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
 
 const leads = pub("pz-leads.js");
-for (const id of ["move", "office", "vehicle", "parcel", "ac", "cleaning", "home", "tv"]) assert.ok(leads.includes('id: "' + id + '"'), id);
+for (const id of ["move", "office", "vehicle", "parcel", "ac", "home", "tv"]) assert.ok(leads.includes('id: "' + id + '"'), id);
 assert.ok(/window\.pzOpenBook = function/.test(leads) && /pzHeaderBook/.test(leads) && /bnavBook/.test(leads) && /book=move/.test(leads));
 assert.ok(/location\.href = "\/parcel\.html"/.test(leads) && /services\.html\?category=/.test(leads));
-ok("Book picker: 8 services, header button on every page, bottom-nav Book opens it, ?book=move opens the moving form");
+assert.ok(!leads.includes('id: "cleaning"')); ok("Book picker: 7 services (no cleaning), header button on every page, bottom-nav Book opens it, ?book=move opens the moving form");
 
 const adm = pub("admin.html");
 assert.ok(/id="sectionOps"/.test(adm) && /function loadOps/.test(adm) && /function opsRender/.test(adm));

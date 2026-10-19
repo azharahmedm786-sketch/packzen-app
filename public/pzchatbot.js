@@ -56,7 +56,7 @@
      ====================================================================== */
   var KB = {
     greeting:
-      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC service, deep cleaning, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
+      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC service, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
 
     menu: [
       { label: "💰 Pricing & Rates", intent: "pricing" },

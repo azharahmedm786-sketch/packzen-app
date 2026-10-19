@@ -62,7 +62,7 @@ const S = [
   ["ac service price", () => { const r = A("ac service price", { catalog }); has(r, "catalog_price"); says(r, "₹429", "per unit"); }],
   ["ac repair price", () => { const r = A("how much for ac repair", { catalog }); says(r, "₹249"); }],
   ["home services", () => { const r = A("do you have electrician or plumber"); has(r, "home_services"); }],
-  ["cleaning", () => { const r = A("deep cleaning available?"); has(r, "home_services"); }],
+  ["cleaning", () => { const r = A("deep cleaning available?"); has(r, "no_cleaning"); assert.ok(/doesn.t offer cleaning/.test(r.reply)); }],
   // unsupported
   ["painting", () => { const r = A("do you do painting"); has(r, "unsupported"); says(r, "coming later"); not(r, "₹"); }],
   ["pest control", () => { const r = A("pest control for termites"); has(r, "unsupported"); }],

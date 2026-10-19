@@ -35,11 +35,10 @@ const clean = (html) => BAD.forEach((t) => assert.ok(!new RegExp("(^|[^a-zA-Z])"
 const tests = []; const test = (n, f) => tests.push({ n, f });
 
 /* marketplace taxonomy */
-test("taxonomy: five categories with the approved service list (2026-10-11)", () => {
+test("taxonomy: four categories with the approved service list (cleaning removed 2026-10-19)", () => {
   const want = {
     moving: ["House shifting", "Office relocation", "Single item", "Packing & unpacking", "Bike transport", "Car transport"],
     ac: ["AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill"],
-    cleaning: ["Home deep cleaning", "Kitchen cleaning", "Bathroom cleaning"],
     home: ["Electrical", "Carpentry", "Plumbing", "TV wall mount", "Painting", "Pest control", "Appliance repair"],
     delivery: ["Single-item delivery", "Two-wheeler parcel"],
   };
@@ -58,7 +57,7 @@ test("search: keywords and partial words match; no match returns empty", () => {
   assert.ok(names("plumber").includes("Plumbing"));
   assert.ok(names("scooter").includes("Bike transport"));
   assert.deepStrictEqual(names("helicopter"), []);
-  assert.strictEqual(mk.filter("").length, 23);
+  assert.strictEqual(mk.filter("").length, 20);
 });
 test("routing: moving uses existing quote flow / SEO pages; other services go to catalog search", () => {
   const find = (n) => mk.CATEGORIES.flatMap((c) => c.services).find((s) => s.name === n);
@@ -148,15 +147,19 @@ test("availability: every service has an honest status; only real booking paths 
   const st = (n) => all.find((x) => x.name === n).status;
   // Bookable online today: the move-quote flow, or items seeded in the live catalog (tools/seedCatalog.js).
   for (const n of ["House shifting", "Office relocation", "Single item", "Single-item delivery", "AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill",
-                   "Home deep cleaning", "Kitchen cleaning", "Bathroom cleaning", "TV wall mount", "Electrical", "Carpentry", "Plumbing"]) assert.strictEqual(st(n), "book", n);
+                   "TV wall mount", "Electrical", "Carpentry", "Plumbing"]) assert.strictEqual(st(n), "book", n);
   for (const n of ["Packing & unpacking", "Bike transport"]) assert.strictEqual(st(n), "addon", n);
   for (const n of ["Painting", "Pest control", "Appliance repair", "Car transport"]) assert.strictEqual(st(n), "soon", n);
   assert.strictEqual(st("Two-wheeler parcel"), "book");
   const seed = fs.readFileSync(path.join(__dirname, "..", "..", "tools", "seedCatalog.js"), "utf8");
   // every catalog-backed "book" service has a priced catalog item (owner-approved prices)
   for (const id of ["ac-installation", "ac-uninstallation", "ac-service-standard", "ac-service-deep", "ac-gas-refill", "ac-repair-inspection", "tv-wall-mount", "carpenter", "electrician",
-                    "plumber-visit", "deep-cleaning-1bhk", "deep-cleaning-2bhk", "deep-cleaning-3bhk", "kitchen-cleaning", "bathroom-cleaning"]) assert.ok(new RegExp('id: "' + id + '"[^}]*basePrice: [1-9]').test(seed), "priced catalog item " + id);
+                    "plumber-visit"]) assert.ok(new RegExp('id: "' + id + '"[^}]*basePrice: [1-9]').test(seed), "priced catalog item " + id);
   assert.ok(/isActive: false,/.test(seed.slice(seed.indexOf("movingPackages"), seed.indexOf("packingPackages"))), "conflicting moving packages inactive");
+  // PackZen doesn't offer cleaning: category and items seeded inactive, hidden client-side, refused server-side
+  for (const id of ["cleaning", "deep-cleaning-1bhk", "kitchen-cleaning", "bathroom-cleaning"]) assert.ok(new RegExp('id: "' + id + '",\\s+isActive: false').test(seed), id);
+  assert.ok(/isActive: true, \.\.\.c/.test(seed) && /HIDDEN = \/clean\/i/.test(fs.readFileSync(path.join(__dirname, "..", "..", "public", "catalog-public.js"), "utf8")));
+  assert.ok(/\/clean\/i\.test\(String\(d\.categoryId/.test(fs.readFileSync(path.join(__dirname, "..", "catalog-booking.js"), "utf8")));
 });
 test("availability: rendered chips — 'Coming soon' is never a link; no unsupported claims", () => {
   const html = renderHtml();

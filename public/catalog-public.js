@@ -50,9 +50,16 @@
     });
   }
 
+  // PackZen doesn't offer cleaning: hide that category (and its services/packages)
+  // even if it is still marked active in the catalog.
+  var HIDDEN = /clean/i;
+  function hidden(x) {
+    return HIDDEN.test(String(x.id || "")) || HIDDEN.test(String(x.categoryId || "")) || HIDDEN.test(String(x.category || "")) ||
+      (/^(cleaning|deep cleaning)$/i.test(String(x.name || "")));
+  }
   function fetchCollection(db, name) {
     return db.collection(name).where("isActive", "==", true).get().then(function (snap) {
-      return snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }).sort(byOrder);
+      return snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }).filter(function (x) { return !hidden(x); }).sort(byOrder);
     });
   }
 

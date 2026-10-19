@@ -151,8 +151,8 @@ async function handleSupportRequest(data, context, deps) {
   await ref.set(record);
   // Lead record for conversion tracking (one per request; duplicates are OK — they're separate enquiries).
   // Same shape as the lead engine (leads.js) so these show in the admin pipeline.
-  const svcFromTopic = { moving: "move", move: "move", parcel: "parcel", ac: "ac", cleaning: "cleaning", electrician: "electrician", plumber: "plumber", carpenter: "carpenter", tv: "tv" }[String(topic || "").toLowerCase()] || "other";
-  const LABELS = { move: "House / office shifting", parcel: "Parcel delivery", ac: "AC service & repair", cleaning: "Deep cleaning", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", other: "Something else" };
+  const svcFromTopic = { moving: "move", move: "move", parcel: "parcel", ac: "ac", electrician: "electrician", plumber: "plumber", carpenter: "carpenter", tv: "tv" }[String(topic || "").toLowerCase()] || "other";
+  const LABELS = { move: "House / office shifting", parcel: "Parcel delivery", ac: "AC service & repair", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", other: "Something else" };
   const nowMs = deps.nowMs();
   await deps.db.collection("leads").doc(ref.id).set({ name, phone, service: svcFromTopic, serviceLabel: LABELS[svcFromTopic], notes: message, topic, uid,
     source: "website-assistant", channel: "assistant", supportRequestId: ref.id, status: "new", slaAlerted: false,

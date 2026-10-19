@@ -56,6 +56,9 @@ async function loadCatalog(db, rawItems) {
   const snaps = await db.getAll(...refs);
   const catIds = new Set();
   snaps.forEach((s, i) => {
+    const d = s.exists ? (s.data() || {}) : null;
+    // PackZen doesn't offer cleaning: such items are treated as not found (not bookable).
+    if (d && (/clean/i.test(String(d.categoryId || "")) || /clean/i.test(wanted[i].id))) return;
     if (s.exists) {
       catalog[wanted[i].type][wanted[i].id] = s.data();
       if (s.data().categoryId) catIds.add(s.data().categoryId);

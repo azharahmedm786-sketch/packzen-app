@@ -47,9 +47,9 @@ const categories = [
   { id: "packing",     name: "Packing Services",  icon: "📦", displayOrder: 2, description: "Packing and unpacking with quality material tiers" },
   { id: "ac-services", name: "AC Services",       icon: "❄️", displayOrder: 3, description: "AC installation, uninstallation, servicing, gas refill and repair" },
   { id: "appliances",  name: "Appliance Services",icon: "📺", displayOrder: 4, description: "TV mounting and appliance handling" },
-  { id: "cleaning",    name: "Cleaning Services", icon: "\u{1F9F9}", displayOrder: 6, description: "Deep home, kitchen and bathroom cleaning" },
+  { id: "cleaning",    isActive: false, name: "Cleaning Services", icon: "\u{1F9F9}", displayOrder: 6, description: "Deep home, kitchen and bathroom cleaning" },
   { id: "handyman",    name: "Handyman Services", icon: "🛠️", displayOrder: 5, description: "Electrician, carpenter and plumber visits" },
-].map((c) => ({ ...c, isActive: true }));
+].map((c) => ({ isActive: true, ...c }));   // an explicit isActive: false (e.g. cleaning) wins
 
 // ── Services ────────────────────────────────────────────────────
 // pricingUnit: "fixed" | "starting_from" | "per_item" | "per_carton" | "quote"
@@ -63,13 +63,13 @@ const services = [
   { id: "ac-service-standard",  categoryId: "ac-services", name: "AC Service",             basePrice: 429,  pricingUnit: "per_item", displayOrder: 11, description: "Filter, coil and drain cleaning, per AC" },
   { id: "ac-service-deep",      categoryId: "ac-services", name: "AC Deep Service",        basePrice: 599,  pricingUnit: "per_item", displayOrder: 12, description: "Foam/jet deep cleaning of indoor unit, per AC" },
   { id: "ac-gas-refill",        categoryId: "ac-services", name: "AC Gas Refill",          basePrice: 2399, pricingUnit: "per_item", displayOrder: 13, description: "Gas charging with leak check, per AC" },
-  { id: "deep-cleaning-1bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 1 BHK",  basePrice: 3299, pricingUnit: "fixed",    displayOrder: 20, description: "Full-home deep cleaning, furnished 1 BHK" },
-  { id: "deep-cleaning-2bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 2 BHK",  basePrice: 4299, pricingUnit: "fixed",    displayOrder: 21, description: "Full-home deep cleaning, furnished 2 BHK" },
-  { id: "deep-cleaning-3bhk",   categoryId: "cleaning",    name: "Deep Cleaning — 3 BHK",  basePrice: 5499, pricingUnit: "fixed",    displayOrder: 22, description: "Full-home deep cleaning, furnished 3 BHK" },
-  { id: "kitchen-cleaning",     categoryId: "cleaning",    name: "Kitchen Deep Cleaning",  basePrice: 999,  pricingUnit: "fixed",    displayOrder: 23, description: "Cabinets, slab, tiles and appliances exterior" },
-  { id: "bathroom-cleaning",    categoryId: "cleaning",    name: "Bathroom Cleaning",      basePrice: 449,  pricingUnit: "per_item", displayOrder: 24, description: "Machine deep cleaning, per bathroom" },
+  { id: "deep-cleaning-1bhk", isActive: false,   categoryId: "cleaning",    name: "Deep Cleaning — 1 BHK",  basePrice: 3299, pricingUnit: "fixed",    displayOrder: 20, description: "Full-home deep cleaning, furnished 1 BHK" },
+  { id: "deep-cleaning-2bhk", isActive: false,   categoryId: "cleaning",    name: "Deep Cleaning — 2 BHK",  basePrice: 4299, pricingUnit: "fixed",    displayOrder: 21, description: "Full-home deep cleaning, furnished 2 BHK" },
+  { id: "deep-cleaning-3bhk", isActive: false,   categoryId: "cleaning",    name: "Deep Cleaning — 3 BHK",  basePrice: 5499, pricingUnit: "fixed",    displayOrder: 22, description: "Full-home deep cleaning, furnished 3 BHK" },
+  { id: "kitchen-cleaning", isActive: false,     categoryId: "cleaning",    name: "Kitchen Deep Cleaning",  basePrice: 999,  pricingUnit: "fixed",    displayOrder: 23, description: "Cabinets, slab, tiles and appliances exterior" },
+  { id: "bathroom-cleaning", isActive: false,    categoryId: "cleaning",    name: "Bathroom Cleaning",      basePrice: 449,  pricingUnit: "per_item", displayOrder: 24, description: "Machine deep cleaning, per bathroom" },
   { id: "plumber-visit",        categoryId: "handyman",    name: "Plumber Visit",          basePrice: 149,  pricingUnit: "fixed",    displayOrder: 30, description: "Visit charge, adjusted in the final bill; work priced on site" },
-].map((s) => ({ ...s, isActive: true }));
+].map((s) => ({ isActive: true, ...s }));
 
 // ── Packages ────────────────────────────────────────────────────
 // Moving packages by home size.

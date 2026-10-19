@@ -4,7 +4,7 @@
  *                          the referrer gets a personal ₹200 code (RWD-XXXXXX, one use,
  *                          6 months) by SMS + their referral stats update. Once per booking.
  *  postMoveFollowUp        daily 11:00 IST: 3 days after a completed MOVE, one SMS offering
- *                          deep cleaning / AC installation for the new home.
+ *                          AC installation / handyman help for the new home.
  * SMS go through the existing smsQueue (MSG91). Templates may need DLT registration.
  */
 "use strict";
@@ -65,7 +65,7 @@ async function followUps(deps) {
     const b = d.data() || {};
     if (b.postMoveFollowUpAt || !DONE.includes(b.status) || b.bookingType === "parcel" || b.bookingType === "service" || !b.phone) continue;
     await d.ref.update({ postMoveFollowUpAt: nowMs });
-    await deps.queueSms(b.phone, `Hi ${String(b.customerName || "").split(" ")[0] || "there"}, settled into your new home? PackZen can help with deep cleaning, AC installation and handyman work: packzenblr.in/services.html`, b.bookingRef || null);
+    await deps.queueSms(b.phone, `Hi ${String(b.customerName || "").split(" ")[0] || "there"}, settled into your new home? PackZen can help with AC installation and handyman work: packzenblr.in/services.html`, b.bookingRef || null);
     sent++;
   }
   return { sent };

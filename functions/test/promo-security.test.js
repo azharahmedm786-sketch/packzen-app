@@ -173,7 +173,7 @@ test("17. catalog/service orders: forged promo/total fields have no effect", asy
     loadCatalog: async () => ({ services: {}, packages: {}, addons: { "ac-installation": db.col("addons")["ac-installation"] }, categories: { "ac-services": { isActive: true } } }),
     priceCart, validateDetails, validRequestId,
     createOrder: async (o) => { orders.push(o); return { id: "order_SVCP" + String(orders.length).padStart(8, "0"), amount: o.amount, currency: o.currency }; } };
-  const details = { customerName: "Asha", phone: "9845095453", address: "12 MG Road Bangalore", date: new Date(NOW + 10 * 864e5).toISOString().slice(0, 10), timeSlot: "morning" };
+  const details = { customerName: "Asha", phone: "9845095453", address: "12 MG Road Bangalore", date: new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10), timeSlot: "morning" };
   const r = await handleCreateServiceOrder({ headers: { authorization: "Bearer t" }, body: { requestId: "req-svc-promo1", items: [{ type: "addons", id: "ac-installation", qty: 1 }], details,
     promoCode: "SAVE200", promoDiscount: 1000, total: 1, amount: 1 } }, deps);
   assert.strictEqual(r.status, 200, JSON.stringify(r.body)); assert.strictEqual(orders[0].amount, 140000);

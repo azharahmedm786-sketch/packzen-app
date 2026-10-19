@@ -153,7 +153,7 @@
   <link rel="stylesheet" href="pz-ops.css?v=1">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
-  <link rel="stylesheet" href="pz-ops-premium.css?v=2">
+  <link rel="stylesheet" href="pz-ops-premium.css?v=4">
 </head>
 <body>
 
@@ -634,7 +634,7 @@ function buildShell(adminName) {
       <div class="table-card">
         <div class="table-hdr" style="flex-wrap:wrap;gap:8px"><div class="table-title">Partner applications</div>
           <select id="partnerFilter" onchange="renderPartners()"><option value="pending">Pending review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option></select>
-          <select id="partnerTrack" onchange="renderPartners()"><option value="all">All services</option><option value="movers">Packers &amp; movers</option><option value="ac">AC technicians</option><option value="cleaning">Cleaning</option><option value="handyman">Electrician / plumber / carpenter</option><option value="parcel">Parcel riders</option><option value="vehicle">Vehicle transport</option></select></div>
+          <select id="partnerTrack" onchange="renderPartners()"><option value="all">All services</option><option value="movers">Packers &amp; movers</option><option value="ac">AC technicians</option><option value="handyman">Electrician / plumber / carpenter</option><option value="parcel">Parcel riders</option><option value="vehicle">Vehicle transport</option></select></div>
         <div id="partnersList" style="padding:12px"><div class="empty-td">Loading...</div></div>
       </div>
     </div>
@@ -2381,7 +2381,7 @@ function renderPartners(){
     const d = p.documents || {}, st = p.verificationStatus || "pending";
     const when = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "";
     return '<div class="ops-card" style="border-left-color:'+(st==="approved"?"#1F9D5C":st==="rejected"?"#B42318":"#FFB224")+';margin-bottom:10px">'+
-      '<div class="ops-card-top"><b style="font-size:1rem">'+_pesc(p.ownerName||"-")+' · '+_pesc(p.businessName||"")+'</b><span><span class="ops-tag ops-tag-service">'+_pesc({movers:"Movers",ac:"AC",cleaning:"Cleaning",handyman:"Handyman",parcel:"Parcel",vehicle:"Vehicles"}[p.partnerCategory||"movers"]||p.partnerCategory)+'</span> <span class="ops-tag">'+_pesc(st)+'</span></span></div>'+
+      '<div class="ops-card-top"><b style="font-size:1rem">'+_pesc(p.ownerName||"-")+' · '+_pesc(p.businessName||"")+'</b><span><span class="ops-tag ops-tag-service">'+_pesc({movers:"Movers",ac:"AC",handyman:"Handyman",parcel:"Parcel",vehicle:"Vehicles"}[p.partnerCategory||"movers"]||p.partnerCategory)+'</span> <span class="ops-tag">'+_pesc(st)+'</span></span></div>'+
       '<div class="ops-who">'+_pesc(p.businessTypeLabel||p.businessType||"")+' · '+_pesc(p.vehicleTypeLabel||p.vehicleType||"no vehicle")+(p.vehicleRegNo?' ('+_pesc(p.vehicleRegNo)+')':'')+'</div>'+
       '<div class="ops-who"><a href="tel:'+_pesc(String(p.ownerPhone||"").replace(/^\+91/,""))+'">'+_pesc(p.ownerPhone||"")+'</a> · '+_pesc(p.email||"")+' · applied '+when+'</div>'+
       '<div class="ops-meta">Skills: '+_pesc((p.skills||[]).join(", ")||"(not given — set from business type)")+' · Areas: '+_pesc((p.serviceAreas||[]).join(", ")||"-")+' · PAN '+_pesc(p.panNumber||"-")+' · Aadhaar ••••'+_pesc(p.aadhaarLast4||"")+'</div>'+

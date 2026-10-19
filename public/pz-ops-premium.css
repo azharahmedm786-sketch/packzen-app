@@ -81,3 +81,34 @@ body.partner-body .app-bar .app-login-pill { background: var(--ops-text) !import
 .reg-card { border-radius: 20px !important; border: 1px solid var(--ops-line) !important; box-shadow: var(--ops-shadow) !important; }
 .reg-card-title { font-family: var(--ops-display) !important; }
 .vt-chip.selected, .vt-chip.active { border-color: var(--ops-green) !important; background: var(--ops-green-soft) !important; color: var(--ops-green-deep) !important; }
+
+/* ---------- partner landing page (partner.html): light, on-brand, readable ---------- */
+.partner-hero {
+  background: radial-gradient(700px 420px at 85% 0%, rgba(31,157,92,0.16), transparent 60%),
+              radial-gradient(520px 360px at 0% 100%, rgba(255,178,36,0.16), transparent 60%), #FFFFFF !important;
+  color: var(--ops-text) !important; border-bottom: 1px solid var(--ops-line);
+}
+.partner-hero h1 { color: var(--ops-text) !important; font-family: var(--ops-display) !important; letter-spacing: -0.03em; line-height: 1.05 !important; }
+.partner-hero .partner-hero-accent { color: var(--ops-green-deep) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.partner-hero .partner-hero-sub, .partner-hero p { color: var(--ops-text-2) !important; }
+.partner-hero-badge { background: var(--ops-green-soft) !important; color: var(--ops-green-deep) !important; border: 1px solid rgba(31,157,92,.3) !important; }
+.partner-hero .pz-btn-primary { background: var(--ops-green) !important; color: #fff !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; }
+.partner-hero .pz-btn-outline { background: #fff !important; color: var(--ops-text) !important; border: 1px solid var(--ops-line-2) !important; border-radius: 999px !important; }
+.partner-hero [class*="chip"], .partner-hero [class*="pill"], .partner-hero [class*="trust"] span, .partner-hero-trust > * {
+  background: #fff !important; color: var(--ops-text-2) !important; border: 1px solid var(--ops-line-2) !important;
+}
+.partner-stats-strip { background: #fff !important; border-bottom: 1px solid var(--ops-line) !important; }
+.partner-stats-strip * { color: var(--ops-text-2) !important; }
+.partner-stats-strip [class*="value"], .partner-stats-strip strong, .partner-stats-strip b { color: var(--ops-green-deep) !important; font-family: var(--ops-display) !important; }
+.partner-section h2 { font-family: var(--ops-display) !important; color: var(--ops-text) !important; letter-spacing: -0.02em; }
+.partner-section-alt { background: var(--ops-bg) !important; }
+.partner-section [class*="card"], .partner-section [class*="tile"], .partner-section [class*="item"]:not(li) {
+  border-radius: 16px !important; border: 1px solid var(--ops-line) !important; box-shadow: var(--ops-shadow) !important; background: #fff !important;
+}
+.pz-track { gap: 10px; }
+.pz-track span { white-space: nowrap; flex: none; }
+.pz-track b { font-size: .98rem; }
+.partner-trust-row > *, .partner-trust-row span, .partner-trust-row div {
+  background: #fff !important; color: var(--ops-text-2) !important; border: 1px solid var(--ops-line-2) !important; border-radius: 999px !important;
+}
+.partner-trust-row svg, .partner-trust-row i { color: var(--ops-green) !important; }

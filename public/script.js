@@ -3304,7 +3304,7 @@ function _renderMyBookings(filter) {
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
   const upcomingMove = all.find(x => _pzTypeOf(x.data) === "move" && !["cancelled","delivered","completed"].includes(x.data.status) && (x.data.date || "") >= today);
   const addons = upcomingMove ? '<div class="pz-mb-addons"><b>Moving on ' + escapeHTML(upcomingMove.data.date || "") + '?</b> Book these for your new home, same app, same checkout:' +
-    '<div class="pz-mb-addon-row"><a class="pz-mb-addon" href="services.html?category=cleaning">🧹 Deep cleaning</a><a class="pz-mb-addon" href="services.html?category=ac">❄️ AC install / uninstall</a><a class="pz-mb-addon" href="services.html?category=home">🔧 Electrician · carpenter · TV mounting</a></div></div>' : "";
+    '<div class="pz-mb-addon-row"><a class="pz-mb-addon" href="services.html?category=ac">❄️ AC install / uninstall</a><a class="pz-mb-addon" href="services.html?category=home">🔧 Electrician · carpenter · TV mounting</a></div></div>' : "";
   list.innerHTML = (all.length > 1 ? '<div class="pz-mb-chips" role="group" aria-label="Filter bookings">' + chips + '</div>' : "") + addons +
     (shown.length ? shown.map(x => renderBookingCard(x.data, x.id)).join("") : '<div class="pz-state"><p>No bookings of this type yet.</p></div>');
   attachBookingButtonListeners();

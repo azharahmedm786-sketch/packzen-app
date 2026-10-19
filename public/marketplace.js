@@ -33,10 +33,6 @@
       { name: "AC servicing", q: "AC Service", keywords: "cleaning wet service deep foam", status: "book" },
       { name: "AC repair", q: "AC Repair", keywords: "not cooling noise leak inspection", status: "book" },
       { name: "AC gas refill", q: "Gas Refill", keywords: "gas charging cooling", status: "book" } ] },
-    { id: "cleaning", icon: "\u{1F9F9}", name: "Cleaning", sub: "Deep home, kitchen and bathroom cleaning", services: [
-      { name: "Home deep cleaning", q: "Deep Cleaning", keywords: "full house 1bhk 2bhk 3bhk move in move out", status: "book" },
-      { name: "Kitchen cleaning", q: "Kitchen", keywords: "chimney grease", status: "book" },
-      { name: "Bathroom cleaning", q: "Bathroom", keywords: "toilet tiles", status: "book" } ] },
     { id: "home", icon: "🏠", name: "Home Services", sub: "Electrician, carpenter, plumber and TV mounting", services: [
       { name: "Electrical", q: "Electrician", keywords: "electrician wiring switch fan light", status: "book" },
       { name: "Carpentry", q: "Carpenter", keywords: "carpenter furniture repair assembly", status: "book" },
