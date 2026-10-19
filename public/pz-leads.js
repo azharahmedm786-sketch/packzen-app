@@ -86,6 +86,8 @@
       '<label>Your name<input name="name" maxlength="80" autocomplete="name" required></label>' +
       '<label>Mobile number<input name="phone" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit number" required></label>' +
       '<label>What do you need?<select name="service">' + opts + "</select></label>" +
+      '<div class="pz-cb-row"><label>When do you need it?<select name="when"><option value="this_week">This week</option><option value="two_weeks">In the next 2 weeks</option><option value="this_month">This month</option><option value="later">Later</option><option value="just_checking">Just checking prices</option></select></label>' +
+      '<label class="pz-cb-home">Home size<select name="homeSize"><option value="">—</option><option value="1rk">1 RK</option><option value="1bhk">1 BHK</option><option value="2bhk">2 BHK</option><option value="3bhk">3 BHK</option><option value="4bhk">4 BHK</option><option value="villa">Villa</option><option value="office">Office</option></select></label></div>' +
       '<div class="pz-cb-row"><label>Area / pincode<input name="area" maxlength="200" placeholder="e.g. HSR Layout 560102"></label>' +
       '<label>Preferred date<input name="date" type="date"></label></div>' +
       '<label>Anything else? <small>(optional)</small><input name="notes" maxlength="300" placeholder="2BHK, 3rd floor, no lift…"></label>' +
@@ -107,6 +109,8 @@
     }
     var form = dlg.querySelector("form"), err = dlg.querySelector(".pz-cb-err"), submit = dlg.querySelector(".pz-cb-submit");
     form.date.min = today(); form.service.value = guessService();
+    var syncHome = function () { var h = dlg.querySelector(".pz-cb-home"); if (h) h.style.display = /^(move|vehicle)$/.test(form.service.value) ? "" : "none"; };
+    form.service.addEventListener("change", syncHome); syncHome();
     var lastFocus = null;
     function open() { lastFocus = document.activeElement; dlg.hidden = false; setTimeout(function () { form.name.focus(); }, 30); }
     function close() { dlg.hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
@@ -122,7 +126,7 @@
       if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Please enter a valid 10-digit mobile number."; return; }
       submit.disabled = true; submit.textContent = "Sending…";
       var payload = { name: form.name.value, phone: phone, service: form.service.value, area: form.area.value, date: form.date.value,
-        notes: form.notes.value, website: form.website.value, page: location.pathname, lang: (document.documentElement.lang || "en").slice(0, 2),
+        notes: form.notes.value, website: form.website.value, when: form.when.value, homeSize: form.homeSize.value, page: location.pathname, lang: (document.documentElement.lang || "en").slice(0, 2),
         attribution: window.pzAttribution() };
       fetch(FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })

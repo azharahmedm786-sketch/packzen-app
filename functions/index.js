@@ -645,6 +645,9 @@ Object.assign(exports, backupExports);
 // Growth automations: referral rewards, post-move follow-up
 const { _growth, ...growthExports } = require("./growth");
 Object.assign(exports, growthExports);
+// Lead Quality Engine: scoring (hot/warm/cold/junk), hot-lead alerts, warm-lead nurture
+const { _quality, ...qualityExports } = require("./lead-quality");
+Object.assign(exports, qualityExports);
 // Website virtual assistant (grounded answers + human handoff)
 const { _assistant, ...assistantExports } = require("./assistant-functions");
 Object.assign(exports, assistantExports);

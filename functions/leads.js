@@ -72,8 +72,11 @@ function validateLead(data, now) {
   let date = str(d.date, 10);
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = "";
   const lang = ["en", "hi", "kn"].includes(d.lang) ? d.lang : "en";
+  // qualifying answers (website form / leads app): how soon, home size
+  const when = ["this_week", "two_weeks", "this_month", "later", "just_checking"].includes(d.when) ? d.when : "";
+  const homeSize = ["1rk", "1bhk", "2bhk", "3bhk", "4bhk", "villa", "office"].includes(d.homeSize) ? d.homeSize : "";
   const page = str(d.page, 200);
-  const value = { name, phone, service, serviceLabel: SERVICES[service], area, notes, date, lang, page };
+  const value = { name, phone, service, serviceLabel: SERVICES[service], area, notes, date, lang, page, when, homeSize, consent: true };
   if (area) {
     const sa = serviceArea.checkAddress(area);
     value.inServiceArea = sa.ok || sa.reason === "unknown"; // unknown = just a locality name; keep the lead

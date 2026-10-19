@@ -9,6 +9,7 @@ Disallow: /firebase-config.js
 
 # Role-gated dashboards — auth-protected, no public content
 Disallow: /admin.html
+Disallow: /leads-app/
 Disallow: /driver.html
 Disallow: /advisor.html
 Disallow: /driver-manifest.json
