@@ -136,6 +136,8 @@
       '<div class="status-row">' + ["contacted", "quoted", "booked", "lost"].map(function (s) { return '<button class="chip' + (l.status === s ? " on" : "") + '" data-st="' + s + '">' + s + "</button>"; }).join("") + "</div>" +
       '<label>Follow-up on<input type="date" id="fuDate" value="' + (l.followUpAt ? new Date(l.followUpAt + 5.5 * 3600e3).toISOString().slice(0, 10) : "") + '"></label>' +
       '<label>Add a note<textarea id="noteTxt" rows="2" placeholder="Spoke to customer, wants Sunday slot…"></textarea></label>' +
+      '<div class="row" style="margin-bottom:10px"><button class="btn" id="sendQuoteBtn">💬 Send quote link</button><button class="btn ghost" id="scriptBtn">📋 Call script</button></div>' +
+      (l.quoteToken ? '<p class="meta">Quote sent: ₹' + Number(l.quotedAmount || 0).toLocaleString("en-IN") + (l.quoteOpenedAtMs ? ' · <b style="color:#157A47">opened ' + ago(l.quoteOpenedAtMs) + ' ago — call now</b>' : " · not opened yet") + "</p>" : "") +
       '<div class="row"><button class="btn" id="saveSheet">Save</button>' + (t !== "junk" ? '<button class="btn ghost" id="junkBtn">Mark as junk</button>' : "") + "</div>" +
       (l.notes ? '<pre class="notes">' + esc(l.notes) + "</pre>" : "");
     $("sheet").hidden = false;
@@ -144,7 +146,7 @@
     card.querySelectorAll("[data-st]").forEach(function (b) {
       b.onclick = function () {
         var s = b.getAttribute("data-st"), extra = { status: s, history: history(s) };
-        if (s === "lost") { var why = prompt("Why was it lost? (price, date, no answer, went elsewhere…)", ""); if (why === null) return; extra.lostReason = why.slice(0, 200); }
+        if (s === "lost") { var why = prompt("Why was it lost? (price, date, no answer, went elsewhere…)", ""); if (why === null) return; extra.lostReason = why.slice(0, 200); extra.lostAtMs = Date.now(); }
         if (s === "quoted") { var amt = prompt("Quoted amount (₹)", ""); if (amt === null) return; extra.quotedAmount = Math.round(Number(amt)) || null; }
         if (s === "booked") { var val = prompt("Booking value (₹)", String(l.quotedAmount || "")); if (val === null) return; extra.bookedValue = Math.round(Number(val)) || 0; extra.bookedAtMs = Date.now(); }
         update(l.id, extra, "Saved: " + s).then(closeSheet);
@@ -157,6 +159,8 @@
       if (!Object.keys(patch).length) return closeSheet();
       update(l.id, patch, "Saved").then(closeSheet);
     };
+    $("sendQuoteBtn").onclick = function () { if (window.pzOpenQuoteForm) window.pzOpenQuoteForm(l); };
+    $("scriptBtn").onclick = function () { if (window.pzOpenScript) window.pzOpenScript(l); };
     if ($("junkBtn")) $("junkBtn").onclick = function () { update(l.id, { status: "lost", lostReason: "junk", tierManual: "junk", history: history("lost") }, "Marked as junk").then(closeSheet); };
   }
   function closeSheet() { $("sheet").hidden = true; }

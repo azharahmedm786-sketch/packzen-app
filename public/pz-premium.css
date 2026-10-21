@@ -479,3 +479,11 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-join-cta { display: inline-block; text-decoration: none !important; color: #fff !important; padding: 13px 22px !important; }
 .pz-join-faq { border-bottom: 1px solid var(--nb-line); padding: 10px 0; } .pz-join-faq summary { font-weight: 700; cursor: pointer; }
 .pz-join-other { display: inline-block; margin: 4px 4px 0 0; padding: 5px 10px; border: 1px solid var(--nb-line-2); border-radius: 999px; font-size: .82rem; text-decoration: none; color: var(--nb-text) !important; }
+
+/* moving-day extras in the booking form */
+.pz-extras { margin: 12px 0 6px; padding: 12px; border: 1px solid rgba(31,157,92,.25); border-radius: 16px; background: rgba(31,157,92,.04); }
+.pz-extras-h { font-weight: 800; font-family: var(--nb-display); margin-bottom: 8px; }
+.pz-extras-h small { font-weight: 500; color: var(--nb-muted); font-family: var(--nb-body); }
+.pz-extra { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+.pz-extra span { display: flex; flex-direction: column; } .pz-extra small, .pz-extras .toggle-text small { color: var(--nb-muted); font-size: .8rem; }
+.pz-extra select { max-width: 120px; margin: 0; }

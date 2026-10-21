@@ -1318,6 +1318,11 @@ function buildQuoteRawPayload(km) {
     liftAvailable: !!document.getElementById("liftAvailable")?.checked,
     packingService: !!document.getElementById("packingService")?.checked,
     extraHelpers: parseInt(document.getElementById("extraHelpers")?.value || "0", 10),
+    // priced moving-day extras (same engine prices on the server)
+    acCount: parseInt(document.getElementById("acCount")?.value || "0", 10),
+    tvMountCount: parseInt(document.getElementById("tvMountCount")?.value || "0", 10),
+    needCarpenter: !!document.getElementById("needCarpenter")?.checked,
+    needElectrician: !!document.getElementById("needElectrician")?.checked,
     isInterstate: !!isIntercityMove,
     promoCode: appliedPromoCode || null,
     moveDate: document.getElementById("shiftDate")?.value || "",   // weekday saver (the server re-checks against the booking date)

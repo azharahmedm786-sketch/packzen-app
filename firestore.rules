@@ -374,6 +374,12 @@ service cloud.firestore {
       allow create: if false;
       allow read, update, delete: if isAdmin();
     }
+    // Sent quotes: created by createSentQuote, opened via getSentQuote (both Cloud
+    // Functions). Customers never read this collection directly; admins can.
+    match /sentQuotes/{token} {
+      allow create, delete: if false;
+      allow read, update: if isAdmin();
+    }
     match /settings/leadFinder {
       allow read, write: if isAdmin();
     }

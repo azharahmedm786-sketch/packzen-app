@@ -660,6 +660,35 @@ exports.leadFinder = functions.region("asia-south1").runWith({ secrets: [GOOGLE_
     throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
   }
 });
+// Sales: sent quotes (phone → link → book & pay) and lost-lead win-back
+const sales = require("./sales");
+const salesErr = (e) => {
+  if (e instanceof sales.SalesError) return new functions.https.HttpsError(e.code, e.publicMessage);
+  functions.logger.error("sales_error", { message: String(e && e.message).slice(0, 160) });
+  return new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+};
+exports.createSentQuote = functions.region("asia-south1").runWith({ secrets: [GOOGLE_MAPS_KEY] }).https.onCall(async (data, context) => {
+  try {
+    return await sales.createSentQuote(data, context, Object.assign(staffDeps(), { now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+      price: (qi, pickup, drop, date) => calculateServerQuote(qi, pickup, drop, { date }) }));
+  } catch (e) { throw salesErr(e); }
+});
+exports.getSentQuote = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const rl = await rateLimit.consumeAll(admin.firestore(), [Object.assign({ scope: "quoteViewIp", subject: rateLimit.clientIp(context.rawRequest) }, { limit: 60, windowMs: 3600e3 })]).catch(() => ({ ok: true }));
+  if (rl && rl.ok === false) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again later.");
+  try { return await sales.getSentQuote(data, { db: admin.firestore(), now: () => Date.now() }); } catch (e) { throw salesErr(e); }
+});
+exports.leadWinback = functions.region("asia-south1").pubsub.schedule("0 11 * * *").timeZone("Asia/Kolkata").onRun(async () => {
+  const db = admin.firestore();
+  const snap = await db.collection("leads").where("status", "==", "lost").limit(300).get();
+  const plan = sales.winbackPlan(snap.docs.map((d) => Object.assign({ _ref: d.ref }, d.data())), Date.now());
+  for (const l of plan) {
+    await db.collection("smsQueue").add({ mobile: l.phone, message: sales.winbackText(l), status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    await l._ref.update({ winbackSentAtMs: Date.now() });
+  }
+  functions.logger.info("lead_winback", { sent: plan.length });
+  return null;
+});
 exports.intentRadarSweep = functions.region("asia-south1").pubsub.schedule("every 2 hours").timeZone("Asia/Kolkata").onRun(async () => {
   const r = await leadFinder.sweepIntent({ db: admin.firestore(), fetch: (...a) => fetch(...a), now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp() });
   functions.logger.info("intent_radar", r);
