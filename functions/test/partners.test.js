@@ -55,6 +55,12 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   }
   assert.ok(/id="partnerTrack"/.test(pub("admin.html")));
   ok("separate sign-up per service: 5 recruitment pages (FAQ schema, sitemap) → registration preset per service → admin filter by service");
+  // admin read-only preview of the partner portal and crew app
+  assert.ok(/function pzIsAdmin/.test(pj) && /PZ\.preview = true/.test(pj) && /adminRedirect/.test(pj));
+  const drv = pub("driver.html");
+  assert.ok(/role !== "driver" && role !== "admin"/.test(drv) && /PZ_ADMIN_PREVIEW && online/.test(drv) && /if \(window\.PZ_ADMIN_PREVIEW\) return;/.test(drv));
+  assert.ok(/\.partner-footer-full a \{ color: #9FE0BC/.test(pub("pz-ops-premium.css")));
+  ok("admin preview: admins can sign in to the partner portal and crew app read-only (can't go online or take jobs); partner footer readable");
   ok("wiring: Aadhaar number not stored (last 4 only), skills on sign-up, approved partners go to the crew app, admin Partners tab, storage rules");
 
   console.log(`\npartners: ${pass} passed, 0 failed`);

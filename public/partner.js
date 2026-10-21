@@ -84,7 +84,17 @@ function requirePartner(onReady) {
   waitFB(function () {
     window._firebase.auth.onAuthStateChanged(function (user) {
       if (!user) { goLogin(); return; }
-      window._firebase.db.collection("partners").doc(user.uid).get()
+      pzIsAdmin(user.uid).then(function (isAdmin) {
+        if (isAdmin) {
+          // Admin preview: see every partner page as a partner would, read-only.
+          var demo = { ownerName: "Admin preview", ownerFirstName: "Admin", businessName: "PackZen (admin preview)", verificationStatus: "approved",
+            businessType: "packers_movers", partnerCategory: "movers", email: user.email || "", adminPreview: true };
+          PZ.uid = user.uid; PZ.user = user; PZ.partner = demo; PZ.preview = true;
+          renderShell(demo); pzPreviewBanner();
+          if (typeof onReady === "function") onReady(demo);
+          return null;
+        }
+        return window._firebase.db.collection("partners").doc(user.uid).get()
         .then(function (doc) {
           if (!doc.exists) {
             window._firebase.auth.signOut();
@@ -113,13 +123,27 @@ function requirePartner(onReady) {
           PZ.partner = data;
           renderShell(data);
           if (typeof onReady === "function") onReady(data);
-        })
-        .catch(function (err) {
+        });
+      }).catch(function (err) {
           console.error(err);
           showToast("⚠️ Couldn't load your account. Please try again.");
         });
     });
   });
+}
+
+function pzIsAdmin(uid) {
+  return window._firebase.db.collection("users").doc(uid).get()
+    .then(function (d) { return d.exists && d.data().role === "admin"; })
+    .catch(function () { return false; });
+}
+function pzPreviewBanner() {
+  if (document.getElementById("pzPreviewBanner")) return;
+  var b = document.createElement("div");
+  b.id = "pzPreviewBanner"; b.className = "pz-preview-banner"; b.setAttribute("role", "status");
+  b.innerHTML = "👀 <b>Admin preview</b> — you're seeing the partner portal as a partner would. Nothing you do here changes real partner data. " +
+    '<a href="driver.html">Open crew app preview</a> · <a href="admin.html">Back to admin</a>';
+  document.body.insertBefore(b, document.body.firstChild);
 }
 
 /* -------------------- shell (sidebar + topbar + bottom nav) -------------------- */
@@ -277,10 +301,14 @@ function initLoginPage() {
             if (qs("#rememberMe").checked) localStorage.setItem("pzPartnerRemember", email);
             else localStorage.removeItem("pzPartnerRemember");
           } catch (er) {}
-          return window._firebase.db.collection("partners").doc(cred.user.uid).get();
+          return pzIsAdmin(cred.user.uid).then(function (isAdmin) {
+            if (isAdmin) { window.location.href = "partner-dashboard.html"; return { adminRedirect: true }; }
+            return window._firebase.db.collection("partners").doc(cred.user.uid).get();
+          });
         })
         .then(function (doc) {
           setBtnLoading(btn, false);
+          if (doc && doc.adminRedirect) return;
           if (!doc.exists) {
             errBox.textContent = "No partner account found for this login. Please register first.";
             errBox.classList.add("show");

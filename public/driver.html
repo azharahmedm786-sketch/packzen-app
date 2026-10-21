@@ -186,7 +186,7 @@
   <link rel="stylesheet" href="pz-ops.css?v=1">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
-  <link rel="stylesheet" href="pz-ops-premium.css?v=4">
+  <link rel="stylesheet" href="pz-ops-premium.css?v=5">
 </head>
 <body>
 
@@ -514,8 +514,10 @@ function driverLogin() {
     const { auth, db } = window._firebase;
     auth.signInWithEmailAndPassword(email, pass)
       .then(cred => db.collection("users").doc(cred.user.uid).get().then(doc => {
-        if (!doc.exists || doc.data().role !== "driver") { auth.signOut(); err.textContent = "Access denied. Driver accounts only."; return; }
+        const role = doc.exists ? doc.data().role : null;
+        if (role !== "driver" && role !== "admin") { auth.signOut(); err.textContent = "Access denied. Driver accounts only."; return; }
         driverUser = cred.user;
+        if (role === "admin") pzDriverPreview();
         showApp(doc.data());
       }))
       .catch(e => {
@@ -572,6 +574,7 @@ waitFB(() => {
     if (!u) return;
     window._firebase.db.collection("users").doc(u.uid).get().then(doc => {
       if (doc.exists && doc.data().role === "driver") { driverUser = u; showApp(doc.data()); }
+      else if (doc.exists && doc.data().role === "admin") { driverUser = u; pzDriverPreview(); showApp(doc.data()); }
     });
   });
 });
@@ -597,7 +600,20 @@ function _writePresence(fields) {
 }
 
 /* ONLINE TOGGLE */
+/* Admin preview: admins can open the crew app to see how it works. It is read-only —
+   going online, location sharing and taking jobs are blocked, so no real job is ever
+   offered to an admin account. */
+window.PZ_ADMIN_PREVIEW = false;
+function pzDriverPreview() {
+  window.PZ_ADMIN_PREVIEW = true;
+  if (document.getElementById("pzPreviewBanner")) return;
+  const b = document.createElement("div");
+  b.id = "pzPreviewBanner"; b.className = "pz-preview-banner"; b.setAttribute("role", "status");
+  b.innerHTML = '👀 <b>Admin preview</b> of the crew app — read-only: you can look around, but you can\'t go online or take jobs. <a href="admin.html">Back to admin</a>';
+  document.body.insertBefore(b, document.body.firstChild);
+}
 function toggleOnline(online) {
+  if (window.PZ_ADMIN_PREVIEW && online) { if (typeof showToast === "function") showToast("Admin preview: going online is disabled."); else alert("Admin preview: going online is disabled."); setOnlineUI(false); return; }
   if (!driverUser) return;
   setOnlineUI(online);
   window._firebase.db.collection("users").doc(driverUser.uid).update({ isOnline: online });
@@ -938,6 +954,7 @@ function cancelOtpEntry() {
 
 /* LOCATION SHARING */
 function startLocationSharing() {
+  if (window.PZ_ADMIN_PREVIEW) return;
   if (!navigator.geolocation) { toast("⚠️ Geolocation not supported"); return; }
   shareLocation();
   locationInterval = setInterval(shareLocation, 15000);

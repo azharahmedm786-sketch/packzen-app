@@ -112,3 +112,24 @@ body.partner-body .app-bar .app-login-pill { background: var(--ops-text) !import
   background: #fff !important; color: var(--ops-text-2) !important; border: 1px solid var(--ops-line-2) !important; border-radius: 999px !important;
 }
 .partner-trust-row svg, .partner-trust-row i { color: var(--ops-green) !important; }
+
+/* admin preview banner (partner portal + crew app) */
+.pz-preview-banner { position: sticky; top: 0; z-index: 9999; background: #FFF3DC; color: #5C3A00; border-bottom: 1px solid #F5C46B; padding: 10px 14px; font: 500 .88rem var(--ops-body); text-align: center; }
+.pz-preview-banner a { color: #157A47; font-weight: 700; margin-left: 4px; }
+
+/* partner.html: final call-to-action + footer readable and on-brand */
+.partner-final-cta { background: linear-gradient(135deg, #0F3D27, #157A47) !important; color: #fff !important; }
+.partner-final-cta h2, .partner-final-cta p, .partner-final-cta span { color: #fff !important; }
+.partner-final-cta p { opacity: .9; }
+.partner-final-cta a:not(.pz-btn) { color: #FFD27A !important; font-weight: 700; }
+.partner-final-cta .pz-btn, .partner-final-cta .pz-btn-primary { background: #fff !important; color: #0F3D27 !important; border: 0 !important; }
+.partner-footer-full { background: #0C1A14 !important; color: #E6EFEA !important; }
+.partner-footer-full .footer-inner { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-start; justify-content: space-between; max-width: 1100px; margin: 0 auto; padding: 28px 18px; }
+.partner-footer-full h3, .partner-footer-full p, .partner-footer-full span, .partner-footer-full div { color: #E6EFEA !important; }
+.partner-footer-full h3 { font-family: var(--ops-display); font-size: 1.2rem; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+.partner-footer-full .footer-brand { display: flex; gap: 12px; align-items: flex-start; max-width: 360px; }
+.partner-footer-full .footer-brand img { background: #fff; border-radius: 10px; padding: 3px; }
+.partner-footer-full .footer-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.partner-footer-full a { color: #9FE0BC !important; text-decoration: none !important; font-weight: 600; }
+.partner-footer-full a:hover { color: #fff !important; text-decoration: underline !important; }
+.partner-footer-full .partner-badge-footer { background: #1F9D5C !important; color: #fff !important; font-size: .7rem; padding: 2px 8px; border-radius: 999px; }
