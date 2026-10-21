@@ -364,6 +364,20 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Lead Finder (PackZen Leads app): public-post opportunities and business prospects.
+    // Written by Cloud Functions; admins read and update status/notes only.
+    match /opportunities/{id} {
+      allow create: if false;
+      allow read, update, delete: if isAdmin();
+    }
+    match /prospects/{placeId} {
+      allow create: if false;
+      allow read, update, delete: if isAdmin();
+    }
+    match /settings/leadFinder {
+      allow read, write: if isAdmin();
+    }
+
     // Website assistant: support requests and unanswered-question log are
     // written only by Cloud Functions (assistant-functions.js); admins manage them.
     match /supportRequests/{requestId} {

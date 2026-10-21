@@ -41,3 +41,6 @@ details{margin:6px 0 12px;font-size:.9rem;color:var(--t2)}summary{cursor:pointer
 .status-row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.chip{border:1px solid var(--line2);background:#fff;border-radius:999px;padding:8px 14px;font:600 .88rem var(--b);text-transform:capitalize;cursor:pointer}.chip.on{background:var(--g);border-color:var(--g);color:#fff}
 .row{display:flex;gap:8px}.row .btn{flex:1}.notes{white-space:pre-wrap;font:inherit;font-size:.85rem;background:var(--bg);border-radius:12px;padding:10px;color:var(--t2)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--t);color:#fff;padding:10px 16px;border-radius:999px;font-weight:600;transition:.2s;z-index:60}.toast.on{opacity:1;transform:translateX(-50%)}
+.card-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:14px}
+.card-box .filters select,.card-box .filters input{flex:1;min-width:150px;margin:0}
+.sub-h{font:800 1.1rem var(--d);margin:14px 0 8px}

@@ -35,6 +35,8 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="inbox" role="tab">Inbox</button>
       <button class="tab" data-tab="followups" role="tab">Follow-ups</button>
+      <button class="tab" data-tab="opps" role="tab">Opportunities</button>
+      <button class="tab" data-tab="partners" role="tab">Partners</button>
       <button class="tab" data-tab="report" role="tab">Quality report</button>
     </nav>
 
@@ -51,6 +53,31 @@
 
     <section id="followups" class="pane" hidden><div id="fuList" class="list"></div></section>
     <section id="report" class="pane" hidden><div id="rep"></div></section>
+
+    <section id="opps" class="pane" hidden>
+      <p class="hint">People asking for movers, AC or handyman help in public posts (Reddit, Google Alerts). Reply <b>publicly</b> in the thread with something genuinely helpful — they contact you. Never message people privately or copy their details.</p>
+      <div class="filters">
+        <div class="seg" id="oppSeg"><button data-s="new" class="on">New</button><button data-s="replied">Replied</button><button data-s="skip">Skipped</button></div>
+        <button class="btn ghost" id="oppSweep">Check now</button>
+        <button class="btn ghost" id="oppFeedsBtn">Sources</button>
+      </div>
+      <div id="oppList" class="list"></div>
+    </section>
+
+    <section id="partners" class="pane" hidden>
+      <p class="hint">Find businesses that send you repeat customers — PGs, co-living, rental brokers, property managers, apartment complexes, offices. Data comes live from Google's official Places API.</p>
+      <div class="card-box">
+        <div class="filters">
+          <select id="pfType"><option value="pg">PGs</option><option value="coliving">Co-living</option><option value="broker">Rental brokers</option><option value="property_manager">Property managers</option><option value="apartments">Apartment complexes</option><option value="builder">Builders / new projects</option><option value="office">Coworking / offices</option><option value="furniture">Furniture stores</option></select>
+          <input id="pfArea" placeholder="Area, e.g. HSR Layout">
+          <button class="btn" id="pfGo">Search</button>
+        </div>
+        <div id="pfResults" class="list"></div>
+      </div>
+      <h3 class="sub-h">Your partner pipeline</h3>
+      <div class="filters"><div class="seg" id="pipeSeg"><button data-s="to_contact" class="on">To contact</button><button data-s="messaged">Messaged</button><button data-s="partner">Partner</button><button data-s="sending">Sending leads</button><button data-s="no">Not interested</button></div></div>
+      <div id="pipeList" class="list"></div>
+    </section>
   </div>
 
   <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sTitle"><div class="sheet-card" id="sheetCard"></div></div>
@@ -58,8 +85,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
   <script src="/env-config.js?v=2"></script>
   <script src="/firebase-config.js"></script>
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=2"></script>
+  <script src="finder.js?v=1"></script>
 </body>
 </html>

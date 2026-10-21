@@ -648,6 +648,23 @@ Object.assign(exports, growthExports);
 // Lead Quality Engine: scoring (hot/warm/cold/junk), hot-lead alerts, warm-lead nurture
 const { _quality, ...qualityExports } = require("./lead-quality");
 Object.assign(exports, qualityExports);
+// Lead Finder: Intent Radar (public RSS feeds) + Partner Finder (official Google Places API)
+const leadFinder = require("./lead-finder");
+const finderDeps = () => Object.assign(staffDeps(), { fetch: (...a) => fetch(...a), now: () => Date.now(),
+  serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(), key: (() => { try { return GOOGLE_MAPS_KEY.value(); } catch (e) { return ""; } })() });
+exports.leadFinder = functions.region("asia-south1").runWith({ secrets: [GOOGLE_MAPS_KEY] }).https.onCall(async (data, context) => {
+  try { return await leadFinder.handleFinder(data, context, finderDeps()); }
+  catch (e) {
+    if (e instanceof leadFinder.FinderError) throw new functions.https.HttpsError(e.code, e.publicMessage);
+    functions.logger.error("lead_finder_error", { message: String(e && e.message).slice(0, 160) });
+    throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+  }
+});
+exports.intentRadarSweep = functions.region("asia-south1").pubsub.schedule("every 2 hours").timeZone("Asia/Kolkata").onRun(async () => {
+  const r = await leadFinder.sweepIntent({ db: admin.firestore(), fetch: (...a) => fetch(...a), now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp() });
+  functions.logger.info("intent_radar", r);
+  return null;
+});
 // Website virtual assistant (grounded answers + human handoff)
 const { _assistant, ...assistantExports } = require("./assistant-functions");
 Object.assign(exports, assistantExports);
