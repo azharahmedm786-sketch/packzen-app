@@ -40,7 +40,7 @@
     if (unsub) { unsub(); unsub = null; }
     if (!u) return showLogin();
     db().collection("users").doc(u.uid).get().then(function (d) {
-      if (!d.exists || d.data().role !== "admin") { window._firebase.auth.signOut(); return showLogin("This app is for PackZen admins only."); }
+      if (!d.exists || ["admin", "manager", "advisor"].indexOf(d.data().role) < 0) { window._firebase.auth.signOut(); return showLogin("This app is for the PackZen team only."); }
       $("login").hidden = true; $("app").hidden = false; start();
     }).catch(function () { showLogin("Could not check your access. Try again."); });
   });

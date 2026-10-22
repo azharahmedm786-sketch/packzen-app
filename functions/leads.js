@@ -153,7 +153,7 @@ exports.onBookingLinkLead = functions.region(REGION).firestore.document("booking
   return null;
 });
 
-exports.leadSlaSweep = functions.region(REGION).pubsub.schedule("every 5 minutes").timeZone("Asia/Kolkata").onRun(async () => {
+exports.leadSlaSweep = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).pubsub.schedule("every 5 minutes").timeZone("Asia/Kolkata").onRun(async () => {
   const db = admin.firestore();
   const cutoff = Date.now() - SLA_MINUTES * 60e3;
   const q = await db.collection("leads").where("status", "==", "new").where("slaAlerted", "==", false).limit(50).get();

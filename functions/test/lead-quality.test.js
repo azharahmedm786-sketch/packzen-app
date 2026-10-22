@@ -51,7 +51,7 @@ assert.strictEqual(L.validateLead({ name: "Asha", phone: "9845012345", when: "ha
 const pub = (f) => fs.readFileSync(path.join(__dirname, "..", "..", "public", f), "utf8");
 assert.ok(/name="when"/.test(pub("pz-leads.js")) && /name="homeSize"/.test(pub("pz-leads.js")));
 const app = pub("leads-app/app.js"), html = pub("leads-app/index.html");
-assert.ok(/role !== "admin"/.test(app) && /orderBy\("createdAtMs", "desc"\)/.test(app) && /beep\(\)/.test(app) && /renderReport/.test(app));
+assert.ok(/\["admin", "manager", "advisor"\]/.test(app) && /orderBy\("createdAtMs", "desc"\)/.test(app) && /beep\(\)/.test(app) && /renderReport/.test(app));
 assert.ok(/manifest\.json/.test(html) && /noindex/.test(html) && /Disallow: \/leads-app\//.test(pub("robots.txt")));
 ok("website asks 'when' and home size; separate admin-only PackZen Leads app (installable, not indexed)");
 

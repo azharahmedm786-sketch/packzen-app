@@ -650,7 +650,9 @@ const { _quality, ...qualityExports } = require("./lead-quality");
 Object.assign(exports, qualityExports);
 // Lead Finder: Intent Radar (public RSS feeds) + Partner Finder (official Google Places API)
 const leadFinder = require("./lead-finder");
-const finderDeps = () => Object.assign(staffDeps(), { fetch: (...a) => fetch(...a), now: () => Date.now(),
+const finderDeps = () => Object.assign(staffDeps(), {
+  // owner + sales/ops staff can use the Lead Finder
+  isAdmin: async (ctx) => { if (!(ctx && ctx.auth)) return false; const r = await staffRole(ctx); return ["admin", "manager", "advisor"].includes(r); }, fetch: (...a) => fetch(...a), now: () => Date.now(),
   serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(), key: (() => { try { return GOOGLE_MAPS_KEY.value(); } catch (e) { return ""; } })() });
 exports.leadFinder = functions.region("asia-south1").runWith({ secrets: [GOOGLE_MAPS_KEY] }).https.onCall(async (data, context) => {
   try { return await leadFinder.handleFinder(data, context, finderDeps()); }
@@ -687,6 +689,23 @@ exports.leadWinback = functions.region("asia-south1").pubsub.schedule("0 11 * * 
     await l._ref.update({ winbackSentAtMs: Date.now() });
   }
   functions.logger.info("lead_winback", { sent: plan.length });
+  return null;
+});
+// Team: staff logins (owner-only) + the morning briefing
+const team = require("./team");
+exports.adminManageStaff = functions.region("asia-south1").https.onCall(async (data, context) => {
+  try { return await team.handleStaff(data, context, Object.assign(staffDeps(), { auth: admin.auth(), now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp() })); }
+  catch (e) {
+    if (e instanceof team.TeamError) throw new functions.https.HttpsError(e.code, e.publicMessage);
+    if (e && e.code === "auth/email-already-exists") throw new functions.https.HttpsError("already-exists", "That email already has an account.");
+    functions.logger.error("team_error", { message: String(e && e.message).slice(0, 160) });
+    throw new functions.https.HttpsError("internal", "Something went wrong. Please try again.");
+  }
+});
+exports.morningBriefing = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] }).pubsub.schedule("0 8 * * *").timeZone("Asia/Kolkata").onRun(async () => {
+  const { sendAdminEmail } = require("./notification-service");
+  const r = await team.runBriefing({ db: admin.firestore(), now: () => Date.now(), sendAdminEmail });
+  functions.logger.info("morning_briefing", r);
   return null;
 });
 exports.intentRadarSweep = functions.region("asia-south1").pubsub.schedule("every 2 hours").timeZone("Asia/Kolkata").onRun(async () => {

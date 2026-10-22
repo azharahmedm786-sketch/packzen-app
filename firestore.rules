@@ -361,18 +361,21 @@ service cloud.firestore {
     // unauthenticated spam.
     match /leads/{leadId} {
       allow create: if false;
-      allow read, update, delete: if isAdmin();
+      allow read, update: if isAdmin() || isAdvisor();   // owner + sales/ops staff (PackZen Leads app)
+      allow delete: if isAdmin();
     }
 
     // Lead Finder (PackZen Leads app): public-post opportunities and business prospects.
     // Written by Cloud Functions; admins read and update status/notes only.
     match /opportunities/{id} {
       allow create: if false;
-      allow read, update, delete: if isAdmin();
+      allow read, update: if isAdmin() || isAdvisor();   // owner + sales/ops staff (PackZen Leads app)
+      allow delete: if isAdmin();
     }
     match /prospects/{placeId} {
       allow create: if false;
-      allow read, update, delete: if isAdmin();
+      allow read, update: if isAdmin() || isAdvisor();   // owner + sales/ops staff (PackZen Leads app)
+      allow delete: if isAdmin();
     }
     // Sent quotes: created by createSentQuote, opened via getSentQuote (both Cloud
     // Functions). Customers never read this collection directly; admins can.

@@ -75,7 +75,7 @@ function inputsKey(l) {
   return JSON.stringify([l.name, l.phone, l.phoneVerified, l.area, l.date, l.when, l.service, l.homeSize, l.notes, l.source, l.channel, (l.touches || []).length]);
 }
 
-exports.onLeadScore = functions.region(REGION).firestore.document("leads/{leadId}").onWrite(async (change) => {
+exports.onLeadScore = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).firestore.document("leads/{leadId}").onWrite(async (change) => {
   if (!change.after.exists) return null;
   const l = change.after.data() || {};
   const key = inputsKey(l);

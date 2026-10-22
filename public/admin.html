@@ -439,6 +439,7 @@ function buildShell(adminName) {
     <div class="sb-role">Main</div>
     <div class="nav-item active" onclick="showSection('overview',this)"><span class="ni">📊</span> Overview</div>
     <div class="nav-item" onclick="showSection('ops',this)"><span class="ni">🗂️</span> Operations board</div>
+    <div class="nav-item" onclick="showSection('team',this)"><span class="ni">👥</span> Team</div>
     <div class="nav-item" onclick="showSection('partners',this)"><span class="ni">🤝</span> Partners <span class="svc-count" id="partnersPendingCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
@@ -627,6 +628,26 @@ function buildShell(adminName) {
       </div>
       <div id="opsBoard" class="ops-board"></div>
       <div id="opsCalendar" class="ops-cal" hidden></div>
+    </div>
+
+    <!-- TEAM: staff logins -->
+    <div class="section" id="sectionTeam">
+      <div class="table-card" style="padding:14px">
+        <div class="table-title" style="margin-bottom:6px">Add a team member</div>
+        <p style="color:#6B7D74;margin:0 0 10px;font-size:.88rem"><b>Operations manager</b>: advisor dashboard (bookings, assignments) + PackZen Leads app. <b>Sales &amp; support</b>: advisor dashboard + PackZen Leads app. Full admin stays with the owner accounts.</p>
+        <div class="ops-filters">
+          <input id="stName" placeholder="Full name" style="flex:1;min-width:160px">
+          <input id="stEmail" type="email" placeholder="Work email" style="flex:1;min-width:200px">
+          <input id="stPhone" placeholder="Mobile (optional)" style="width:160px">
+          <select id="stRole"><option value="advisor">Sales &amp; support</option><option value="manager">Operations manager</option></select>
+          <button class="btn-primary-sm" onclick="teamCreate()">Add</button>
+        </div>
+        <div id="stResult" style="margin-top:10px"></div>
+      </div>
+      <div class="table-card" style="padding:14px;margin-top:12px">
+        <div class="table-title" style="margin-bottom:8px">Your team</div>
+        <div id="teamList"><div class="empty-td">Loading…</div></div>
+      </div>
     </div>
 
     <!-- PARTNER APPLICATIONS -->
@@ -1545,7 +1566,7 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", ops:"Operations board", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", ops:"Operations board", team:"Team", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
@@ -1553,6 +1574,7 @@ function showSection(name, el) {
   if (name==="leads")    loadLeads();
   if (name==="ops")      loadOps();
   if (name==="partners") loadPartners();
+  if (name==="team")     loadTeam();
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
@@ -2399,6 +2421,40 @@ function reviewPartner(uid, decision){
   requireAdmin(() => _adminCallable("adminReviewPartner")({ uid, decision, reason })
     .then(r => toast(decision === "approve" ? "✅ Approved — skills: "+((r.data.profile||{}).skills||[]).join(", ") : "Rejected"))
     .catch(e => toast("❌ "+(e.message||e))));
+}
+</script>
+
+<script>
+/* ── Team: staff logins (owner only, via adminManageStaff) ── */
+function _tesc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function _team(data){ return _adminCallable("adminManageStaff")(data).then(r=>r.data); }
+function _shareLink(name, phone, link){
+  const msg = "Hi " + name + ", welcome to the PackZen team! Set your password here (link works once): " + link + "\nThen sign in at https://packzenblr.in/advisor.html and https://packzenblr.in/leads-app/";
+  return '<div style="background:#EEF8F2;border:1px solid #BFE3CC;border-radius:12px;padding:10px 12px;font-size:.88rem">✅ Account ready. Share this <b>one-time set-password link</b> with ' + _tesc(name) + ' privately:<br><code style="word-break:break-all">' + _tesc(link) + '</code><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn-export" onclick="navigator.clipboard.writeText(' + _tesc(JSON.stringify(link)) + ').then(()=>toast(\'Link copied\'))">Copy link</button>' +
+    (phone ? '<a class="btn-assign" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91' + _tesc(phone) + '?text=' + encodeURIComponent(msg) + '">Send on WhatsApp</a>' : '') + '</div></div>';
+}
+function teamCreate(){
+  const name=document.getElementById("stName").value.trim(), email=document.getElementById("stEmail").value.trim(), phone=document.getElementById("stPhone").value.replace(/\D/g,"").slice(-10), role=document.getElementById("stRole").value;
+  const out=document.getElementById("stResult"); out.innerHTML='<span style="color:#6B7D74">Creating…</span>';
+  requireAdmin(()=>_team({op:"create",name,email,phone,role}).then(r=>{ out.innerHTML=_shareLink(name,phone,r.setPasswordLink); ["stName","stEmail","stPhone"].forEach(i=>document.getElementById(i).value=""); loadTeam(); })
+    .catch(e=>{ out.innerHTML='<span style="color:#B42318">❌ '+_tesc(e.message)+'</span>'; }));
+}
+function loadTeam(){
+  const box=document.getElementById("teamList");
+  requireAdmin(()=>_team({op:"list"}).then(r=>{
+    box.innerHTML = r.staff.length ? '<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>' + r.staff.map(m=>
+      '<tr><td>'+_tesc(m.name)+'</td><td>'+_tesc(m.email)+'</td><td>'+(m.disabled?'<span style="color:#B42318">Disabled</span>':
+        '<select onchange="teamAct(\''+m.uid+'\',\'setRole\',this.value)"><option value="advisor"'+(m.role==="advisor"?" selected":"")+'>Sales &amp; support</option><option value="manager"'+(m.role==="manager"?" selected":"")+'>Operations manager</option></select>')+'</td>'+
+      '<td style="white-space:nowrap">'+(m.disabled?'<button class="btn-export" onclick="teamAct(\''+m.uid+'\',\'enable\')">Re-enable</button>':
+        '<button class="btn-export" onclick="teamAct(\''+m.uid+'\',\'resetLink\',null,\''+_tesc(m.name)+'\',\''+_tesc(m.phone)+'\')">New password link</button> <button class="btn-export" onclick="teamAct(\''+m.uid+'\',\'disable\')">Remove access</button>')+'</td></tr>').join("") + '</tbody></table>'
+      : '<div class="empty-td">No team members yet. Add your first one above.</div>';
+  }).catch(e=>{ box.innerHTML='<div class="empty-td">Could not load team: '+_tesc(e.message)+'</div>'; }));
+}
+function teamAct(uid, op, role, name, phone){
+  if (op==="disable" && !confirm("Remove this person's access? They are signed out everywhere.")) return;
+  requireAdmin(()=>_team({op,uid,role}).then(r=>{ if (op==="resetLink") document.getElementById("stResult").innerHTML=_shareLink(name||"",phone||"",r.setPasswordLink); else toast("✅ Saved"); loadTeam(); })
+    .catch(e=>toast("❌ "+e.message)));
 }
 </script>
   <script src="admin-services.js"></script>

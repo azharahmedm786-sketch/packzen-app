@@ -57,7 +57,7 @@ const now = Date.parse("2026-10-21T06:00:00Z");
   ok("partner finder: admin-only; official Places API; closed businesses dropped; only place_id + our status stored (Google terms); details fetched live");
 
   const rules = fs.readFileSync(path.join(__dirname, "..", "..", "firestore.rules"), "utf8");
-  assert.ok(/match \/opportunities\/\{id\} \{\s*allow create: if false;\s*allow read, update, delete: if isAdmin\(\);/.test(rules) && /match \/prospects\/\{placeId\}/.test(rules));
+  assert.ok(/match \/opportunities\/\{id\} \{\s*allow create: if false;\s*allow read, update: if isAdmin\(\) \|\| isAdvisor\(\);/.test(rules) && /match \/prospects\/\{placeId\}/.test(rules));
   const app = fs.readFileSync(path.join(__dirname, "..", "..", "public", "leads-app", "finder.js"), "utf8");
   assert.ok(/httpsCallable\("leadFinder"\)/.test(app) && /Disclosure|publicly/.test(fs.readFileSync(path.join(__dirname, "..", "..", "public", "leads-app", "index.html"), "utf8")));
   const idx = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
