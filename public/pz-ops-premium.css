@@ -133,3 +133,5 @@ body.partner-body .app-bar .app-login-pill { background: var(--ops-text) !import
 .partner-footer-full a { color: #9FE0BC !important; text-decoration: none !important; font-weight: 600; }
 .partner-footer-full a:hover { color: #fff !important; text-decoration: underline !important; }
 .partner-footer-full .partner-badge-footer { background: #1F9D5C !important; color: #fff !important; font-size: .7rem; padding: 2px 8px; border-radius: 999px; }
+.portal-crew-btn { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; background: var(--ops-green); color: #fff !important; font-weight: 700; font-size: .88rem; text-decoration: none; }
+.portal-crew-btn:hover { background: var(--ops-green-deep); }

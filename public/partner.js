@@ -86,6 +86,10 @@ function requirePartner(onReady) {
       if (!user) { goLogin(); return; }
       pzIsAdmin(user.uid).then(function (isAdmin) {
         if (isAdmin) {
+          // Admin preview: exactly what an approved partner gets — account pages here,
+          // everything else (jobs, earnings, wallet) in the crew app.
+          var pg = (document.body && document.body.getAttribute("data-page")) || "";
+          if (["profile", "settings", "support"].indexOf(pg) < 0) { window.location.href = "driver.html"; return null; }
           // Admin preview: see every partner page as a partner would, read-only.
           var demo = { ownerName: "Admin preview", ownerFirstName: "Admin", businessName: "PackZen (admin preview)", verificationStatus: "approved",
             businessType: "packers_movers", partnerCategory: "movers", email: user.email || "", adminPreview: true };
@@ -147,18 +151,15 @@ function pzPreviewBanner() {
 }
 
 /* -------------------- shell (sidebar + topbar + bottom nav) -------------------- */
+/* Jobs, offers, completion codes, earnings and payouts live in the PackZen crew app
+   (driver.html) — the one system that runs every job. The portal keeps account pages. */
 var NAV_ITEMS = [
-  { page: "dashboard", href: "partner-dashboard.html", label: "Dashboard", icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
-  { page: "bookings", href: "partner-bookings.html", label: "Bookings", icon: "M20 7h-3V6a3 3 0 0 0-3-3H10a3 3 0 0 0-3 3v1H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1z" },
-  { page: "wallet", href: "partner-wallet.html", label: "Wallet", icon: "M21 4H3a1 1 0 0 0-1 1v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1zM3 9h18" },
-  { page: "vehicles", href: "partner-vehicles.html", label: "Vehicles", icon: "M3 13l2-6h10l3 6M5 13h14v5H5zM7 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" },
-  { page: "drivers", href: "partner-drivers.html", label: "Drivers", icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
-  { page: "notifications", href: "partner-notifications.html", label: "Notifications", icon: "M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" },
+  { page: "crew", href: "driver.html", label: "Jobs & earnings", icon: "M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" },
   { page: "profile", href: "partner-profile.html", label: "Profile", icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   { page: "support", href: "partner-support.html", label: "Support", icon: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" },
   { page: "settings", href: "partner-settings.html", label: "Settings", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.5.62 1.51.7" }
 ];
-var BOTTOM_PAGES = ["dashboard", "bookings", "wallet", "notifications", "profile"];
+var BOTTOM_PAGES = ["crew", "profile", "support", "settings"];
 
 function svgIcon(path, size) {
   size = size || 20;
@@ -200,11 +201,7 @@ function renderShell(partnerData) {
           '<div class="portal-page-title" id="pageTitleText"></div>' +
         '</div>' +
         '<div class="portal-topbar-right">' +
-          '<div class="online-toggle-wrap">' +
-            '<span class="online-toggle-label" id="onlineLabel">' + (partnerData.online ? "Online" : "Offline") + '</span>' +
-            '<button class="online-toggle' + (partnerData.online ? " on" : "") + '" id="topbarOnlineToggle" aria-label="Toggle availability"></button>' +
-          '</div>' +
-          '<a href="partner-notifications.html" class="portal-icon-btn" aria-label="Notifications">' + svgIcon("18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0", 19) + '<span class="portal-notif-dot" id="notifDot"></span></a>' +
+          '<a href="driver.html" class="portal-crew-btn">Open crew app</a>' +
           '<a href="partner-profile.html" class="portal-avatar-btn" aria-label="Profile"><span class="portal-avatar">' + initials + '</span></a>' +
         '</div>' +
       '</header>' +
@@ -224,9 +221,7 @@ function renderShell(partnerData) {
     qs("#sidebarOverlay").classList.remove("show");
   });
   qs("#sidebarLogout").addEventListener("click", function (e) { e.preventDefault(); doLogout(); });
-  qs("#topbarOnlineToggle").addEventListener("click", toggleOnlineStatus);
-
-  listenUnreadNotifications();
+  if (!PZ.preview) listenUnreadNotifications();
 }
 
 function toggleOnlineStatus() {
@@ -302,7 +297,7 @@ function initLoginPage() {
             else localStorage.removeItem("pzPartnerRemember");
           } catch (er) {}
           return pzIsAdmin(cred.user.uid).then(function (isAdmin) {
-            if (isAdmin) { window.location.href = "partner-dashboard.html"; return { adminRedirect: true }; }
+            if (isAdmin) { window.location.href = "partner-profile.html"; return { adminRedirect: true }; }
             return window._firebase.db.collection("partners").doc(cred.user.uid).get();
           });
         })

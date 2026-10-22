@@ -61,6 +61,10 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   assert.ok(/role !== "driver" && role !== "admin"/.test(drv) && /PZ_ADMIN_PREVIEW && online/.test(drv) && /if \(window\.PZ_ADMIN_PREVIEW\) return;/.test(drv));
   assert.ok(/\.partner-footer-full a \{ color: #9FE0BC/.test(pub("pz-ops-premium.css")));
   ok("admin preview: admins can sign in to the partner portal and crew app read-only (can't go online or take jobs); partner footer readable");
+  const pj2 = pub("partner.js");
+  assert.ok(/page: "crew", href: "driver\.html"/.test(pj2) && !/page: "wallet"/.test(pj2.slice(pj2.indexOf("var NAV_ITEMS"), pj2.indexOf("var BOTTOM_PAGES"))));
+  assert.ok(/\["profile", "settings", "support"\]\.indexOf\(pg\) < 0\) \{ window\.location\.href = "driver\.html"/.test(pj2) && /window\.location\.href = "partner-profile\.html"; return \{ adminRedirect/.test(pj2));
+  ok("portal simplified: jobs & earnings in the crew app; admin preview follows the same path (no broken wallet/bookings pages)");
   ok("wiring: Aadhaar number not stored (last 4 only), skills on sign-up, approved partners go to the crew app, admin Partners tab, storage rules");
 
   console.log(`\npartners: ${pass} passed, 0 failed`);
