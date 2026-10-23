@@ -52,6 +52,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://maps.googleapis.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="dns-prefetch" href="https://maps.googleapis.com">
   <link rel="dns-prefetch" href="https://firestore.googleapis.com">
@@ -196,10 +198,6 @@
     </div>
     <div class="app-bar-right">
       <a href="tel:9945095453" class="app-phone-btn"><i data-lucide="phone"></i> 9945095453</a>
-      <button class="app-icon-btn dark-icon" id="navNotifBtn" aria-label="Notifications">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span class="notif-badge" id="notifBadge" style="display:none"></span>
-      </button>
       <button class="app-login-pill nav-auth-btn-wrapper" id="navLoginBtn" aria-label="Login" onclick="openAuthModal('login')">
         Login
       </button>
@@ -1766,7 +1764,7 @@
   <script src="payment-state.js?v=1"></script>
   <script src="booking-format.js?v=1"></script>
   <script src="marketplace.js?v=6"></script>
-  <script src="script.js?v=20"></script>
+  <script src="script.js?v=21"></script>
   <script src="pz-a11y.js?v=1" defer></script>
 
 

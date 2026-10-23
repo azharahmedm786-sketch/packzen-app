@@ -1,3 +1,6 @@
+# NOTE: robots.txt is a crawl hint, not access control. Anyone can still request
+# /admin.html, /driver.html or /leads-app/. Those are protected by sign-in gates
+# (admin allow-list) and, above all, by Firestore security rules on the server.
 # PackZen Packers & Movers — robots.txt
 
 User-agent: *

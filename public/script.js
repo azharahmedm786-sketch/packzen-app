@@ -273,6 +273,11 @@ function validateName(name) {
 RATE LIMITING
 ============================================ */
 const rateLimits = {};
+// Drop entries older than 10 minutes so the map can't grow for the whole session.
+setInterval(() => {
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  for (const k in rateLimits) if (rateLimits[k].firstRequest < cutoff) delete rateLimits[k];
+}, 5 * 60 * 1000);
 
 function checkRateLimit(key, maxRequests = 5, windowMs = 60000) {
   const now = Date.now();
@@ -293,19 +298,6 @@ function checkRateLimit(key, maxRequests = 5, windowMs = 60000) {
 /* ============================================
 TOAST
 ============================================ */
-function showToast(msg, dur = 3000) {
-  let t = document.getElementById("toastMsg");
-  if (!t) {
-    t = document.createElement("div");
-    t.id = "toastMsg";
-    t.className = "toast-msg";
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(t._hideTimer);
-  t._hideTimer = setTimeout(() => t.classList.remove("show"), dur);
-}
 function showToast(msg, dur = 3000) {
   let t = document.getElementById("toastMsg");
   if (!t) {
@@ -431,7 +423,7 @@ function renderFurnitureGrid(type) {
     const priceColor = (isFree || priceLabel === "FREE") ? 'color:#94a3b8' : '';
 return `<div class="fc-qty-card" id="card-${item.id}" data-item-id="${item.id}">
       <span class="fc-name">${item.name}</span>
-      <span class="fc-price-tag" style="display:none!important; ${priceColor}">${priceLabel}</span>
+      <span class="fc-price-tag" style="${priceColor}">${priceLabel}</span>
       <div class="fc-qty-row">
         <button class="fc-qty-btn" data-action="minus" data-item="${item.id}" aria-label="Remove ${item.name}">−</button>
         <input type="number" id="${item.id}" value="0" min="0" max="20" class="fc-qty-input" aria-label="${item.name} quantity" readonly>
@@ -4319,14 +4311,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const makeVisible = () => document.querySelectorAll(".reveal, .reveal-stagger").forEach(el => el.classList.add("visible"));
   makeVisible(); setTimeout(makeVisible, 100); setTimeout(makeVisible, 500);
 
-  const STAT_VALUES = [100, 2026, 100, 0];
-  document.querySelectorAll(".stat-number").forEach((el, i) => {
-    if (STAT_VALUES[i] !== undefined) {
-      el.setAttribute("data-target", STAT_VALUES[i]);
-      el.removeAttribute("data-animated");
-      el.textContent = STAT_VALUES[i].toLocaleString("en-IN");
-    }
-  });
 
   function animateCounter(el) {
     if (el.dataset.animated) return;
@@ -4435,7 +4419,6 @@ document.addEventListener("DOMContentLoaded", () => {
   buildChecklist();
   setTimeout(() => renderSizeCards("home"), 100);
   initPaymentOptions();
-  buildDateStrip();
 
   // Inject furniture grid styles
   if (!document.getElementById("pz-fc-styles")) {
@@ -4460,14 +4443,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Recover failed booking on load
-window.addEventListener("load", () => {
-  const pendingBooking = localStorage.getItem("pendingBooking");
-  if (pendingBooking) {
-    showToast("Recovered unsaved booking data.");
-    localStorage.removeItem("pendingBooking");
-  }
-});
+// Clear any leftover draft key from older versions (nothing restores from it).
+try { localStorage.removeItem("pendingBooking"); } catch (e) {}
 
 /* ============================================
 BOTTOM SHEET SYSTEM
@@ -4538,7 +4515,7 @@ function applyDate(ds, d) {
   calculateQuote(true);
 }
 
-function pickTimeSlot(value, label) {
+function pickTimeSlot(event, value, label) {
   document.getElementById("shiftTime").value = value;
   document.getElementById("shiftTimeLabel").value = label;
   document.querySelectorAll("#bsTime .bs-option").forEach(b => b.classList.remove("selected"));
@@ -4564,6 +4541,9 @@ function buildBsHouseOptions() {
       e.preventDefault(); e.stopPropagation();
       pickHouseType(e, this.getAttribute('data-house-value'), this.getAttribute('data-house-label'), this.getAttribute('data-house-short'));
     });
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); this.click(); }
+    });
   });
 }
 
@@ -4579,7 +4559,7 @@ function pickHouseType(event, value, label, shortLabel) {
   setTimeout(() => { closeAllBottomSheets(); calculateQuote(true); }, 250);
 }
 
-function pickVehicle(value, label, sub, price) {
+function pickVehicle(event, value, label, sub, price) {
   const sel = document.getElementById("vehicle");
   if (sel) sel.value = value;
   document.querySelectorAll(".bs-vehicle-opt").forEach(b => b.classList.remove("selected"));
@@ -4591,7 +4571,7 @@ function pickVehicle(value, label, sub, price) {
   setTimeout(() => { closeAllBottomSheets(); calculateQuote(true); }, 250);
 }
 
-function pickFloor(type, value, label, price) {
+function pickFloor(event, type, value, label, price) {
   const sel = document.getElementById(type === "pickup" ? "pickupFloor" : "dropFloor");
   if (sel) sel.value = value;
   const sheetId = type === "pickup" ? "bsPickupFloor" : "bsDropFloor";
@@ -4622,32 +4602,6 @@ function debounce(fn, ms) {
 /* ============================================
    NOTIFICATION BELL
 ============================================ */
-
-function openNotifications() {
-    showToast("🔔 No notifications yet.");
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-
-    const bell = document.getElementById("navNotifBtn");
-
-    if (bell) {
-
-        bell.addEventListener("click", function (e) {
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            openNotifications();
-
-        });
-
-    }
-
-});
-window.addEventListener("load", () => {
-  buildDateStrip();
-});
 
 /* ============================================
 END OF FILE
