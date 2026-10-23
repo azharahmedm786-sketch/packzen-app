@@ -526,12 +526,12 @@
     { id: "parcel", label: "🛵 Parcel delivery" }, { id: "ac", label: "❄️ AC service / repair" },
     { id: "appliance", label: "🧺 Washing machine / fridge" }, { id: "painting", label: "🎨 Painting" },
     { id: "home", label: "🔧 Electrician / plumber / carpenter" }, { id: "tv", label: "📺 TV mounting" },
-    { id: "website", label: "💻 Website for my business" }
+    { id: "website", label: "💻 Website (PackZen Digital)" }
   ];
   var FLOW_ASK = { mini: "What is the mini move price?", parcel: "How much is parcel delivery?", ac: "AC service and repair prices",
     appliance: "Washing machine and fridge repair prices", painting: "Do you do house painting?", website: "How much does a website cost?", home: "Electrician plumber carpenter prices", tv: "TV wall mounting price" };
   var FLOW_LINK = { move: "/index.html?book=move", mini: "/index.html?book=move", parcel: "/parcel.html", ac: "/services.html?category=ac",
-    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", website: "/website-design-bangalore.html#enquire", home: "/services.html?category=home", tv: "/services.html?category=home" };
+    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", website: "/digital/#quote", home: "/services.html?category=home", tv: "/services.html?category=home" };
   var WA = "https://wa.me/919945095453?text=";
   function chips(list, onPick) {
     els.quickReplies.innerHTML = "";

@@ -487,3 +487,11 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-extra { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 10px; }
 .pz-extra span { display: flex; flex-direction: column; } .pz-extra small, .pz-extras .toggle-text small { color: var(--nb-muted); font-size: .8rem; }
 .pz-extra select { max-width: 120px; margin: 0; }
+
+/* PackZen Digital entry points (main site) — visible but secondary to the moving CTA */
+.pz-digital-pill { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 7px 14px 7px 7px; border-radius: 999px;
+  background: #0B0B14; color: #F4F4FA !important; text-decoration: none; font-weight: 700; font-size: .88rem;
+  box-shadow: 0 10px 30px -14px rgba(124,92,255,.9), inset 0 0 0 1px rgba(124,92,255,.45); }
+.pz-digital-pill:hover { box-shadow: 0 12px 34px -12px rgba(124,92,255,1), inset 0 0 0 1px rgba(124,92,255,.8); }
+.pz-dp-new { background: linear-gradient(135deg,#7C5CFF,#4F46E5); color: #fff; border-radius: 999px; padding: 3px 9px; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; }
+.pz-nav-digital { color: #5B3FE0 !important; font-weight: 800 !important; }

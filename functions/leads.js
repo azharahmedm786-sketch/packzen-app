@@ -24,7 +24,7 @@ const STATUSES = ["new", "contacted", "quoted", "booked", "lost"];
 const SERVICES = {
   move: "House / office shifting", parcel: "Parcel delivery", vehicle: "Bike / car transport",
   ac: "AC service & repair", electrician: "Electrician",
-  plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", appliance: "Washing machine / fridge repair", painting: "Painting", website: "Website design", business: "Business / office account", estimate: "Fixed quote from photos", other: "Something else",
+  plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", appliance: "Washing machine / fridge repair", painting: "Painting", website: "Website design", ecommerce: "E-commerce / booking website", seo: "SEO & Google Business", maintenance: "Website care / maintenance", business: "Business / office account", estimate: "Fixed quote from photos", other: "Something else",
 };
 const SLA_MINUTES = 10;
 const DEDUPE_HOURS = 24;
@@ -76,7 +76,17 @@ function validateLead(data, now) {
   const when = ["this_week", "two_weeks", "this_month", "later", "just_checking"].includes(d.when) ? d.when : "";
   const homeSize = ["1rk", "1bhk", "2bhk", "3bhk", "4bhk", "villa", "office"].includes(d.homeSize) ? d.homeSize : "";
   const page = str(d.page, 200);
-  const value = { name, phone, service, serviceLabel: SERVICES[service], area, notes, date, lang, page, when, homeSize, consent: true };
+  // PackZen Digital fields (website / e-commerce / SEO / maintenance enquiries)
+  const DIGITAL = ["website", "ecommerce", "seo", "maintenance"];
+  const division = DIGITAL.includes(service) ? "digital" : "logistics";
+  const emailRaw = str(d.email, 120).toLowerCase();
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw) ? emailRaw : "";
+  if (emailRaw && !email) errors.push("Please enter a valid email address.");
+  const business = division === "digital" ? str(d.business, 100) : "";
+  const budget = division === "digital" && ["under_10k", "10k_20k", "20k_50k", "50k_plus", "not_sure"].includes(d.budget) ? d.budget : "";
+  const contactPref = ["call", "whatsapp", "email"].includes(d.contactPref) ? d.contactPref : "";
+  const value = { name, phone, service, serviceLabel: SERVICES[service], area, notes, date, lang, page, when, homeSize, consent: true, division };
+  if (division === "digital") Object.assign(value, { email: email || null, business: business || null, budget: budget || null, contactPref: contactPref || null });
   if (area) {
     const sa = serviceArea.checkAddress(area);
     value.inServiceArea = sa.ok || sa.reason === "unknown"; // unknown = just a locality name; keep the lead

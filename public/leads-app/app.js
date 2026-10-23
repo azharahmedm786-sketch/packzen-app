@@ -5,7 +5,9 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var leads = [], tier = "open", firstLoad = true, soundOn = localStorage.getItem("pzl_sound") !== "off", unsub = null;
-  var SVC = { move: "Shifting", vehicle: "Vehicle", parcel: "Parcel", ac: "AC", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV mount", business: "Business", estimate: "Photo quote", other: "Other" };
+  var BUDGET = { under_10k: "< ₹10k", "10k_20k": "₹10–20k", "20k_50k": "₹20–50k", "50k_plus": "₹50k+", not_sure: "budget not sure" };
+  function divisionOf(l) { return l.division || (["website", "ecommerce", "seo", "maintenance"].indexOf(l.service) >= 0 ? "digital" : "logistics"); }
+  var SVC = { website: "Website", ecommerce: "E-commerce", seo: "SEO", maintenance: "Website care", appliance: "Appliance", painting: "Painting", move: "Shifting", vehicle: "Vehicle", parcel: "Parcel", ac: "AC", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV mount", business: "Business", estimate: "Photo quote", other: "Other" };
   var WHEN = { this_week: "This week", two_weeks: "≤ 2 weeks", this_month: "This month", later: "Later", just_checking: "Just checking" };
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
   function ago(ms) { if (!ms) return ""; var m = Math.round((Date.now() - ms) / 60000); if (m < 1) return "now"; if (m < 60) return m + "m"; var h = Math.round(m / 60); if (h < 48) return h + "h"; return Math.round(h / 24) + "d"; }
@@ -69,6 +71,7 @@
     Array.prototype.forEach.call($("tierSeg").children, function (x) { x.classList.toggle("on", x === b); }); render();
   });
   $("q").addEventListener("input", render);
+  $("divSel").addEventListener("change", render);
 
   var RANK = { hot: 0, warm: 1, unscored: 2, cold: 3, junk: 4 };
   function card(l) {
@@ -77,7 +80,8 @@
     return '<article class="lead t-' + t + '" data-id="' + l.id + '">' +
       '<div class="lead-top"><span class="badge b-' + t + '">' + (t === "hot" ? "🔥 HOT" : t.toUpperCase()) + (l.score != null ? " · " + l.score : "") + '</span>' +
       '<span class="age' + (late ? " late" : "") + '">' + (late ? "waiting " : "") + ago(l.createdAtMs) + '</span></div>' +
-      '<div class="lead-name">' + esc(l.name || "—") + ' <span class="svc">' + esc(SVC[l.service] || l.serviceLabel || "") + (l.homeSize ? " · " + esc(l.homeSize.toUpperCase()) : "") + '</span></div>' +
+      '<div class="lead-name">' + esc(l.name || "—") + ' <span class="svc">' + esc(SVC[l.service] || l.serviceLabel || "") + (l.homeSize ? " · " + esc(l.homeSize.toUpperCase()) : "") + '</span>' + (divisionOf(l) === "digital" ? ' <span class="badge b-digital">DIGITAL</span>' : "") + '</div>' +
+      (divisionOf(l) === "digital" ? '<div class="lead-meta">' + esc(l.business || "No business name") + (l.budget ? " · " + esc(BUDGET[l.budget] || l.budget) : "") + (l.contactPref ? " · prefers " + esc(l.contactPref) : "") + (l.email ? " · " + esc(l.email) : "") + '</div>' : "") +
       '<div class="lead-meta">' + esc(l.area || "No area") + ' · ' + esc(WHEN[l.when] || l.date || "No date") + ' · ' + esc(l.channel || l.source || "direct") + '</div>' +
       '<div class="lead-status">Status: <b>' + esc(l.status || "new") + '</b>' + (l.followUpAt ? ' · follow-up ' + new Date(l.followUpAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "") + '</div>' +
       '<div class="lead-actions"><a class="btn call" href="tel:' + esc(l.phone) + '" data-act="call">Call</a><a class="btn wa" target="_blank" rel="noopener" href="' + wa + '" data-act="wa">WhatsApp</a><button class="btn ghost" data-act="open">Details</button></div>' +
@@ -89,7 +93,8 @@
       var t = tierOf(l);
       if (tier === "open" && (!isOpen(l) || t === "junk")) return false;
       if (["hot", "warm", "cold", "junk"].indexOf(tier) >= 0 && t !== tier) return false;
-      if (q && ((l.name || "") + " " + (l.phone || "") + " " + (l.area || "")).toLowerCase().indexOf(q) < 0) return false;
+      var dv = $("divSel").value; if (dv !== "all" && divisionOf(l) !== dv) return false;
+      if (q && ((l.name || "") + " " + (l.phone || "") + " " + (l.area || "") + " " + (l.business || "")).toLowerCase().indexOf(q) < 0) return false;
       return true;
     }).sort(function (a, b) { return (RANK[tierOf(a)] - RANK[tierOf(b)]) || ((b.score || 0) - (a.score || 0)) || ((b.createdAtMs || 0) - (a.createdAtMs || 0)); });
     var openHot = leads.filter(function (l) { return tierOf(l) === "hot" && isOpen(l); }).length;

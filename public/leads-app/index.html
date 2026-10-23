@@ -46,7 +46,8 @@
         <div class="seg" id="tierSeg">
           <button data-tier="open" class="on">Open</button><button data-tier="hot">🔥 Hot</button><button data-tier="warm">Warm</button><button data-tier="cold">Cold</button><button data-tier="junk">Junk</button><button data-tier="all">All</button>
         </div>
-        <input id="q" placeholder="Search name, phone, area">
+        <select id="divSel" aria-label="Division"><option value="all">All divisions</option><option value="logistics">PackZen (moving & services)</option><option value="digital">PackZen Digital</option></select>
+        <input id="q" placeholder="Search name, phone, area, business">
       </div>
       <div id="list" class="list"></div>
     </section>
@@ -88,7 +89,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
   <script src="/env-config.js?v=2"></script>
   <script src="/firebase-config.js"></script>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
   <script src="finder.js?v=1"></script>
   <script src="sales.js?v=1"></script>
 </body>

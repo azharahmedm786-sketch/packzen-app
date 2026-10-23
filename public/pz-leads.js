@@ -58,7 +58,7 @@
   captureAttr();
 
   /* ---------- callback widget ---------- */
-  var SERVICES = [["move", "House / office shifting"], ["parcel", "Parcel delivery"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"], ["website", "Website for my business"],
+  var SERVICES = [["move", "House / office shifting"], ["parcel", "Parcel delivery"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"],
     ["electrician", "Electrician"], ["plumber", "Plumber"], ["carpenter", "Carpenter"], ["tv", "TV wall mounting"], ["other", "Something else"]];
   function guessService() {
     var path = location.pathname;
@@ -66,7 +66,6 @@
     if (/ac-/.test(path)) return "ac";
     if (/washing|refrigerator|fridge|appliance/.test(path)) return "appliance";
     if (/paint/.test(path)) return "painting";
-    if (/website-design/.test(path)) return "website";
     if (/electrician|plumber|carpenter/.test(path)) return "electrician";
     if (/tv-/.test(path)) return "tv";
     if (/bike|car-transport/.test(path)) return "vehicle";
@@ -161,7 +160,6 @@
     { id: "tv", icon: "M3 5h18v11H3zM8 21h8M12 16v5", title: "TV wall mounting", sub: "All screen sizes" },
     { id: "appliance", icon: "M5 2h14a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM4 7h16M12 15a3 3 0 1 0 0-.01", title: "Washing machine & fridge", sub: "Repair visit ₹249 · gas refill" },
     { id: "painting", icon: "M18 3H4v6h14zM18 6h3v5h-9v4M10 15h4v6h-4z", title: "Home painting", sub: "Free site visit · fixed quote" },
-    { id: "website", icon: "M3 4h18v12H3zM8 20h8M12 16v4M7 8h6M7 11h10", title: "Website for your business", sub: "From ₹7,999 · free consultation" },
   ];
   function go(id) {
     var onHome = typeof window.openBookingSheet === "function";
@@ -170,7 +168,6 @@
       location.href = "/index.html?book=move"; return;
     }
     if (id === "parcel") { location.href = "/parcel.html"; return; }
-    if (id === "website") { location.href = "/website-design-bangalore.html"; return; }
     location.href = "/services.html?category=" + encodeURIComponent(id === "tv" ? "home" : id === "appliance" ? "appliance-repair" : id);
   }
   var dlg = null;
@@ -185,7 +182,7 @@
       '<div class="pz-book-grid">' + CHOICES.map(function (c) {
         return '<button type="button" class="pz-book-opt" data-id="' + c.id + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + c.icon + '"/></svg>' +
           '<span><b>' + c.title + '</b><small>' + c.sub + '</small></span></button>';
-      }).join("") + '</div><a class="pz-wa-book" target="_blank" rel="noopener" href="https://wa.me/919945095453?text=' + encodeURIComponent("Hi PackZen, I'd like to book: \nService: \nArea / pincode: \nDate: \nHome size or items: ") + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg> Book on WhatsApp instead</a><p class="pz-cb-legal"><a href="/estimate.html">Get a fixed price from photos</a> · <a href="/business.html">For business</a><br>Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
+      }).join("") + '</div><a class="pz-wa-book" target="_blank" rel="noopener" href="https://wa.me/919945095453?text=' + encodeURIComponent("Hi PackZen, I'd like to book: \nService: \nArea / pincode: \nDate: \nHome size or items: ") + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg> Book on WhatsApp instead</a><p class="pz-cb-legal"><a href="/estimate.html">Get a fixed price from photos</a> · <a href="/business.html">For business</a> · <a href="/digital/">PackZen Digital (websites)</a><br>Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
     document.body.appendChild(dlg);
     dlg.addEventListener("click", function (e) {
       var opt = e.target.closest && e.target.closest(".pz-book-opt");

@@ -48,3 +48,5 @@ details{margin:6px 0 12px;font-size:.9rem;color:var(--t2)}summary{cursor:pointer
 .qf .chk{display:flex;gap:8px;align-items:center;font-weight:600}.qf .chk input{width:auto;margin:0}
 .q-result{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#F3F8F5}.q-result b{font:800 1.3rem var(--d)}
 @media(max-width:480px){.qf{grid-template-columns:1fr}}
+
+.b-digital{background:#EEEBFF;color:#4B33C9}#divSel{border:1px solid var(--line2);border-radius:999px;padding:8px 12px;font:600 .85rem var(--b);background:#fff;color:var(--t)}
