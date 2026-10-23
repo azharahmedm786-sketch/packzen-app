@@ -24,7 +24,7 @@ const STATUSES = ["new", "contacted", "quoted", "booked", "lost"];
 const SERVICES = {
   move: "House / office shifting", parcel: "Parcel delivery", vehicle: "Bike / car transport",
   ac: "AC service & repair", electrician: "Electrician",
-  plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", business: "Business / office account", estimate: "Fixed quote from photos", other: "Something else",
+  plumber: "Plumber", carpenter: "Carpenter", tv: "TV wall mounting", appliance: "Washing machine / fridge repair", painting: "Painting", business: "Business / office account", estimate: "Fixed quote from photos", other: "Something else",
 };
 const SLA_MINUTES = 10;
 const DEDUPE_HOURS = 24;

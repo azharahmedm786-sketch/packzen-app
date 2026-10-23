@@ -56,9 +56,12 @@
      ====================================================================== */
   var KB = {
     greeting:
-      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC service, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
+      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC, washing machine & fridge repair, painting, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
 
     menu: [
+      { label: "🧭 Book in chat", flow: "book" },
+      { label: "🔁 Reschedule / cancel", flow: "manage" },
+      { label: "📸 Price from photos", flow: "photo" },
       { label: "💰 Pricing & Rates", intent: "pricing" },
       { label: "🏠 Shifting price", ask: "How much does house shifting cost?" },
       { label: "📦 Parcel delivery", ask: "How much is parcel delivery?" },
@@ -403,7 +406,8 @@
       chip.className = "pz-chip";
       chip.textContent = item.label;
       chip.addEventListener("click", function () {
-        if (item.ask) handleUserInput(item.ask); else handleUserInput(item.label, item.intent);
+        if (item.flow) startFlow(item.flow, item.label);
+        else if (item.ask) handleUserInput(item.ask); else handleUserInput(item.label, item.intent);
       });
       els.quickReplies.appendChild(chip);
     });
@@ -508,6 +512,119 @@
         else if (a.type === "link" && typeof a.href === "string" && a.href.charAt(0) === "/") window.location.href = a.href;
       });
       els.quickReplies.appendChild(chip);
+    });
+  }
+
+
+  /* ======================================================================
+     GUIDED FLOWS — book in chat, reschedule/cancel, price from photos.
+     Prices always come from the server assistant (same verified numbers as the
+     website); the chat collects the answers and hands off to the right page.
+     ====================================================================== */
+  var FLOW_SERVICES = [
+    { id: "move", label: "🏠 Home shifting" }, { id: "mini", label: "📦 Mini move (few items)" },
+    { id: "parcel", label: "🛵 Parcel delivery" }, { id: "ac", label: "❄️ AC service / repair" },
+    { id: "appliance", label: "🧺 Washing machine / fridge" }, { id: "painting", label: "🎨 Painting" },
+    { id: "home", label: "🔧 Electrician / plumber / carpenter" }, { id: "tv", label: "📺 TV mounting" }
+  ];
+  var FLOW_ASK = { mini: "What is the mini move price?", parcel: "How much is parcel delivery?", ac: "AC service and repair prices",
+    appliance: "Washing machine and fridge repair prices", painting: "Do you do house painting?", home: "Electrician plumber carpenter prices", tv: "TV wall mounting price" };
+  var FLOW_LINK = { move: "/index.html?book=move", mini: "/index.html?book=move", parcel: "/parcel.html", ac: "/services.html?category=ac",
+    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", home: "/services.html?category=home", tv: "/services.html?category=home" };
+  var WA = "https://wa.me/919945095453?text=";
+  function chips(list, onPick) {
+    els.quickReplies.innerHTML = "";
+    list.forEach(function (c) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "pz-chip"; b.textContent = c.label;
+      b.addEventListener("click", function () { onPick(c); });
+      els.quickReplies.appendChild(b);
+    });
+  }
+  function actionChip(label, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "pz-chip"; b.textContent = label; b.addEventListener("click", fn); els.quickReplies.appendChild(b); }
+  function askServerQuiet(question, after) {
+    showTyping();
+    callFn("assistantAsk", { message: question, history: [], lang: state.lang || null })
+      .then(function (d) { hideTyping(); appendMessage("bot", d.reply || KB.fallback); pushHistory("assistant", d.reply || ""); after && after(); })
+      .catch(function () { hideTyping(); appendMessage("bot", "I couldn't load the price just now — you can see it instantly on the booking page."); after && after(); });
+  }
+  function startFlow(flow, label) {
+    appendMessage("user", label);
+    if (window.pzTrack) window.pzTrack("select_content", { content_type: "chat_flow", item_id: flow });
+    if (flow === "book") return flowBook();
+    if (flow === "manage") return flowManage();
+    if (flow === "photo") return flowPhoto();
+  }
+  function flowBook() {
+    appendMessage("bot", "Sure! What would you like to book?");
+    chips(FLOW_SERVICES, function (svc) {
+      appendMessage("user", svc.label);
+      if (svc.id === "move") {
+        appendMessage("bot", "What size is your home?");
+        return chips([{ label: "1 RK" }, { label: "1 BHK" }, { label: "2 BHK" }, { label: "3 BHK" }, { label: "4 BHK / villa" }], function (sz) {
+          appendMessage("user", sz.label);
+          appendMessage("bot", "When are you moving?");
+          chips([{ label: "This week", v: "this_week" }, { label: "Next 2 weeks", v: "two_weeks" }, { label: "This month", v: "this_month" }, { label: "Not sure yet", v: "later" }], function (w) {
+            appendMessage("user", w.label);
+            askServerQuiet("How much does a " + sz.label.replace(" / villa", "") + " house shifting cost?", function () {
+              appendMessage("bot", "The booking form gives your exact, fixed price in about a minute (it measures the distance and floors). Weekday moves (Tue–Thu, 5th–25th) get 3% off automatically.");
+              els.quickReplies.innerHTML = "";
+              actionChip("✅ Get exact price & book", function () { window.location.href = FLOW_LINK.move; });
+              actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback("move"); });
+              actionChip("📸 Quote from photos", function () { window.location.href = "/estimate.html"; });
+            });
+          });
+        });
+      }
+      askServerQuiet(FLOW_ASK[svc.id], function () {
+        els.quickReplies.innerHTML = "";
+        if (svc.id === "painting") {
+          actionChip("📅 Book free site visit", function () { window.location.href = FLOW_LINK.painting; });
+          actionChip("📸 Send wall photos", function () { window.open(WA + encodeURIComponent("Hi PackZen, I'd like a painting quote. Area: \nRooms: \nI'm sending photos of the walls."), "_blank", "noopener"); });
+          actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback("painting"); });
+          return;
+        }
+        actionChip("✅ Book now", function () { window.location.href = FLOW_LINK[svc.id]; });
+        actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback(svc.id === "home" || svc.id === "tv" ? "electrician" : svc.id === "mini" ? "move" : svc.id); });
+        actionChip("↩︎ Something else", function () { renderQuickReplies(); });
+      });
+    });
+  }
+  function flowManage() {
+    appendMessage("bot", "I can help with that. If you're signed in, the quickest way is My Bookings → your booking → Reschedule or Cancel (free up to 12 hours before your slot; on the day, please call). Or I can pass your request to the team:");
+    els.quickReplies.innerHTML = "";
+    actionChip("📋 Open My Bookings", function () { window.location.href = "/index.html#bookings"; });
+    actionChip("🔁 Ask team to reschedule", function () { manageForm("reschedule"); });
+    actionChip("✖️ Ask team to cancel", function () { manageForm("cancel"); });
+  }
+  function manageForm(kind) {
+    els.quickReplies.innerHTML = "";
+    var wrap = document.createElement("div"); wrap.className = "pz-lead-form";
+    wrap.innerHTML = '<input class="pz-mf-ref" placeholder="Booking reference (e.g. PZ1234)" maxlength="30">' +
+      (kind === "reschedule" ? '<input class="pz-mf-date" type="date" aria-label="New date">' : "") +
+      '<input class="pz-mf-name" placeholder="Your name" maxlength="80"><input class="pz-mf-phone" type="tel" inputmode="numeric" placeholder="Mobile number" maxlength="14">' +
+      '<button type="button" class="pz-cta-btn pz-mf-send">Send request</button>';
+    els.quickReplies.appendChild(wrap);
+    wrap.querySelector(".pz-mf-send").addEventListener("click", function () {
+      var ref = wrap.querySelector(".pz-mf-ref").value.trim(), dt = kind === "reschedule" ? wrap.querySelector(".pz-mf-date").value : "";
+      var name = wrap.querySelector(".pz-mf-name").value.trim(), phone = wrap.querySelector(".pz-mf-phone").value.replace(/\D/g, "").slice(-10);
+      if (!ref || name.length < 2 || !/^[6-9]\d{9}$/.test(phone) || (kind === "reschedule" && !dt)) { appendMessage("bot", "Please fill in the booking reference, " + (kind === "reschedule" ? "new date, " : "") + "your name and a 10-digit mobile number."); return; }
+      var msg = (kind === "reschedule" ? "Reschedule request: booking " + ref + " to " + dt : "Cancellation request: booking " + ref) + " (sent from the website assistant).";
+      showTyping();
+      callFn("assistantSupportRequest", { name: name, phone: phone, message: msg, topic: kind, consent: true })
+        .then(function () { hideTyping(); appendMessage("bot", "✅ Got it — our team will confirm your " + (kind === "reschedule" ? "new date" : "cancellation") + " by phone. Refunds for cancellations before the moving day are full, to your original payment method in 5–7 bank days."); renderQuickReplies(); })
+        .catch(function (e) { hideTyping(); appendMessage("bot", (e && e.message) || "Couldn't send that — please call 9945095453."); });
+    });
+  }
+  function flowPhoto() {
+    appendMessage("bot", "Send photos and our team replies with a fixed price — usually within an hour (8 AM – 9 PM). What are the photos for?");
+    chips([{ label: "🏠 Home shifting", id: "move" }, { label: "🎨 Painting", id: "painting" }, { label: "🧺 Washing machine / fridge", id: "appliance" }, { label: "❄️ AC", id: "ac" }, { label: "🔧 Other repair", id: "home" }], function (c) {
+      appendMessage("user", c.label);
+      if (c.id === "move") { appendMessage("bot", "Tell us your home size and dates, then send room photos on WhatsApp — you'll get a fixed moving price."); els.quickReplies.innerHTML = ""; actionChip("📸 Start photo quote", function () { window.location.href = "/estimate.html"; }); return; }
+      var txt = { painting: "Hi PackZen, I'd like a painting quote. Area: \nRooms/walls: \nSending photos now.", appliance: "Hi PackZen, my washing machine / fridge needs repair. Brand & model: \nProblem: \nArea: \nSending photos now.", ac: "Hi PackZen, I need help with my AC. Problem: \nArea: \nSending photos now.", home: "Hi PackZen, I need a repair. Work needed: \nArea: \nSending photos now." }[c.id];
+      appendMessage("bot", "Tap below to open WhatsApp with your request ready — just attach the photos and send.");
+      els.quickReplies.innerHTML = "";
+      actionChip("📸 Send photos on WhatsApp", function () { if (window.pzTrack) window.pzTrack("contact", { method: "whatsapp", page: "chat_photo_quote" }); window.open(WA + encodeURIComponent(txt), "_blank", "noopener"); });
+      actionChip("↩︎ Back", function () { renderQuickReplies(); });
     });
   }
 

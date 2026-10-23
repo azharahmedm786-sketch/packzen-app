@@ -4694,3 +4694,17 @@ window.addEventListener("load", function () {
     };
   }
 })();
+
+/* Deep link: /index.html#bookings opens My Bookings (sign-in first if needed) —
+   used by the assistant's "Reschedule / cancel" flow. */
+(function () {
+  if (location.hash !== "#bookings") return;
+  var tries = 0, t = setInterval(function () {
+    if (typeof openDashboard !== "function" || typeof firebase === "undefined" || !window._firebase) { if (++tries > 40) clearInterval(t); return; }
+    clearInterval(t);
+    window._firebase.auth.onAuthStateChanged(function (u) {
+      if (!u) { if (typeof openAuthModal === "function") openAuthModal("login"); return; }
+      Promise.resolve(openDashboard()).then(function () { switchDashTab("bookings", document.querySelectorAll(".dash-tab")[0]); });
+    });
+  }, 250);
+})();

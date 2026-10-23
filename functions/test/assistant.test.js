@@ -64,7 +64,9 @@ const S = [
   ["home services", () => { const r = A("do you have electrician or plumber"); has(r, "home_services"); }],
   ["cleaning", () => { const r = A("deep cleaning available?"); has(r, "no_cleaning"); assert.ok(/doesn.t offer cleaning/.test(r.reply)); }],
   // unsupported
-  ["painting", () => { const r = A("do you do painting"); has(r, "unsupported"); says(r, "coming later"); not(r, "₹"); }],
+  ["painting", () => { const r = A("do you do painting"); has(r, "painting"); says(r, "free site visit"); }],
+  ["pest control", () => { const r = A("do you do pest control"); has(r, "unsupported"); says(r, "coming later"); not(r, "₹"); }],
+  ["fridge repair", () => { const r = A("my fridge is not cooling"); has(r, "appliance_repair"); says(r, "₹249"); }],
   ["pest control", () => { const r = A("pest control for termites"); has(r, "unsupported"); }],
   ["car transport", () => { const r = A("car transport to pune"); assert.ok(r.intents.includes("unsupported")); }],
   // multi-question

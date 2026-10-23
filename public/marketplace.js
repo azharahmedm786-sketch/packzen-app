@@ -38,8 +38,15 @@
       { name: "Carpentry", q: "Carpenter", keywords: "carpenter furniture repair assembly", status: "book" },
       { name: "Plumbing", q: "Plumber", keywords: "plumber tap leak pipe", status: "book" },
       { name: "TV wall mount", q: "TV Wall Mount", keywords: "television mount", status: "book" },
-      { name: "Painting", keywords: "painter wall", status: "soon" }, { name: "Pest control", keywords: "termite cockroach", status: "soon" },
-      { name: "Appliance repair", keywords: "fridge refrigerator washing machine geyser ro purifier", status: "soon" } ] },
+      { name: "Pest control", keywords: "termite cockroach", status: "soon" } ] },
+    { id: "appliance-repair", icon: "🧺", name: "Washing Machine & Fridge", sub: "Repair, installation and gas refill", services: [
+      { name: "Washing machine repair", q: "Washing Machine Repair", keywords: "washer not spinning draining noise top load front load", status: "book" },
+      { name: "Washing machine installation", q: "Washing Machine Installation", keywords: "install washer new machine", status: "book" },
+      { name: "Washing machine uninstallation", q: "Washing Machine Uninstallation", keywords: "uninstall washer before moving", status: "book" },
+      { name: "Refrigerator repair", q: "Refrigerator Repair", keywords: "fridge not cooling repair noise", status: "book" },
+      { name: "Refrigerator gas refill", q: "Refrigerator Gas Refill", keywords: "fridge gas charging cooling", status: "book" } ] },
+    { id: "painting", icon: "🎨", name: "Painting", sub: "Free site visit, fixed written quote", services: [
+      { name: "Home & room painting", q: "Painting", keywords: "painter wall paint interior exterior room house", status: "book" } ] },
     { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
       { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
       { name: "Two-wheeler parcel", href: "parcel.html", keywords: "courier package documents parcel delivery", status: "book" } ] }

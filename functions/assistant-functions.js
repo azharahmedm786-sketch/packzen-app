@@ -123,7 +123,7 @@ async function handleAsk(data, context, deps) {
   return { reply: shown.reply, actions: out.actions || [], service: out.service || null, escalate: !!out.escalate, urgent: !!out.urgent, lang };
 }
 
-const TOPICS = new Set(["booking", "payment", "refund", "damage", "complaint", "callback", "service", "other"]);
+const TOPICS = new Set(["booking", "payment", "refund", "damage", "complaint", "callback", "service", "other", "reschedule", "cancel", "photo_quote"]);
 async function handleSupportRequest(data, context, deps) {
   const d = data || {};
   const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");

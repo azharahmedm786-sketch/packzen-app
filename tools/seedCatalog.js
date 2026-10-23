@@ -49,6 +49,8 @@ const categories = [
   { id: "appliances",  name: "Appliance Services",icon: "📺", displayOrder: 4, description: "TV mounting and appliance handling" },
   { id: "cleaning",    isActive: false, name: "Cleaning Services", icon: "\u{1F9F9}", displayOrder: 6, description: "Deep home, kitchen and bathroom cleaning" },
   { id: "handyman",    name: "Handyman Services", icon: "🛠️", displayOrder: 5, description: "Electrician, carpenter and plumber visits" },
+  { id: "appliance-repair", name: "Washing Machine & Fridge", icon: "🧺", displayOrder: 7, description: "Washing machine and refrigerator repair, installation and gas refill" },
+  { id: "painting",    name: "Painting",          icon: "🎨", displayOrder: 8, description: "Home and room painting — free site visit, fixed written quote" },
 ].map((c) => ({ isActive: true, ...c }));   // an explicit isActive: false (e.g. cleaning) wins
 
 // ── Services ────────────────────────────────────────────────────
@@ -69,6 +71,14 @@ const services = [
   { id: "kitchen-cleaning", isActive: false,     categoryId: "cleaning",    name: "Kitchen Deep Cleaning",  basePrice: 999,  pricingUnit: "fixed",    displayOrder: 23, description: "Cabinets, slab, tiles and appliances exterior" },
   { id: "bathroom-cleaning", isActive: false,    categoryId: "cleaning",    name: "Bathroom Cleaning",      basePrice: 449,  pricingUnit: "per_item", displayOrder: 24, description: "Machine deep cleaning, per bathroom" },
   { id: "plumber-visit",        categoryId: "handyman",    name: "Plumber Visit",          basePrice: 149,  pricingUnit: "fixed",    displayOrder: 30, description: "Visit charge, adjusted in the final bill; work priced on site" },
+  // Washing machine & refrigerator (Oct 2026 — prices approved by the owner)
+  { id: "wm-repair-visit",      categoryId: "appliance-repair", name: "Washing Machine Repair (visit)",   basePrice: 249,  pricingUnit: "fixed",    displayOrder: 40, description: "Technician visit and diagnosis; repair and parts quoted on site before work" },
+  { id: "wm-install",           categoryId: "appliance-repair", name: "Washing Machine Installation",     basePrice: 449,  pricingUnit: "per_item", displayOrder: 41, description: "Install and test, per machine (inlet/outlet fittings extra if needed)" },
+  { id: "wm-uninstall",         categoryId: "appliance-repair", name: "Washing Machine Uninstallation",   basePrice: 299,  pricingUnit: "per_item", displayOrder: 42, description: "Safe disconnect and drain, per machine — ideal before a move" },
+  { id: "fridge-repair-visit",  categoryId: "appliance-repair", name: "Refrigerator Repair (visit)",      basePrice: 249,  pricingUnit: "fixed",    displayOrder: 43, description: "Technician visit and diagnosis; repair and parts quoted on site before work" },
+  { id: "fridge-gas-refill",    categoryId: "appliance-repair", name: "Refrigerator Gas Refill",          basePrice: 1999, pricingUnit: "per_item", displayOrder: 44, description: "Gas charging with leak check, per refrigerator" },
+  // Painting: free site visit, then a fixed written quote
+  { id: "painting-site-visit",  categoryId: "painting",         name: "Painting — Free Site Visit & Quote", basePrice: 0,  pricingUnit: "quote",    displayOrder: 50, description: "We inspect walls, measure and give a fixed written quote — no charge for the visit" },
 ].map((s) => ({ isActive: true, ...s }));
 
 // ── Packages ────────────────────────────────────────────────────

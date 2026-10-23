@@ -35,11 +35,13 @@ const clean = (html) => BAD.forEach((t) => assert.ok(!new RegExp("(^|[^a-zA-Z])"
 const tests = []; const test = (n, f) => tests.push({ n, f });
 
 /* marketplace taxonomy */
-test("taxonomy: four categories with the approved service list (cleaning removed 2026-10-19)", () => {
+test("taxonomy: categories with the approved service list (cleaning removed 2026-10-19; appliances + painting added 2026-10-22)", () => {
   const want = {
     moving: ["House shifting", "Office relocation", "Single item", "Packing & unpacking", "Bike transport", "Car transport"],
     ac: ["AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill"],
-    home: ["Electrical", "Carpentry", "Plumbing", "TV wall mount", "Painting", "Pest control", "Appliance repair"],
+    home: ["Electrical", "Carpentry", "Plumbing", "TV wall mount", "Pest control"],
+    "appliance-repair": ["Washing machine repair", "Washing machine installation", "Washing machine uninstallation", "Refrigerator repair", "Refrigerator gas refill"],
+    painting: ["Home & room painting"],
     delivery: ["Single-item delivery", "Two-wheeler parcel"],
   };
   assert.deepStrictEqual(mk.CATEGORIES.map((c) => c.id), Object.keys(want));
@@ -53,11 +55,12 @@ test("taxonomy: navigation only — no prices/amounts defined client-side", () =
 test("search: keywords and partial words match; no match returns empty", () => {
   const names = (q) => mk.filter(q).map((r) => r.service.name);
   assert.ok(names("ac repair").includes("AC repair"));
-  assert.ok(names("fridge").includes("Appliance repair"));
+  assert.ok(names("fridge").includes("Refrigerator repair"));
+  assert.ok(names("washing").includes("Washing machine repair") && names("painter").includes("Home & room painting"));
   assert.ok(names("plumber").includes("Plumbing"));
   assert.ok(names("scooter").includes("Bike transport"));
   assert.deepStrictEqual(names("helicopter"), []);
-  assert.strictEqual(mk.filter("").length, 20);
+  assert.strictEqual(mk.filter("").length, 24);
 });
 test("routing: moving uses existing quote flow / SEO pages; other services go to catalog search", () => {
   const find = (n) => mk.CATEGORIES.flatMap((c) => c.services).find((s) => s.name === n);
@@ -65,7 +68,8 @@ test("routing: moving uses existing quote flow / SEO pages; other services go to
   assert.strictEqual(mk.hrefFor(find("AC installation")), "services.html?q=AC%20installation");
   assert.strictEqual(mk.hrefFor(find("Electrical")), "services.html?q=Electrician", "search wording matches the catalog item");
   assert.strictEqual(mk.hrefFor(find("AC repair")), "services.html?q=AC%20Repair", "approved + priced → catalog");
-  assert.strictEqual(mk.hrefFor(find("Painting")), null, "not offered → no booking link");
+  assert.strictEqual(mk.hrefFor(find("Pest control")), null, "not offered → no booking link");
+  assert.strictEqual(mk.hrefFor(find("Home & room painting")), "services.html?q=Painting");
   assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), "parcel.html"); // parcel delivery launched (Oct 2026)
   for (const s of mk.CATEGORIES.flatMap((c) => c.services)) if (s.href && !s.href.includes("#")) assert.ok(fs.existsSync(path.join(PUB, s.href.split("?")[0])), "missing page " + s.href);
 });
@@ -149,7 +153,8 @@ test("availability: every service has an honest status; only real booking paths 
   for (const n of ["House shifting", "Office relocation", "Single item", "Single-item delivery", "AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill",
                    "TV wall mount", "Electrical", "Carpentry", "Plumbing"]) assert.strictEqual(st(n), "book", n);
   for (const n of ["Packing & unpacking", "Bike transport"]) assert.strictEqual(st(n), "addon", n);
-  for (const n of ["Painting", "Pest control", "Appliance repair", "Car transport"]) assert.strictEqual(st(n), "soon", n);
+  for (const n of ["Pest control", "Car transport"]) assert.strictEqual(st(n), "soon", n);
+  for (const n of ["Washing machine repair", "Refrigerator gas refill", "Home & room painting"]) assert.strictEqual(st(n), "book", n);
   assert.strictEqual(st("Two-wheeler parcel"), "book");
   const seed = fs.readFileSync(path.join(__dirname, "..", "..", "tools", "seedCatalog.js"), "utf8");
   // every catalog-backed "book" service has a priced catalog item (owner-approved prices)
@@ -165,7 +170,7 @@ test("availability: rendered chips — 'Coming soon' is never a link; no unsuppo
   const html = renderHtml();
   const soon = mk.CATEGORIES.flatMap((c) => c.services).filter((x) => x.status === "soon").length;
   assert.strictEqual((html.match(/pz-chip--soon/g) || []).length, 0, "no Coming-soon chips in the grid");
-  assert.ok(soon > 0 && html.includes('class="pz-soon-line"') && html.includes("Coming later to Bangalore: Car transport, Painting, Pest control, Appliance repair."));
+  assert.ok(soon > 0 && html.includes('class="pz-soon-line"') && html.includes("Coming later to Bangalore: Car transport, Pest control."));
   assert.ok(!/<a [^>]*pz-chip--soon/.test(html) && !/car-transport-bangalore\.html/.test(html));
   const src = read("marketplace.js");
   assert.ok(!/verified technicians|trusted professionals|same-city parcels|we'll arrange it/i.test(src));
