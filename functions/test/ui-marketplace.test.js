@@ -42,6 +42,7 @@ test("taxonomy: categories with the approved service list (cleaning removed 2026
     home: ["Electrical", "Carpentry", "Plumbing", "TV wall mount", "Pest control"],
     "appliance-repair": ["Washing machine repair", "Washing machine installation", "Washing machine uninstallation", "Refrigerator repair", "Refrigerator gas refill"],
     painting: ["Home & room painting"],
+    website: ["Website design"],
     delivery: ["Single-item delivery", "Two-wheeler parcel"],
   };
   assert.deepStrictEqual(mk.CATEGORIES.map((c) => c.id), Object.keys(want));
@@ -60,7 +61,7 @@ test("search: keywords and partial words match; no match returns empty", () => {
   assert.ok(names("plumber").includes("Plumbing"));
   assert.ok(names("scooter").includes("Bike transport"));
   assert.deepStrictEqual(names("helicopter"), []);
-  assert.strictEqual(mk.filter("").length, 24);
+  assert.strictEqual(mk.filter("").length, 25);
 });
 test("routing: moving uses existing quote flow / SEO pages; other services go to catalog search", () => {
   const find = (n) => mk.CATEGORIES.flatMap((c) => c.services).find((s) => s.name === n);

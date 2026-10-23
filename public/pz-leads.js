@@ -58,7 +58,7 @@
   captureAttr();
 
   /* ---------- callback widget ---------- */
-  var SERVICES = [["move", "House / office shifting"], ["parcel", "Parcel delivery"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"],
+  var SERVICES = [["move", "House / office shifting"], ["parcel", "Parcel delivery"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"], ["website", "Website for my business"],
     ["electrician", "Electrician"], ["plumber", "Plumber"], ["carpenter", "Carpenter"], ["tv", "TV wall mounting"], ["other", "Something else"]];
   function guessService() {
     var path = location.pathname;
@@ -66,6 +66,7 @@
     if (/ac-/.test(path)) return "ac";
     if (/washing|refrigerator|fridge|appliance/.test(path)) return "appliance";
     if (/paint/.test(path)) return "painting";
+    if (/website-design/.test(path)) return "website";
     if (/electrician|plumber|carpenter/.test(path)) return "electrician";
     if (/tv-/.test(path)) return "tv";
     if (/bike|car-transport/.test(path)) return "vehicle";
@@ -160,6 +161,7 @@
     { id: "tv", icon: "M3 5h18v11H3zM8 21h8M12 16v5", title: "TV wall mounting", sub: "All screen sizes" },
     { id: "appliance", icon: "M5 2h14a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM4 7h16M12 15a3 3 0 1 0 0-.01", title: "Washing machine & fridge", sub: "Repair visit ₹249 · gas refill" },
     { id: "painting", icon: "M18 3H4v6h14zM18 6h3v5h-9v4M10 15h4v6h-4z", title: "Home painting", sub: "Free site visit · fixed quote" },
+    { id: "website", icon: "M3 4h18v12H3zM8 20h8M12 16v4M7 8h6M7 11h10", title: "Website for your business", sub: "From ₹7,999 · free consultation" },
   ];
   function go(id) {
     var onHome = typeof window.openBookingSheet === "function";
@@ -168,6 +170,7 @@
       location.href = "/index.html?book=move"; return;
     }
     if (id === "parcel") { location.href = "/parcel.html"; return; }
+    if (id === "website") { location.href = "/website-design-bangalore.html"; return; }
     location.href = "/services.html?category=" + encodeURIComponent(id === "tv" ? "home" : id === "appliance" ? "appliance-repair" : id);
   }
   var dlg = null;

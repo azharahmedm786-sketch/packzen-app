@@ -56,7 +56,7 @@
      ====================================================================== */
   var KB = {
     greeting:
-      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC, washing machine & fridge repair, painting, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
+      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, parcels, AC, washing machine & fridge repair, painting, website design, electricians, plumbers, carpenters or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
 
     menu: [
       { label: "🧭 Book in chat", flow: "book" },
@@ -525,12 +525,13 @@
     { id: "move", label: "🏠 Home shifting" }, { id: "mini", label: "📦 Mini move (few items)" },
     { id: "parcel", label: "🛵 Parcel delivery" }, { id: "ac", label: "❄️ AC service / repair" },
     { id: "appliance", label: "🧺 Washing machine / fridge" }, { id: "painting", label: "🎨 Painting" },
-    { id: "home", label: "🔧 Electrician / plumber / carpenter" }, { id: "tv", label: "📺 TV mounting" }
+    { id: "home", label: "🔧 Electrician / plumber / carpenter" }, { id: "tv", label: "📺 TV mounting" },
+    { id: "website", label: "💻 Website for my business" }
   ];
   var FLOW_ASK = { mini: "What is the mini move price?", parcel: "How much is parcel delivery?", ac: "AC service and repair prices",
-    appliance: "Washing machine and fridge repair prices", painting: "Do you do house painting?", home: "Electrician plumber carpenter prices", tv: "TV wall mounting price" };
+    appliance: "Washing machine and fridge repair prices", painting: "Do you do house painting?", website: "How much does a website cost?", home: "Electrician plumber carpenter prices", tv: "TV wall mounting price" };
   var FLOW_LINK = { move: "/index.html?book=move", mini: "/index.html?book=move", parcel: "/parcel.html", ac: "/services.html?category=ac",
-    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", home: "/services.html?category=home", tv: "/services.html?category=home" };
+    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", website: "/website-design-bangalore.html#enquire", home: "/services.html?category=home", tv: "/services.html?category=home" };
   var WA = "https://wa.me/919945095453?text=";
   function chips(list, onPick) {
     els.quickReplies.innerHTML = "";
@@ -581,6 +582,11 @@
           actionChip("📅 Book free site visit", function () { window.location.href = FLOW_LINK.painting; });
           actionChip("📸 Send wall photos", function () { window.open(WA + encodeURIComponent("Hi PackZen, I'd like a painting quote. Area: \nRooms: \nI'm sending photos of the walls."), "_blank", "noopener"); });
           actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback("painting"); });
+          return;
+        }
+        if (svc.id === "website") {
+          actionChip("📅 Free consultation", function () { window.location.href = FLOW_LINK.website; });
+          actionChip("💬 WhatsApp us", function () { window.open(WA + encodeURIComponent("Hi PackZen, I'd like a website for my business. Business type: \nArea: "), "_blank", "noopener"); });
           return;
         }
         actionChip("✅ Book now", function () { window.location.href = FLOW_LINK[svc.id]; });

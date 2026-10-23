@@ -17,7 +17,7 @@ const serviceArea = require("./service-area");
 const REGION = "asia-south1";
 const JOB_SEEKER = /\b(job|jobs|vacancy|vacancies|salary|hiring|career|resume|cv|driver job|work for you|join as driver|part time)\b/i;
 const FAKE_NAME = /^(test|testing|asdf|qwerty|xyz|abc|aaa+|na|n\/a|none|hello|hi)$/i;
-const SERVICE_POINTS = { move: 15, vehicle: 12, business: 20, ac: 8, electrician: 8, plumber: 8, carpenter: 8, tv: 6, appliance: 8, painting: 15, parcel: 5, estimate: 18, other: 0 };
+const SERVICE_POINTS = { move: 15, vehicle: 12, business: 20, ac: 8, electrician: 8, plumber: 8, carpenter: 8, tv: 6, appliance: 8, painting: 15, website: 20, parcel: 5, estimate: 18, other: 0 };
 const WHEN_POINTS = { this_week: 25, two_weeks: 20, this_month: 10, later: 0, just_checking: -10 };
 const SOURCE_POINTS = { "abandoned-quote": 10, "website-assistant": 5, "website-callback": 5, referral: 10 };
 

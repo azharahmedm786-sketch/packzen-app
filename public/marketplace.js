@@ -47,6 +47,8 @@
       { name: "Refrigerator gas refill", q: "Refrigerator Gas Refill", keywords: "fridge gas charging cooling", status: "book" } ] },
     { id: "painting", icon: "🎨", name: "Painting", sub: "Free site visit, fixed written quote", services: [
       { name: "Home & room painting", q: "Painting", keywords: "painter wall paint interior exterior room house", status: "book" } ] },
+    { id: "website", icon: "💻", name: "Websites", sub: "Websites for local businesses — free consultation", services: [
+      { name: "Website design", href: "website-design-bangalore.html", keywords: "web site webpage online business seo google domain ecommerce store", status: "book" } ] },
     { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
       { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
       { name: "Two-wheeler parcel", href: "parcel.html", keywords: "courier package documents parcel delivery", status: "book" } ] }
