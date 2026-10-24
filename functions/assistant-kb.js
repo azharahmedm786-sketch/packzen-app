@@ -33,7 +33,7 @@ const ENTRIES = [
     answer: () => "You're welcome! Anything else I can help with?" },
 
   { id: "services", phrases: ["what services", "what do you do", "services do you", "do you offer", "what all"], words: ["services", "offer"],
-    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Home services: AC service/repair/installation, washing machine & fridge repair, home painting and TV mounting\n• Websites for businesses through PackZen Digital\nWe no longer offer two-wheeler parcel delivery or electrician / plumber / carpenter visits.\nWe don't offer cleaning services. Car transport and pest control are coming later — call us if you need one of those.",
+    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Home services: AC service/repair/installation, washing machine & fridge repair\n• Websites for businesses through PackZen Digital\nWe no longer offer two-wheeler parcel delivery, electrician / plumber / carpenter visits, painting or TV mounting.\nWe don't offer cleaning services. Car transport and pest control are coming later — call us if you need one of those.",
     actions: [{ type: "link", label: "See all services", href: "/services.html" }] },
 
   { id: "price_general", phrases: ["how much", "price list", "rate card", "starting price", "minimum charge", "kitna", "estimate", "charges for"], words: ["price", "prices", "pricing", "cost", "costs", "charges", "rate", "rates", "quote", "fare", "expensive", "cheap", "budget"],
@@ -90,17 +90,17 @@ const ENTRIES = [
   { id: "appliance_repair", phrases: ["washing machine", "fridge repair", "refrigerator repair", "fridge service", "repair fridge", "repair my fridge", "fridge repair needed", "fridge not cooling", "fridge is not cooling", "refrigerator not cooling", "fridge not working", "fridge gas", "refrigerator gas", "washer not", "not spinning", "not draining"], words: ["washer", "fridge", "refrigerator"],
     answer: () => "Washing machine & refrigerator services in Bangalore:\n• Washing machine repair — ₹249 visit + diagnosis; the repair is quoted on site before any work\n• Washing machine installation ₹449 · uninstallation ₹299 (per machine — handy before a move)\n• Refrigerator repair — ₹249 visit + diagnosis, repair quoted on site\n• Refrigerator gas refill ₹1,999 with leak check\nBook online: packzenblr.in/services.html?category=appliance-repair" },
 
-  { id: "painting", phrases: ["painting", "paint my", "wall paint", "house painting", "room painting", "painter"], words: ["painting", "painter", "paint", "repaint"],
-    answer: () => "Home & room painting in Bangalore: we do a free site visit, check the walls, measure and give you a fixed written quote before any work — paint brand, colours and finish are agreed upfront. Request your free visit: packzenblr.in/services.html?category=painting or tap Request a callback." },
+  { id: "painting", phrases: ["painting", "paint my", "wall paint", "house painting", "room painting", "painter", "tv mounting", "tv wall mount", "mount my tv", "mount tv"], words: ["painting", "painter", "paint", "repaint", "mounting"],
+    answer: () => "PackZen no longer offers painting or TV wall mounting. We can help with house and office shifting, single-item moves, AC service and washing machine & fridge repair in Bangalore." },
 
   { id: "no_cleaning", phrases: ["deep cleaning", "home cleaning", "house cleaning", "kitchen cleaning", "bathroom cleaning", "sofa cleaning", "cleaning service", "move in cleaning", "move out cleaning"], words: ["cleaning", "cleaner", "cleaners", "maid", "housekeeping"],
-    answer: () => "Sorry — PackZen doesn't offer cleaning services. We can help with house shifting, office moves, AC and appliance repair, painting and TV mounting in Bangalore." },
+    answer: () => "Sorry — PackZen doesn't offer cleaning services. We can help with house shifting, office moves, AC and appliance repair in Bangalore." },
 
   { id: "no_handyman", phrases: ["electrician", "plumber", "carpenter", "handyman", "plumbing work", "electrical work"], words: ["electrician", "electricians", "plumber", "plumbers", "plumbing", "carpenter", "carpenters", "carpentry", "handyman", "wiring"],
-    answer: () => "PackZen no longer offers electrician, plumber or carpenter visits. If you're moving with us, you can add furniture dismantling & reassembly or light/fan disconnection to your move in the booking form. We still do AC service, washing machine & fridge repair, painting and TV mounting." },
+    answer: () => "PackZen no longer offers electrician, plumber or carpenter visits. If you're moving with us, you can add furniture dismantling & reassembly or light/fan disconnection to your move in the booking form. We still do AC service and washing machine & fridge repair." },
 
-  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation", "tv mounting", "tv wall mount", "mount my tv", "mount tv"], words: ["ac", "aircon", "mounting"],
-    answer: () => "We offer AC service, repair, installation and gas refill, washing machine & fridge repair, home painting and TV wall mounting in Bangalore, with prices shown before you book.",
+  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation"], words: ["ac", "aircon"],
+    answer: () => "We offer AC service, repair, installation and gas refill, and washing machine & fridge repair in Bangalore, with prices shown before you book.",
     actions: [{ type: "link", label: "Book a home service", href: "/services.html" }] },
 
   { id: "unsupported", phrases: ["car transport", "pest control"], words: ["pest", "termite"],

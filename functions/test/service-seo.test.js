@@ -4,7 +4,7 @@ const assert = require("assert"); const fs = require("fs"); const path = require
 const pub = (f) => fs.readFileSync(path.join(__dirname, "..", "..", "public", f), "utf8");
 let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
 const PAGES = { "ac-gas-refill-bangalore.html": ["₹2,399"], "ac-installation-uninstallation-bangalore.html": ["₹1,649", "₹799"] };
-const published = pub("ac-service-repair-bangalore.html") + pub("tv-wall-mounting-bangalore.html");
+const published = pub("ac-service-repair-bangalore.html");
 for (const [f, prices] of Object.entries(PAGES)) {
   const h = pub(f);
   for (const p of prices) { assert.ok(h.includes(p), f + " " + p); assert.ok(published.includes(p), "price not on an existing page: " + p); }

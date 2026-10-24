@@ -11,7 +11,6 @@
  */
 "use strict";
 const KB = require("./assistant-kb");
-const parcelPricing = require("./parcel-pricing");
 
 const MAX_INPUT = 600;
 const STOP = new Set("a an the is are am i me my we our you your to for of on in at it this that be do does can could would will with and or please pls plz kindly what whats how much many when where which who why".split(" "));
@@ -114,12 +113,6 @@ function priceForSize(sizeKey) {
 function parcelQuote(km, kg) {
   // Two-wheeler parcel delivery is retired (Oct 2026): never quote a parcel price.
   return KB.ENTRIES.find((e) => e.id === "parcel").answer();
-}
-function legacyParcelQuote(km, kg) {
-  try {
-    const r = parcelPricing.priceParcel(km, kg || 1);
-    return `A ${km} km parcel${kg ? " of " + kg + " kg" : ""} costs ${KB.inr(r.total)} (₹49 for the first 2 km, ₹11/km after${r.breakdown.weightCharge ? ", +₹30 over 10 kg" : ""}). The exact distance is measured when you enter both addresses.`;
-  } catch (e) { return e.message; }
 }
 
 /**

@@ -56,7 +56,7 @@
      ====================================================================== */
   var KB = {
     greeting:
-      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, office moves, single-item moves, AC, washing machine & fridge repair, painting or TV mounting — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
+      "Hi there! 👋 I'm the PackZen Assistant.\nAsk me about house shifting, office moves, single-item moves, AC service and washing machine & fridge repair — prices, booking, or your existing booking. I can reply in English, हिंदी or ಕನ್ನಡ.",
 
     menu: [
       { label: "🧭 Book in chat", flow: "book" },
@@ -523,14 +523,13 @@
   var FLOW_SERVICES = [
     { id: "move", label: "🏠 Home shifting" }, { id: "mini", label: "📦 Mini move (few items)" },
     { id: "ac", label: "❄️ AC service / repair" },
-    { id: "appliance", label: "🧺 Washing machine / fridge" }, { id: "painting", label: "🎨 Painting" },
-    { id: "tv", label: "📺 TV mounting" },
+    { id: "appliance", label: "🧺 Washing machine / fridge" },
     { id: "website", label: "💻 Website (PackZen Digital)" }
   ];
   var FLOW_ASK = { mini: "What is the mini move price?", ac: "AC service and repair prices",
-    appliance: "Washing machine and fridge repair prices", painting: "Do you do house painting?", website: "How much does a website cost?", tv: "TV wall mounting price" };
+    appliance: "Washing machine and fridge repair prices", website: "How much does a website cost?" };
   var FLOW_LINK = { move: "/index.html?book=move", mini: "/index.html?book=move", ac: "/services.html?category=ac",
-    appliance: "/services.html?category=appliance-repair", painting: "/services.html?category=painting", website: "/digital/#quote", tv: "/services.html?category=appliances" };
+    appliance: "/services.html?category=appliance-repair", website: "/digital/#quote" };
   var WA = "https://wa.me/919945095453?text=";
   function chips(list, onPick) {
     els.quickReplies.innerHTML = "";
@@ -577,19 +576,13 @@
       }
       askServerQuiet(FLOW_ASK[svc.id], function () {
         els.quickReplies.innerHTML = "";
-        if (svc.id === "painting") {
-          actionChip("📅 Book free site visit", function () { window.location.href = FLOW_LINK.painting; });
-          actionChip("📸 Send wall photos", function () { window.open(WA + encodeURIComponent("Hi PackZen, I'd like a painting quote. Area: \nRooms: \nI'm sending photos of the walls."), "_blank", "noopener"); });
-          actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback("painting"); });
-          return;
-        }
         if (svc.id === "website") {
           actionChip("📅 Free consultation", function () { window.location.href = FLOW_LINK.website; });
           actionChip("💬 WhatsApp us", function () { window.open(WA + encodeURIComponent("Hi PackZen, I'd like a website for my business. Business type: \nArea: "), "_blank", "noopener"); });
           return;
         }
         actionChip("✅ Book now", function () { window.location.href = FLOW_LINK[svc.id]; });
-        actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback(svc.id === "tv" ? "tv" : svc.id === "mini" ? "move" : svc.id); });
+        actionChip("📞 Call me back", function () { closeChat(); if (window.pzOpenCallback) window.pzOpenCallback(svc.id === "mini" ? "move" : svc.id); });
         actionChip("↩︎ Something else", function () { renderQuickReplies(); });
       });
     });
@@ -622,10 +615,10 @@
   }
   function flowPhoto() {
     appendMessage("bot", "Send photos and our team replies with a fixed price — usually within an hour (8 AM – 9 PM). What are the photos for?");
-    chips([{ label: "🏠 Home shifting", id: "move" }, { label: "🎨 Painting", id: "painting" }, { label: "🧺 Washing machine / fridge", id: "appliance" }, { label: "❄️ AC", id: "ac" }].concat([]), function (c) {
+    chips([{ label: "🏠 Home shifting", id: "move" }, { label: "🧺 Washing machine / fridge", id: "appliance" }, { label: "❄️ AC", id: "ac" }].concat([]), function (c) {
       appendMessage("user", c.label);
       if (c.id === "move") { appendMessage("bot", "Tell us your home size and dates, then send room photos on WhatsApp — you'll get a fixed moving price."); els.quickReplies.innerHTML = ""; actionChip("📸 Start photo quote", function () { window.location.href = "/estimate.html"; }); return; }
-      var txt = { painting: "Hi PackZen, I'd like a painting quote. Area: \nRooms/walls: \nSending photos now.", appliance: "Hi PackZen, my washing machine / fridge needs repair. Brand & model: \nProblem: \nArea: \nSending photos now.", ac: "Hi PackZen, I need help with my AC. Problem: \nArea: \nSending photos now.", }[c.id];
+      var txt = { appliance: "Hi PackZen, my washing machine / fridge needs repair. Brand & model: \nProblem: \nArea: \nSending photos now.", ac: "Hi PackZen, I need help with my AC. Problem: \nArea: \nSending photos now.", }[c.id];
       appendMessage("bot", "Tap below to open WhatsApp with your request ready — just attach the photos and send.");
       els.quickReplies.innerHTML = "";
       actionChip("📸 Send photos on WhatsApp", function () { if (window.pzTrack) window.pzTrack("contact", { method: "whatsapp", page: "chat_photo_quote" }); window.open(WA + encodeURIComponent(txt), "_blank", "noopener"); });

@@ -10,11 +10,11 @@ const pub = (f) => fs.readFileSync(path.join(__dirname, "..", "..", "public", f)
 let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
 
 const leads = pub("pz-leads.js");
-for (const id of ["move", "office", "vehicle", "ac", "appliance", "painting", "tv"]) assert.ok(leads.includes('id: "' + id + '"'), id);
-for (const id of ["parcel", "home", "cleaning", "website"]) assert.ok(!leads.includes('id: "' + id + '"'), "retired/separated " + id);
+for (const id of ["move", "office", "vehicle", "ac", "appliance"]) assert.ok(leads.includes('id: "' + id + '"'), id);
+for (const id of ["parcel", "home", "cleaning", "website", "painting", "tv"]) assert.ok(!leads.includes('id: "' + id + '"'), "retired/separated " + id);
 assert.ok(/window\.pzOpenBook = function/.test(leads) && /pzHeaderBook/.test(leads) && /bnavBook/.test(leads) && /book=move/.test(leads));
 assert.ok(!/location\.href = "\/parcel\.html"/.test(leads) && /services\.html\?category=/.test(leads));
-assert.ok(!leads.includes('id: "cleaning"')); ok("Book picker: 7 services (no cleaning, parcel or handyman; websites live in PackZen Digital), header button on every page, bottom-nav Book opens it, ?book=move opens the moving form");
+assert.ok(!leads.includes('id: "cleaning"')); ok("Book picker: 5 services (no cleaning, parcel, handyman, painting or TV mounting; websites live in PackZen Digital), header button on every page, bottom-nav Book opens it, ?book=move opens the moving form");
 
 const adm = pub("admin.html");
 assert.ok(/id="sectionOps"/.test(adm) && /function loadOps/.test(adm) && /function opsRender/.test(adm));

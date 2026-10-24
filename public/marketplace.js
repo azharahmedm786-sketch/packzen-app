@@ -33,17 +33,12 @@
       { name: "AC servicing", q: "AC Service", keywords: "cleaning wet service deep foam", status: "book" },
       { name: "AC repair", q: "AC Repair", keywords: "not cooling noise leak inspection", status: "book" },
       { name: "AC gas refill", q: "Gas Refill", keywords: "gas charging cooling", status: "book" } ] },
-    { id: "home", icon: "📺", name: "TV Mounting & Home Care", sub: "TV wall mounting · more coming soon", services: [
-      { name: "TV wall mount", q: "TV Wall Mount", keywords: "television mount", status: "book" },
-      { name: "Pest control", keywords: "termite cockroach", status: "soon" } ] },
     { id: "appliance-repair", icon: "🧺", name: "Washing Machine & Fridge", sub: "Repair, installation and gas refill", services: [
       { name: "Washing machine repair", q: "Washing Machine Repair", keywords: "washer not spinning draining noise top load front load", status: "book" },
       { name: "Washing machine installation", q: "Washing Machine Installation", keywords: "install washer new machine", status: "book" },
       { name: "Washing machine uninstallation", q: "Washing Machine Uninstallation", keywords: "uninstall washer before moving", status: "book" },
       { name: "Refrigerator repair", q: "Refrigerator Repair", keywords: "fridge not cooling repair noise", status: "book" },
       { name: "Refrigerator gas refill", q: "Refrigerator Gas Refill", keywords: "fridge gas charging cooling", status: "book" } ] },
-    { id: "painting", icon: "🎨", name: "Painting", sub: "Free site visit, fixed written quote", services: [
-      { name: "Home & room painting", q: "Painting", keywords: "painter wall paint interior exterior room house", status: "book" } ] },
     { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
       { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance sofa fridge boxes", status: "book" } ] }
   ];

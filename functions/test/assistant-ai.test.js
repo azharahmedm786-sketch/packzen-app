@@ -38,16 +38,16 @@ const tool = (name, input, id) => ({ stop_reason: "tool_use", content: [{ type: 
   assert.strictEqual(r.reply, "Hello! How can I help with your move?");
   const sys = seen[0].system;
   assert.ok(/Use ONLY the facts below and tool results/.test(sys) && /9945095453/.test(sys) && /Deep Cleaning 2BHK: ₹3,999/.test(sys) && /1 BHK: ₹4,200–₹6,500/.test(sys));
-  assert.strictEqual(seen[0].model, ai.DEFAULT_MODEL); assert.strictEqual(seen[0].tools.length, 5);
+  assert.strictEqual(seen[0].model, ai.DEFAULT_MODEL); assert.strictEqual(seen[0].tools.length, 4); // get_parcel_price removed with parcel delivery
   ok("plain answer; system prompt carries the rules, contact, live catalog and verified moving prices");
 
   seen = [];
   r = await ai.converse("parcel 12 km 5 kg kitna?", [], { apiKey: "k", fetch: fakeApi([tool("get_parcel_price", { km: 12, kg: 5 }), text("12 km ke liye ₹159 lagega.")], seen), catalog });
   assert.strictEqual(r.reply, "12 km ke liye ₹159 lagega."); assert.deepStrictEqual(r.usedTools, ["get_parcel_price"]); assert.strictEqual(r.lang, "hi");
   const tr = seen[1].messages[seen[1].messages.length - 1].content[0];
-  assert.strictEqual(tr.type, "tool_result"); assert.ok(/no longer offers/.test(tr.content) && !/₹159/.test(tr.content));
+  assert.strictEqual(tr.type, "tool_result"); assert.strictEqual(tr.content, "Unknown tool."); // parcel tool removed: no price can be fetched
   assert.ok(/Hindi/.test(seen[0].system.split("Reply in ")[1]));
-  ok("tool use: the parcel tool now returns the retirement message (no price), answered in Hindi");
+  ok("tool use: the removed parcel tool returns no data (no price), conversation still answered in Hindi");
 
   const leads = [];
   const deps = (steps, extra) => Object.assign({ apiKey: "k", fetch: fakeApi(steps, []), catalog, signedIn: false, myBookings: async () => [], createLead: async (l) => leads.push(l) }, extra || {});

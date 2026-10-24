@@ -52,7 +52,7 @@ const pub = (f) => fs.readFileSync(path.join(__dirname, "..", "..", "public", f)
   ok("win-back: once, 7–10 days after a lead lost on price / no answer, consented only");
 
   const idx = pub("index.html"), js = pub("script.js");
-  assert.ok(/id="acCount"/.test(idx) && /id="tvMountCount"/.test(idx) && /id="needCarpenter"/.test(idx) && /id="needElectrician"/.test(idx));
+  assert.ok(/id="acCount"/.test(idx) && !/id="tvMountCount"/.test(idx) && /id="needCarpenter"/.test(idx) && /id="needElectrician"/.test(idx));
   assert.ok(/acCount: parseInt\(document\.getElementById\("acCount"\)/.test(js) && /needElectrician: !!document\.getElementById\("needElectrician"\)/.test(js));
   const q = pub("quote.js"), sj = pub("leads-app/sales.js");
   assert.ok(/getSentQuote/.test(q) && /\/createRazorpayOrder/.test(q) && /\/verifyRazorpayPayment/.test(q) && /paymentType: "advance"/.test(q));

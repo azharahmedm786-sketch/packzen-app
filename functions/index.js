@@ -634,9 +634,8 @@ Object.assign(exports, require("./oauth-profile"));
 // Catalog bookings (additive — catalog-booking.js): pay-later, online payment, verification
 const { _catalogTest, ...catalogExports } = require("./catalog-booking");   // test hook kept out of deployed functions
 Object.assign(exports, catalogExports);
-// Parcel delivery (additive — parcel-booking.js): quote + online payment; verification uses the shared core
-const { _parcel, ...parcelExports } = require("./parcel-booking");
-Object.assign(exports, parcelExports);
+// Two-wheeler parcel delivery removed (Oct 2026): getParcelQuote / createParcelRazorpayOrder are no longer deployed.
+// Existing parcel bookings stay in Firestore; move-payment.js still settles any pending parcel payment.
 // Lead engine (Level-100 Phase 1): callback form, booking→lead linking, 10-minute SLA alert
 const { _leads, ...leadExports } = require("./leads");
 Object.assign(exports, leadExports);

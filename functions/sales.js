@@ -27,7 +27,7 @@ function buildQuoteInput(d) {
   return {
     pickup: str(d.pickup, 300), drop: str(d.drop, 300), vehicleId: p.vehicleId, furniture: Object.assign({}, p.furniture), cartonQty: p.cartonQty,
     pickupFloor: int(d.pickupFloor, 0, 30), dropFloor: int(d.dropFloor, 0, 30), liftAvailable: !!d.liftAvailable, packingService: !!d.packingService,
-    acCount: int(d.acCount, 0, 6), tvMountCount: int(d.tvMountCount, 0, 6), needCarpenter: !!d.needCarpenter, needElectrician: !!d.needElectrician,
+    acCount: int(d.acCount, 0, 6), tvMountCount: 0, needCarpenter: !!d.needCarpenter, needElectrician: !!d.needElectrician,
     extraHelpers: 0, isInterstate: false, promoCode: str(d.promoCode, 30).toUpperCase() || null,
   };
 }

@@ -35,8 +35,8 @@ const ALLOWED_ORIGINS = ["https://packzenblr.in", "https://www.packzenblr.in", "
 const cors = require("cors")({ origin: ALLOWED_ORIGINS });
 
 const COLL = { services: "services", packages: "packages", addons: "addons", categories: "serviceCategories" };
-const RETIRED_CATEGORIES = ["handyman"];
-const RETIRED_ITEMS = ["electrician", "plumber-visit", "carpenter"];
+const RETIRED_CATEGORIES = ["handyman", "painting"];
+const RETIRED_ITEMS = ["electrician", "plumber-visit", "carpenter", "tv-wall-mount", "painting-site-visit"];
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 
 /* ── Helpers ────────────────────────────────────────────────── */

@@ -45,7 +45,7 @@ const LANG_NAME = { en: "English", hi: "Hindi (reply in the same script the cust
 
 function systemPrompt(catalog, lang, signedIn) {
   return `You are the PackZen Assistant, the virtual assistant of PackZen Packers & Movers and Home Services in Bangalore (packzenblr.in).
-PackZen NO LONGER offers two-wheeler parcel delivery or electrician/plumber/carpenter visits — say so politely and suggest a single-item move or the services we do offer. You help customers with: house/office shifting, single-item moves, bike/car transport, AC service & repair, electrician, plumber, carpenter and TV wall mounting. PackZen does NOT offer cleaning services.
+PackZen NO LONGER offers two-wheeler parcel delivery, electrician/plumber/carpenter visits, painting or TV mounting — say so politely and suggest a single-item move or the services we do offer. You help customers with: house/office shifting, single-item moves, bike/car transport, AC service & repair and washing machine & fridge repair (not electrician, plumber, carpenter, painting or TV wall mounting). PackZen does NOT offer cleaning services.
 
 RULES (never break them):
 1. Use ONLY the facts below and tool results. If something isn't covered, say you're not sure and offer the team (call ${KB.CONTACT.phone} or "Request a callback"). Never guess prices, times, policies, cover amounts or availability.
@@ -65,9 +65,7 @@ ${factSheet(catalog)}`;
 const TOOLS = [
   { name: "get_moving_estimate", description: "Price range for a home move in Bangalore by home size.",
     input_schema: { type: "object", properties: { size: { type: "string", enum: Object.keys(KB.MOVE_PRICES) } }, required: ["size"] } },
-  { name: "get_parcel_price", description: "Exact parcel delivery price for a distance (km) and weight (kg, max 20).",
-    input_schema: { type: "object", properties: { km: { type: "number" }, kg: { type: "number" } }, required: ["km"] } },
-  { name: "get_service_price", description: "Live price of a home/appliance service from the PackZen catalog (AC, washing machine, fridge, painting, TV mounting…).",
+  { name: "get_service_price", description: "Live price of a home/appliance service from the PackZen catalog (AC, washing machine, fridge).",
     input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
   { name: "get_my_bookings", description: "The signed-in customer's own latest bookings and their status.", input_schema: { type: "object", properties: {} } },
   { name: "request_callback", description: "Ask the PackZen team to call the customer back. Needs their name and 10-digit Indian mobile number.",
@@ -79,7 +77,6 @@ async function runTool(name, input, deps) {
   const i = input || {};
   switch (name) {
     case "get_moving_estimate": return engine.priceForSize(String(i.size || "")) || "Unknown home size. Sizes: " + Object.keys(KB.MOVE_PRICES).join(", ");
-    case "get_parcel_price": { const km = Number(i.km); if (!(km > 0)) return "Need the distance in km."; return engine.parcelQuote(km, Number(i.kg) || 1); }
     case "get_service_price": {
       const q = String(i.query || "").toLowerCase().split(/\W+/).filter((w) => w.length > 2);
       const hits = (deps.catalog || []).filter((c) => q.some((w) => c.name.toLowerCase().includes(w))).slice(0, 6);

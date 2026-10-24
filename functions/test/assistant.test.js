@@ -63,11 +63,12 @@ const S = [
   // home services (catalog-grounded)
   ["ac service price", () => { const r = A("ac service price", { catalog }); has(r, "catalog_price"); says(r, "₹429", "per unit"); }],
   ["ac repair price", () => { const r = A("how much for ac repair", { catalog }); says(r, "₹249"); }],
-  ["home services", () => { const r = A("do you do ac repair and tv mounting"); has(r, "home_services"); }],
+  ["home services", () => { const r = A("do you do ac repair and gas refill"); has(r, "home_services"); }],
   ["handyman asked", () => { const r = A("do you have electrician or plumber"); has(r, "no_handyman"); says(r, "no longer offers"); }],
   ["cleaning", () => { const r = A("deep cleaning available?"); has(r, "no_cleaning"); assert.ok(/doesn.t offer cleaning/.test(r.reply)); }],
   // unsupported
-  ["painting", () => { const r = A("do you do painting"); has(r, "painting"); says(r, "free site visit"); }],
+  ["painting retired", () => { const r = A("do you do painting"); has(r, "painting"); says(r, "no longer offers painting"); }],
+  ["tv mounting retired", () => { const r = A("can you mount my tv on the wall"); has(r, "painting"); says(r, "TV wall mounting"); }],
   ["pest control", () => { const r = A("do you do pest control"); has(r, "unsupported"); says(r, "coming later"); not(r, "₹"); }],
   ["fridge repair", () => { const r = A("my fridge is not cooling"); has(r, "appliance_repair"); says(r, "₹249"); }],
   ["pest control", () => { const r = A("pest control for termites"); has(r, "unsupported"); }],

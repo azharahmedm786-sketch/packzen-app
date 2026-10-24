@@ -20,7 +20,6 @@
       '<label>Pickup floor<input id="qPF" type="number" min="0" max="30" value="0"></label><label>Drop floor<input id="qDF" type="number" min="0" max="30" value="0"></label>' +
       '<label class="chk"><input type="checkbox" id="qLift"> Lift available</label><label class="chk"><input type="checkbox" id="qPack" checked> Packing service</label>' +
       '<label>ACs to uninstall + refit<select id="qAC"><option>0</option><option>1</option><option>2</option><option>3</option></select></label>' +
-      '<label>TVs to remount<select id="qTV"><option>0</option><option>1</option><option>2</option></select></label>' +
       '<label class="chk"><input type="checkbox" id="qCarp"> Carpenter</label><label class="chk"><input type="checkbox" id="qElec"> Electrician</label>' +
       '<label>Time slot<select id="qSlot"><option>Morning (7–11 AM)</option><option>Afternoon (11 AM–3 PM)</option><option>Evening (3–7 PM)</option></select></label>' +
       '<label>Promo code (optional)<input id="qPromo" placeholder="FIRSTMOVE"></label>' +
@@ -31,7 +30,7 @@
       window._firebase.functions.httpsCallable("createSentQuote")({
         leadId: l.id, name: $("qName").value, phone: $("qPhone").value, size: $("qSize").value, date: $("qDate").value,
         pickup: $("qPickup").value, drop: $("qDrop").value, pickupFloor: $("qPF").value, dropFloor: $("qDF").value,
-        liftAvailable: $("qLift").checked, packingService: $("qPack").checked, acCount: $("qAC").value, tvMountCount: $("qTV").value,
+        liftAvailable: $("qLift").checked, packingService: $("qPack").checked, acCount: $("qAC").value,
         needCarpenter: $("qCarp").checked, needElectrician: $("qElec").checked, timeSlot: $("qSlot").value, promoCode: $("qPromo").value,
       }).then(function (r) {
         var d = r.data, phone = String($("qPhone").value).replace(/\D/g, "").slice(-10);

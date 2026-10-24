@@ -52,7 +52,7 @@
 
   // PackZen doesn't offer cleaning: hide that category (and its services/packages)
   // even if it is still marked active in the catalog.
-  var HIDDEN = /clean/i, RETIRED_CATS = ["handyman"], RETIRED_ITEMS = ["electrician", "plumber-visit", "carpenter"];
+  var HIDDEN = /clean/i, RETIRED_CATS = ["handyman", "painting"], RETIRED_ITEMS = ["electrician", "plumber-visit", "carpenter", "tv-wall-mount", "painting-site-visit"];
   function hidden(x) {
     return HIDDEN.test(String(x.id || "")) || HIDDEN.test(String(x.categoryId || "")) || HIDDEN.test(String(x.category || "")) ||
       RETIRED_CATS.indexOf(String(x.categoryId || x.id || "")) >= 0 || RETIRED_ITEMS.indexOf(String(x.id || "")) >= 0 ||

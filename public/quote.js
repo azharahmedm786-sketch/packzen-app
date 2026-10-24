@@ -11,7 +11,6 @@
     var x = Q.extras || {}, items = [];
     if (x.packingService) items.push("Packing with quality materials");
     if (x.acCount > 0) items.push(x.acCount + " AC uninstall + refit");
-    if (x.tvMountCount > 0) items.push(x.tvMountCount + " TV remount");
     if (x.needCarpenter) items.push("Carpenter (dismantle & reassemble)");
     if (x.needElectrician) items.push("Electrician (disconnect & refit)");
     box.innerHTML = '<h1 style="font-family:var(--nb-display);margin:0 0 4px">Hi ' + esc(Q.firstName) + ', here’s your quote</h1>' +

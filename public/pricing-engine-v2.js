@@ -243,7 +243,7 @@ payment: { advancePercent: 10, fullPaymentDiscount: 200 }
 
         // Specialized trades
         acCount: toSafeInt(raw.acCount, 0),
-        tvMountCount: toSafeInt(raw.tvMountCount, 0),
+        tvMountCount: 0,   // TV mounting retired (Oct 2026): never priced, whatever the client sends
         needCarpenter: !!raw.needCarpenter,
         needElectrician: !!raw.needElectrician,
         needCrane: !!raw.needCrane,

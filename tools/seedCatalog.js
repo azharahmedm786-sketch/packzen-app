@@ -50,7 +50,7 @@ const categories = [
   { id: "cleaning",    isActive: false, name: "Cleaning Services", icon: "\u{1F9F9}", displayOrder: 6, description: "Deep home, kitchen and bathroom cleaning" },
   { id: "handyman",    isActive: false, name: "Handyman Services", icon: "🛠️", displayOrder: 5, description: "Electrician, carpenter and plumber visits" },
   { id: "appliance-repair", name: "Washing Machine & Fridge", icon: "🧺", displayOrder: 7, description: "Washing machine and refrigerator repair, installation and gas refill" },
-  { id: "painting",    name: "Painting",          icon: "🎨", displayOrder: 8, description: "Home and room painting — free site visit, fixed written quote" },
+  { id: "painting",    isActive: false, name: "Painting",          icon: "🎨", displayOrder: 8, description: "Home and room painting — free site visit, fixed written quote" },
 ].map((c) => ({ isActive: true, ...c }));   // an explicit isActive: false (e.g. cleaning) wins
 
 // ── Services ────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ const services = [
   { id: "fridge-repair-visit",  categoryId: "appliance-repair", name: "Refrigerator Repair (visit)",      basePrice: 249,  pricingUnit: "fixed",    displayOrder: 43, description: "Technician visit and diagnosis; repair and parts quoted on site before work" },
   { id: "fridge-gas-refill",    categoryId: "appliance-repair", name: "Refrigerator Gas Refill",          basePrice: 1999, pricingUnit: "per_item", displayOrder: 44, description: "Gas charging with leak check, per refrigerator" },
   // Painting: free site visit, then a fixed written quote
-  { id: "painting-site-visit",  categoryId: "painting",         name: "Painting — Free Site Visit & Quote", basePrice: 0,  pricingUnit: "quote",    displayOrder: 50, description: "We inspect walls, measure and give a fixed written quote — no charge for the visit" },
+  { id: "painting-site-visit", isActive: false,  categoryId: "painting",         name: "Painting — Free Site Visit & Quote", basePrice: 0,  pricingUnit: "quote",    displayOrder: 50, description: "We inspect walls, measure and give a fixed written quote — no charge for the visit" },
 ].map((s) => ({ isActive: true, ...s }));
 
 // ── Packages ────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ const packages = [...movingPackages, ...packingPackages];
 const addons = [
   { id: "ac-installation",   categoryId: "ac-services", name: "AC Installation",    basePrice: 1649, pricingUnit: "per_item", displayOrder: 1, description: "Per AC unit" },
   { id: "ac-uninstallation", categoryId: "ac-services", name: "AC Uninstallation",  basePrice: 799,  pricingUnit: "per_item", displayOrder: 2, description: "Per AC unit" },
-  { id: "tv-wall-mount",     categoryId: "appliances",  name: "TV Wall Mount",      basePrice: 499,  pricingUnit: "per_item", displayOrder: 3, description: "Wall-mount install / removal per TV" },
+  { id: "tv-wall-mount", isActive: false,     categoryId: "appliances",  name: "TV Wall Mount",      basePrice: 499,  pricingUnit: "per_item", displayOrder: 3, description: "Wall-mount install / removal per TV" },
   { id: "carpenter", isActive: false,         categoryId: "handyman",    name: "Carpenter Visit",    basePrice: 149,  pricingUnit: "fixed",    displayOrder: 4, description: "Dismantling and reassembly of furniture" },
   { id: "electrician", isActive: false,       categoryId: "handyman",    name: "Electrician Visit",  basePrice: 149,  pricingUnit: "fixed",    displayOrder: 5, description: "Visit charge, adjusted in the final bill; fans, lights and fittings priced on site" },
 ].map((a) => ({ ...a, isActive: true }));
