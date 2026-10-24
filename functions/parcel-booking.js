@@ -60,6 +60,7 @@ async function quoteParcel(details, deps) {
 
 async function handleCreateParcelOrder(req, deps) {
   const logger = deps.logger || console;
+  if (PARCEL_RETIRED && !(deps && deps.allowRetired)) return { status: 410, body: { success: false, code: "service_retired", error: PARCEL_RETIRED_MSG } };
   let ctx = {};
   try {
     const user = await mp.authenticate(req, deps.verifyIdToken);
@@ -110,10 +111,17 @@ async function handleCreateParcelOrder(req, deps) {
 }
 
 /* ── Cloud Functions ───────────────────────────────────────── */
+/* Two-wheeler parcel delivery is DISCONTINUED (Oct 2026). New quotes and orders are
+   refused server-side; existing parcel bookings, payments, tracking and completion
+   codes keep working through the shared booking/payment flows. Data is never deleted. */
+const PARCEL_RETIRED = true;
+const PARCEL_RETIRED_MSG = "PackZen no longer offers two-wheeler parcel delivery. For single items (a sofa, fridge or a few boxes) book a mini move or single-item move on packzenblr.in.";
+
 exports.getParcelQuote = functions
   .region(REGION)
   .runWith({ secrets: [GOOGLE_MAPS_KEY] })
   .https.onCall(async (data, context) => {
+    if (PARCEL_RETIRED) throw new functions.https.HttpsError("failed-precondition", PARCEL_RETIRED_MSG);
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in to get a price.");
     const rl = await rateLimit.consumeAll(admin.firestore(), [
       Object.assign({ scope: "parcelQuoteUid", subject: context.auth.uid }, rateLimit.LIMITS.parcelQuoteUid),
@@ -154,4 +162,4 @@ exports.createParcelRazorpayOrder = functions
     return res.status(out.status).json(out.body);
   }));
 
-exports._parcel = { handleCreateParcelOrder, quoteParcel };
+exports._parcel = { handleCreateParcelOrder, quoteParcel, PARCEL_RETIRED, PARCEL_RETIRED_MSG };

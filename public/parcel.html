@@ -2,97 +2,31 @@
 <html lang="en-IN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://checkout.razorpay.com https://packzen-config.azharahmedm786.workers.dev https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https: ; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://n8n-production-e685.up.railway.app https://packzen-config.azharahmedm786.workers.dev https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com https://www.google.com; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://packzen-e7539.firebaseapp.com;">
-  <title>Book a Parcel Delivery | PackZen</title>
-  <meta name="description" content="Send parcels up to 20 kg anywhere in Bangalore by two-wheeler. Instant price from ₹49, pay online, live updates by SMS.">
-  <link rel="canonical" href="https://packzenblr.in/parcel.html">
   <meta name="robots" content="noindex, follow">
+  <title>Parcel delivery is no longer offered | PackZen</title>
+  <link rel="canonical" href="https://packzenblr.in/parcel.html">
   <link rel="icon" type="image/png" href="assets/logo/packzen-logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="parcel.css?v=1">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
-  <link rel="stylesheet" href="pz-premium.css?v=15d">
+  <link rel="stylesheet" href="parcel.css?v=1">
+  <link rel="stylesheet" href="pz-premium.css?v=15">
 </head>
 <body>
-<header class="pc-top">
-  <a href="/" class="pc-brand"><img src="assets/logo/packzen-logo.png" alt="" width="32" height="32"> PackZen</a>
-  <a href="tel:9945095453" class="pc-call">Call 99450 95453</a>
-</header>
-
+<header class="pc-top"><a href="/" class="pc-brand"><img src="assets/logo/packzen-logo.png" alt="" width="32" height="32"> PackZen</a><a href="tel:9945095453" class="pc-call">Call 99450 95453</a></header>
 <main class="pc-wrap">
   <section class="pc-hero">
-    <h1>Parcel delivery across Bangalore</h1>
-    <p>Two-wheeler delivery for parcels up to 20 kg. From <strong>₹49</strong> for the first 2 km, then ₹11 per km. Pay online, track by SMS.</p>
-    <ul class="pc-facts">
-      <li>Pickup &amp; drop within Bangalore (560xxx, Hoskote, Anekal, Devanahalli, Sarjapur, Attibele)</li>
-      <li>Up to 40 km · +₹30 for parcels over 10 kg</li>
-    </ul>
+    <h1>Parcel delivery is no longer offered</h1>
+    <p>PackZen has discontinued two-wheeler parcel delivery. Existing parcel bookings are not affected — you can still track them from <a href="/index.html#bookings">My Bookings</a>.</p>
   </section>
-
-  <form id="pcForm" class="pc-card" novalidate autocomplete="on">
-    <div id="pcAuth" class="pc-auth"></div>
-
-    <fieldset><legend>Pickup</legend>
-      <label>Pickup address (with pincode)<input id="pcPickup" maxlength="300" placeholder="e.g. 12 MG Road, Bengaluru 560001"></label>
-      <div class="pc-row">
-        <label>Sender name<input id="pcSenderName" maxlength="80" autocomplete="name"></label>
-        <label>Sender mobile<input id="pcSenderPhone" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit number"></label>
-      </div>
-    </fieldset>
-
-    <fieldset><legend>Drop</legend>
-      <label>Drop address (with pincode)<input id="pcDrop" maxlength="300" placeholder="e.g. 4 HSR Layout, Bengaluru 560102"></label>
-      <div class="pc-row">
-        <label>Receiver name<input id="pcReceiverName" maxlength="80"></label>
-        <label>Receiver mobile<input id="pcReceiverPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="10-digit number"></label>
-      </div>
-    </fieldset>
-
-    <fieldset><legend>Parcel</legend>
-      <div class="pc-row">
-        <label>What are you sending?<input id="pcItem" maxlength="120" placeholder="Documents, clothes, small box…"></label>
-        <label>Weight (kg)<input id="pcWeight" type="number" min="0.1" max="20" step="0.1" inputmode="decimal" placeholder="Up to 20"></label>
-      </div>
-      <div class="pc-row">
-        <label>Pickup date<input id="pcDate" type="date"></label>
-        <label>Pickup time<select id="pcSlot">
-          <option value="">Choose a slot</option>
-          <option value="morning">Morning (8am – 12pm)</option>
-          <option value="afternoon">Afternoon (12pm – 4pm)</option>
-          <option value="evening">Evening (4pm – 8pm)</option>
-        </select></label>
-      </div>
-      <label>Notes for the rider <small>(optional)</small><input id="pcNotes" maxlength="300" placeholder="Gate code, landmark, fragile…"></label>
-      <p class="pc-small">No cash, valuables, liquids, food or prohibited items.</p>
-    </fieldset>
-
-    <div id="pcPrice" class="pc-price" aria-live="polite"></div>
-    <p id="pcError" class="pc-error" role="alert"></p>
-    <div class="pc-actions">
-      <button type="button" id="pcQuote" class="pc-btn pc-btn-ghost">Get price</button>
-      <button type="button" id="pcPay" class="pc-btn" disabled>Pay &amp; book</button>
-    </div>
-  </form>
-
-  <section id="pcDone" class="pc-card pc-done" hidden></section>
+  <div class="pc-card">
+    <h2 style="margin-top:0">Need to move a single item?</h2>
+    <p>For a sofa, fridge, bike or a few boxes, book a <b>mini move</b> (₹1,499 for up to 5 items within 10 km) or a single-item move and see your exact price before paying.</p>
+    <p><a class="pc-btn" href="/index.html?book=move" style="display:inline-block;text-decoration:none;text-align:center">Book a single-item move</a></p>
+  </div>
 </main>
-
-<footer class="pc-foot">
-  <a href="/">Home</a> · <a href="services.html">Services</a> · <a href="legal/terms.html">Terms</a> · <a href="legal/refund.html">Refunds</a>
-</footer>
-
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
-<script src="env-config.js?v=2"></script>
-<script src="firebase-config.js"></script>
-<script src="parcel-booking.js?v=2"></script>
-<script src="pz-leads.js?v=10" defer></script>
-<link rel="stylesheet" href="pzchatbot.css?v=7">
-<script src="pzchatbot.js?v=10" defer></script>
+<footer class="pc-foot"><a href="/">Home</a> · <a href="services.html">Services</a> · <a href="legal/terms.html">Terms</a></footer>
+<script src="pz-leads.js?v=11" defer></script>
 </body>
 </html>

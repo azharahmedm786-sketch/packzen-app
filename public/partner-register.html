@@ -371,7 +371,6 @@
             <div class="vt-chip" data-value="individual_mover" onclick="selectBizType(this)"><span class="vt-icon">🧑‍<i data-lucide="wrench"></i></span> Individual Mover</div>
             <div class="vt-chip" data-value="vehicle_owner" onclick="selectBizType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> Vehicle Owner</div>
             <div class="vt-chip" data-value="loading_team" onclick="selectBizType(this)"><span class="vt-icon">👷</span> Loading Team</div>
-            <div class="vt-chip" data-value="parcel_rider" onclick="selectBizType(this)"><span class="vt-icon">🛵</span> Parcel Rider</div>
             <div class="vt-chip" data-value="technician" onclick="selectBizType(this)"><span class="vt-icon">🔧</span> Technician</div>
           </div>
           <input type="hidden" id="bizType">
@@ -492,7 +491,6 @@
             <div class="vt-chip" data-value="17ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon"><i data-lucide="truck"></i></span> 17 ft Truck</div>
             <div class="vt-chip" data-value="22ft_truck"  onclick="selectVehicleType(this)"><span class="vt-icon">🚜</span> 22 ft Truck</div>
             <div class="vt-chip" data-value="tempo"       onclick="selectVehicleType(this)"><span class="vt-icon">🚌</span> Tempo</div>
-            <div class="vt-chip" data-value="two_wheeler" onclick="selectVehicleType(this)"><span class="vt-icon">🛵</span> Two-wheeler</div>
             <div class="vt-chip" data-value="none"        onclick="selectVehicleType(this)"><span class="vt-icon">🧰</span> No vehicle</div>
           </div>
         </div>
@@ -504,11 +502,7 @@
             <label><input type="checkbox" name="skills" value="packing"> Packing</label>
             <label><input type="checkbox" name="skills" value="assembly"> Furniture dismantle / assembly</label>
             <label><input type="checkbox" name="skills" value="vehicle_transport"> Bike / car transport</label>
-            <label><input type="checkbox" name="skills" value="parcel"> Parcel delivery</label>
             <label><input type="checkbox" name="skills" value="ac"> AC service / repair</label>
-            <label><input type="checkbox" name="skills" value="electrical"> Electrician</label>
-            <label><input type="checkbox" name="skills" value="plumbing"> Plumbing</label>
-            <label><input type="checkbox" name="skills" value="carpentry"> Carpentry</label>
             <label><input type="checkbox" name="skills" value="appliances"> Washing machine / fridge repair</label>
             <label><input type="checkbox" name="skills" value="painting"> Painting</label>
           </div>
@@ -795,7 +789,7 @@ const BIZ_TYPE_LABELS = {
   vehicle_owner: 'Vehicle Owner',
   loading_team: 'Loading Team',
   parcel_rider: 'Parcel Rider (two-wheeler)',
-  technician: 'Technician (AC / electrician / plumber / carpenter)'
+  technician: 'Technician (AC / appliances / painting)'
 };
 const VEHICLE_TYPE_LABELS = {
   tata_ace:   'Tata Ace',
@@ -1309,7 +1303,7 @@ document.head.appendChild(spinStyle);
 <script src="pz-a11y.js?v=1" defer></script>
 
 <script>
-/* ── Separate registration per service: partner-register.html?type=movers|ac|handyman|parcel ──
+/* ── Separate registration per service: partner-register.html?type=movers|ac (handyman and parcel riders retired Oct 2026) ──
    Same secure sign-up and KYC flow; the form adapts (title, business type, vehicle,
    skills and trade-specific questions). Saved as partnerCategory + serviceDetails. */
 (function () {
@@ -1321,12 +1315,6 @@ document.head.appendChild(spinStyle);
                 q: [["exp", "Experience as an AC technician", "select", ["Less than 1 year", "1–3 years", "3–5 years", "5+ years"]],
                     ["work", "AC work you can do", "checks", ["Split AC service", "Window AC service", "Installation / uninstallation", "Gas refill", "PCB & compressor repair"]],
                     ["tools", "Tools you own", "checks", ["Vacuum pump & gauge set", "Jet pump / foam wash", "Drill & ladder"]]] },
-    handyman: { title: "Electrician / Plumber / Carpenter partner", biz: "technician", vehicle: "none", hideVehicle: true, skills: [],
-                q: [["exp", "Experience", "select", ["Less than 1 year", "1–3 years", "3–5 years", "5+ years"]],
-                    ["trade", "Your trade (pick all)", "checks", ["Electrician", "Plumber", "Carpenter", "TV wall mounting", "Furniture assembly"]]] },
-    parcel:   { title: "Parcel Delivery Rider", biz: "parcel_rider", vehicle: "two_wheeler", hideVehicle: false, skills: ["parcel"],
-                q: [["licence", "Driving licence", "select", ["I have a valid two-wheeler licence", "Applied / in progress"]],
-                    ["hours", "When can you ride?", "checks", ["Mornings", "Afternoons", "Evenings", "Weekends"]]] },
   };
   var TRADE_SKILL = { "Electrician": "electrical", "Plumber": "plumbing", "Carpenter": "carpentry", "TV wall mounting": "assembly", "Furniture assembly": "assembly" };
   var type = (new URLSearchParams(location.search).get("type") || "").toLowerCase();

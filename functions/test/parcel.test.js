@@ -47,7 +47,11 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   // order creation
   const writes = {};
   const db = { collection: (c) => ({ doc: (id) => ({ set: async (d) => { writes[c + "/" + id] = d; } }) }) };
-  const deps = (extra) => Object.assign({ verifyIdToken: async () => ({ uid: "u1", email: "a@x.in", email_verified: true }), db,
+  // Parcel delivery is retired: the live function refuses new orders (checked below);
+  // the legacy pricing/order logic is still exercised with allowRetired for regression safety.
+  const retired = await _parcel.handleCreateParcelOrder({ headers: { authorization: "Bearer x" }, body: {} }, {});
+  assert.strictEqual(retired.status, 410); assert.strictEqual(retired.body.code, "service_retired");
+  const deps = (extra) => Object.assign({ allowRetired: true, verifyIdToken: async () => ({ uid: "u1", email: "a@x.in", email_verified: true }), db,
     serverTimestamp: () => "TS", now: () => now.getTime(), route: fakeRoute(12, ORIG, DEST), logger: { info() {}, warn() {}, error() {} },
     createOrder: async (o) => ({ id: "order_ABC123xyz", amount: o.amount, currency: o.currency }) }, extra || {});
   const req = (body) => ({ headers: { authorization: "Bearer t" }, body });

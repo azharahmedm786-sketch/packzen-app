@@ -495,3 +495,19 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-digital-pill:hover { box-shadow: 0 12px 34px -12px rgba(124,92,255,1), inset 0 0 0 1px rgba(124,92,255,.8); }
 .pz-dp-new { background: linear-gradient(135deg,#7C5CFF,#4F46E5); color: #fff; border-radius: 999px; padding: 3px 9px; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; }
 .pz-nav-digital { color: #5B3FE0 !important; font-weight: 800 !important; }
+
+/* Two divisions — clear entry points under the hero */
+.pz-divisions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 1100px; margin: 8px auto 4px; padding: 0 16px; }
+@media (max-width: 680px) { .pz-divisions { grid-template-columns: 1fr; } }
+.pz-div-card { display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 22px; text-decoration: none !important; min-height: 170px;
+  transition: transform .18s ease, box-shadow .18s ease; }
+.pz-div-card:hover { transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .pz-div-card, .pz-div-card:hover { transition: none; transform: none; } }
+.pz-div-log { background: linear-gradient(160deg, #EAF7EF, #FFFFFF 70%); border: 1px solid rgba(31,157,92,.28); color: var(--nb-text) !important; box-shadow: var(--nb-shadow); }
+.pz-div-dig { background: radial-gradient(400px 220px at 90% 0%, rgba(124,92,255,.35), transparent 60%), #0B0B14; border: 1px solid rgba(124,92,255,.45); color: #F4F4FA !important; box-shadow: 0 20px 50px -28px rgba(79,70,229,.8); }
+.pz-div-kicker { font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.pz-div-log .pz-div-kicker { color: var(--nb-green-deep); } .pz-div-dig .pz-div-kicker { color: #C9BDFF; }
+.pz-div-title { font-family: var(--nb-display); font-weight: 800; font-size: 1.45rem; line-height: 1.15; letter-spacing: -.02em; }
+.pz-div-text { font-size: .94rem; opacity: .85; }
+.pz-div-cta { margin-top: auto; font-weight: 800; }
+.pz-div-log .pz-div-cta { color: var(--nb-green-deep); } .pz-div-dig .pz-div-cta { color: #B7A8FF; }

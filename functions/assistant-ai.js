@@ -45,7 +45,7 @@ const LANG_NAME = { en: "English", hi: "Hindi (reply in the same script the cust
 
 function systemPrompt(catalog, lang, signedIn) {
   return `You are the PackZen Assistant, the virtual assistant of PackZen Packers & Movers and Home Services in Bangalore (packzenblr.in).
-You help customers with: house/office shifting, single-item moves, bike/car transport, parcel delivery (two-wheeler, up to 20 kg, within Bangalore), AC service & repair, electrician, plumber, carpenter and TV wall mounting. PackZen does NOT offer cleaning services.
+PackZen NO LONGER offers two-wheeler parcel delivery or electrician/plumber/carpenter visits — say so politely and suggest a single-item move or the services we do offer. You help customers with: house/office shifting, single-item moves, bike/car transport, AC service & repair, electrician, plumber, carpenter and TV wall mounting. PackZen does NOT offer cleaning services.
 
 RULES (never break them):
 1. Use ONLY the facts below and tool results. If something isn't covered, say you're not sure and offer the team (call ${KB.CONTACT.phone} or "Request a callback"). Never guess prices, times, policies, cover amounts or availability.
@@ -67,7 +67,7 @@ const TOOLS = [
     input_schema: { type: "object", properties: { size: { type: "string", enum: Object.keys(KB.MOVE_PRICES) } }, required: ["size"] } },
   { name: "get_parcel_price", description: "Exact parcel delivery price for a distance (km) and weight (kg, max 20).",
     input_schema: { type: "object", properties: { km: { type: "number" }, kg: { type: "number" } }, required: ["km"] } },
-  { name: "get_service_price", description: "Live price of a home/appliance service from the PackZen catalog (AC, electrician, plumber, carpenter, TV mounting…).",
+  { name: "get_service_price", description: "Live price of a home/appliance service from the PackZen catalog (AC, washing machine, fridge, painting, TV mounting…).",
     input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
   { name: "get_my_bookings", description: "The signed-in customer's own latest bookings and their status.", input_schema: { type: "object", properties: {} } },
   { name: "request_callback", description: "Ask the PackZen team to call the customer back. Needs their name and 10-digit Indian mobile number.",

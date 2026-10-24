@@ -112,6 +112,10 @@ function priceForSize(sizeKey) {
 }
 
 function parcelQuote(km, kg) {
+  // Two-wheeler parcel delivery is retired (Oct 2026): never quote a parcel price.
+  return KB.ENTRIES.find((e) => e.id === "parcel").answer();
+}
+function legacyParcelQuote(km, kg) {
   try {
     const r = parcelPricing.priceParcel(km, kg || 1);
     return `A ${km} km parcel${kg ? " of " + kg + " kg" : ""} costs ${KB.inr(r.total)} (₹49 for the first 2 km, ₹11/km after${r.breakdown.weightCharge ? ", +₹30 over 10 kg" : ""}). The exact distance is measured when you enter both addresses.`;
@@ -126,7 +130,7 @@ function parcelQuote(km, kg) {
 function answer(text, ctx) {
   ctx = ctx || {};
   const raw = String(text || "").slice(0, MAX_INPUT);
-  if (!raw.trim()) return { reply: "Could you type your question? I can help with prices, booking, payments, cancellations, parcels and home services.", intents: [], actions: [], confident: false };
+  if (!raw.trim()) return { reply: "Could you type your question? I can help with prices, booking, payments, cancellations and home services.", intents: [], actions: [], confident: false };
 
   if (INJECTION_RE.test(raw)) {
     return { reply: "I can't share internal instructions, system details or other people's data. I'm happy to help with your own move, booking or service question though.", intents: ["refuse_injection"], actions: [], confident: true };

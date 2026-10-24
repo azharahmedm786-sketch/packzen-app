@@ -22,10 +22,10 @@ const ask = (message, extra) => _assistant.handleAsk(Object.assign({ message }, 
   let r = await ask("2BHK शिफ्ट कितना?");
   assert.strictEqual(r.lang, "hi"); assert.ok(r.reply.includes(KB.inr(KB.MOVE_PRICES["2bhk"].from)) && r.reply.includes(KB.inr(KB.MOVE_PRICES["2bhk"].to)) && /शिफ्टिंग/.test(r.reply));
   r = await ask("ಪಾರ್ಸೆಲ್ 12 ಕಿಮೀ 15 ಕೆಜಿ ಎಷ್ಟು?");
-  assert.strictEqual(r.lang, "kn"); assert.ok(r.reply.includes("₹189"));
+  assert.strictEqual(r.lang, "kn"); assert.ok(!r.reply.includes("₹189") && /ಪಾರ್ಸೆಲ್ ಡೆಲಿವರಿ ನೀಡುವುದಿಲ್ಲ/.test(r.reply));
   r = await ask("parcel 12 km kitna hai");
-  assert.strictEqual(r.lang, "hi"); assert.ok(r.reply.includes("₹159"));
-  ok("prices in Hindi/Kannada use the same verified numbers (2 BHK range, parcel ₹159 / ₹189 with weight)");
+  assert.strictEqual(r.lang, "hi"); assert.ok(!r.reply.includes("₹159") && /पार्सल डिलीवरी नहीं देता/.test(r.reply));
+  ok("prices in Hindi/Kannada use the verified moving numbers; retired parcel delivery is explained (no price) in both languages");
 
   r = await ask("cancel karna hai, refund milega?"); assert.ok(/पूरे पैसे वापस/.test(r.reply) && r.reply.includes(KB.CONTACT.phone));
   r = await ask("ನಿಮ್ಮ ಸೇವೆಗಳು ಏನು?"); assert.ok(/PackZen ಸೇವೆಗಳು/.test(r.reply));

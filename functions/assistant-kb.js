@@ -28,12 +28,12 @@ const inr = (n) => "₹" + Number(n).toLocaleString("en-IN");
  */
 const ENTRIES = [
   { id: "greeting", words: ["hi", "hello", "hey", "hii", "namaste", "namaskara", "vanakkam"], phrases: ["good morning", "good evening", "good afternoon"], weak: true,
-    answer: () => "Hi! I'm PackZen's virtual assistant. I can help with moving prices, booking, payments, cancellations, parcels and home services in Bangalore. What do you need?" },
+    answer: () => "Hi! I'm PackZen's virtual assistant. I can help with moving prices, booking, payments, cancellations and home services in Bangalore. What do you need?" },
   { id: "thanks", words: ["thanks", "thank", "thx", "thankyou", "dhanyavaad", "shukriya"], weak: true,
     answer: () => "You're welcome! Anything else I can help with?" },
 
   { id: "services", phrases: ["what services", "what do you do", "services do you", "do you offer", "what all"], words: ["services", "offer"],
-    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Two-wheeler parcel delivery (up to 20 kg)\n• Home services: AC service/repair/installation, washing machine & fridge repair, home painting, electrician, carpenter, plumber and TV mounting\nWe don't offer cleaning services. Car transport and pest control are coming later — call us if you need one of those.",
+    answer: () => "PackZen offers, in Bangalore:\n• Home shifting (1 RK to villas) and office relocation\n• Single-item moves and bike transport\n• Packing & unpacking\n• Home services: AC service/repair/installation, washing machine & fridge repair, home painting and TV mounting\n• Websites for businesses through PackZen Digital\nWe no longer offer two-wheeler parcel delivery or electrician / plumber / carpenter visits.\nWe don't offer cleaning services. Car transport and pest control are coming later — call us if you need one of those.",
     actions: [{ type: "link", label: "See all services", href: "/services.html" }] },
 
   { id: "price_general", phrases: ["how much", "price list", "rate card", "starting price", "minimum charge", "kitna", "estimate", "charges for"], words: ["price", "prices", "pricing", "cost", "costs", "charges", "rate", "rates", "quote", "fare", "expensive", "cheap", "budget"],
@@ -81,8 +81,8 @@ const ENTRIES = [
     answer: () => "We serve Bangalore: all 560xxx pincodes plus Hoskote, Anekal, Devanahalli, Sarjapur and Attibele.\n• Moves must start in Bangalore but can go anywhere in India.\n• Home services need a Bangalore address.\n• Parcels need pickup and drop both in Bangalore." },
 
   { id: "parcel", phrases: ["send a parcel", "parcel delivery", "courier"], words: ["parcel", "courier", "package", "documents", "deliver"],
-    answer: () => "Two-wheeler parcel delivery within Bangalore: " + inr(49) + " for the first 2 km, then " + inr(11) + " per km, +" + inr(30) + " if over 10 kg. Up to 20 kg and 40 km, pickup and drop both in Bangalore, paid online.",
-    actions: [{ type: "link", label: "Book a parcel", href: "/parcel.html" }] },
+    answer: () => "PackZen no longer offers two-wheeler parcel delivery. For a single item or a few boxes — a sofa, fridge, bike or cartons — book a mini move (₹1,499 for up to 5 items within 10 km) or a single-item move, and you'll see the exact price before paying.",
+    actions: [{ type: "link", label: "Book a single-item move", href: "/index.html?book=move" }] },
 
   { id: "website", phrases: ["website design", "make a website", "build a website", "website for my", "web design", "online store", "ecommerce website", "website cost", "website price", "landing page"], words: ["website", "websites", "webpage", "webdesign", "ecommerce"],
     answer: () => "PackZen Digital (our website division) builds websites for Bangalore businesses:\n• Starter ₹7,999 — up to 5 pages, mobile-friendly, WhatsApp & call buttons, Google Maps, contact form, basic SEO\n• Business ₹14,999 — up to 10 pages, enquiry/booking form, Google Business Profile setup, SEO for 5 pages\n• Booking / Online store — from ₹29,999 with Razorpay payments and an admin panel\n• Care plan ₹999/month (optional)\nDomain & hosting at actual cost, delivery in 7–21 days. Free consultation: packzenblr.in/digital/" },
@@ -94,10 +94,13 @@ const ENTRIES = [
     answer: () => "Home & room painting in Bangalore: we do a free site visit, check the walls, measure and give you a fixed written quote before any work — paint brand, colours and finish are agreed upfront. Request your free visit: packzenblr.in/services.html?category=painting or tap Request a callback." },
 
   { id: "no_cleaning", phrases: ["deep cleaning", "home cleaning", "house cleaning", "kitchen cleaning", "bathroom cleaning", "sofa cleaning", "cleaning service", "move in cleaning", "move out cleaning"], words: ["cleaning", "cleaner", "cleaners", "maid", "housekeeping"],
-    answer: () => "Sorry — PackZen doesn't offer cleaning services. We can help with house shifting, parcels, AC service and repair, electricians, carpenters, plumbers and TV mounting in Bangalore." },
+    answer: () => "Sorry — PackZen doesn't offer cleaning services. We can help with house shifting, office moves, AC and appliance repair, painting and TV mounting in Bangalore." },
 
-  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation"], words: ["ac", "aircon", "electrician", "carpenter", "plumber", "plumbing", "mounting"],
-    answer: () => "We offer AC service, repair, installation and gas refill, electricians, carpenters, plumbers and TV wall mounting in Bangalore, with fixed prices shown before you book.",
+  { id: "no_handyman", phrases: ["electrician", "plumber", "carpenter", "handyman", "plumbing work", "electrical work"], words: ["electrician", "electricians", "plumber", "plumbers", "plumbing", "carpenter", "carpenters", "carpentry", "handyman", "wiring"],
+    answer: () => "PackZen no longer offers electrician, plumber or carpenter visits. If you're moving with us, you can add furniture dismantling & reassembly or light/fan disconnection to your move in the booking form. We still do AC service, washing machine & fridge repair, painting and TV mounting." },
+
+  { id: "home_services", phrases: ["ac service", "ac repair", "ac installation", "tv mounting", "tv wall mount", "mount my tv", "mount tv"], words: ["ac", "aircon", "mounting"],
+    answer: () => "We offer AC service, repair, installation and gas refill, washing machine & fridge repair, home painting and TV wall mounting in Bangalore, with prices shown before you book.",
     actions: [{ type: "link", label: "Book a home service", href: "/services.html" }] },
 
   { id: "unsupported", phrases: ["car transport", "pest control"], words: ["pest", "termite"],

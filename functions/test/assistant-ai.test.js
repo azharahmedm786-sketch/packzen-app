@@ -45,9 +45,9 @@ const tool = (name, input, id) => ({ stop_reason: "tool_use", content: [{ type: 
   r = await ai.converse("parcel 12 km 5 kg kitna?", [], { apiKey: "k", fetch: fakeApi([tool("get_parcel_price", { km: 12, kg: 5 }), text("12 km ke liye ₹159 lagega.")], seen), catalog });
   assert.strictEqual(r.reply, "12 km ke liye ₹159 lagega."); assert.deepStrictEqual(r.usedTools, ["get_parcel_price"]); assert.strictEqual(r.lang, "hi");
   const tr = seen[1].messages[seen[1].messages.length - 1].content[0];
-  assert.strictEqual(tr.type, "tool_result"); assert.ok(/₹159/.test(tr.content));
+  assert.strictEqual(tr.type, "tool_result"); assert.ok(/no longer offers/.test(tr.content) && !/₹159/.test(tr.content));
   assert.ok(/Hindi/.test(seen[0].system.split("Reply in ")[1]));
-  ok("tool use: live parcel price from the pricing engine (₹159 for 12 km), answered in Hindi");
+  ok("tool use: the parcel tool now returns the retirement message (no price), answered in Hindi");
 
   const leads = [];
   const deps = (steps, extra) => Object.assign({ apiKey: "k", fetch: fakeApi(steps, []), catalog, signedIn: false, myBookings: async () => [], createLead: async (l) => leads.push(l) }, extra || {});

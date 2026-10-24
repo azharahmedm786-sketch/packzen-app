@@ -1,7 +1,7 @@
 /* PackZen — Google Analytics 4 on every customer page + one tracking helper.
  * Uses the same GA4 property as the homepage. Events: generate_lead (callback form,
  * chat), select_item (Book picker), begin_checkout (price shown), purchase (paid
- * booking: move, parcel, home service), contact (WhatsApp / call taps).
+ * booking: move, home service), contact (WhatsApp / call taps).
  * Mark generate_lead and purchase as key events in GA4 to use them in Google Ads. */
 (function () {
   "use strict";
@@ -58,15 +58,13 @@
   captureAttr();
 
   /* ---------- callback widget ---------- */
-  var SERVICES = [["move", "House / office shifting"], ["parcel", "Parcel delivery"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"],
-    ["electrician", "Electrician"], ["plumber", "Plumber"], ["carpenter", "Carpenter"], ["tv", "TV wall mounting"], ["other", "Something else"]];
+  var SERVICES = [["move", "House / office shifting"], ["vehicle", "Bike / car transport"], ["ac", "AC service & repair"], ["appliance", "Washing machine / fridge repair"], ["painting", "Painting"],
+    ["tv", "TV wall mounting"], ["other", "Something else"]];
   function guessService() {
     var path = location.pathname;
-    if (/parcel/.test(path)) return "parcel";
     if (/ac-/.test(path)) return "ac";
     if (/washing|refrigerator|fridge|appliance/.test(path)) return "appliance";
     if (/paint/.test(path)) return "painting";
-    if (/electrician|plumber|carpenter/.test(path)) return "electrician";
     if (/tv-/.test(path)) return "tv";
     if (/bike|car-transport/.test(path)) return "vehicle";
     return "move";
@@ -146,7 +144,7 @@
 
 /* PackZen — one "Book" button for every service (unified booking, phase 2).
  * Opens a picker; each choice goes to that service's own short flow:
- *   moves → the moving booking sheet, parcels → parcel.html, home services → services.html?category=…
+ *   moves → the moving booking sheet, home services → services.html?category=…
  * On any page: window.pzOpenBook(). On the homepage, ?book=move opens the moving form directly. */
 (function () {
   "use strict";
@@ -154,9 +152,7 @@
     { id: "move", icon: "M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", title: "Home shifting", sub: "1 RK to villa · from ₹2,150" },
     { id: "office", icon: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M8 8h3M8 12h3M8 16h3", title: "Office move", sub: "Desks, IT, files" },
     { id: "vehicle", icon: "M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M9 17h6M3 12l2-5h9l3 5h3a1 1 0 0 1 1 1v4h-2M3 12v5h2", title: "Bike / car transport", sub: "Safe vehicle moves" },
-    { id: "parcel", icon: "M12 3 3 7.5v9L12 21l9-4.5v-9zM3 7.5 12 12l9-4.5M12 12v9", title: "Parcel delivery", sub: "Two-wheeler · from ₹49" },
     { id: "ac", icon: "M3 6h18v7H3zM6 17l-1 3M12 16v4M18 17l1 3M7 10h10", title: "AC service & repair", sub: "Service from ₹429" },
-    { id: "home", icon: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z", title: "Electrician · plumber · carpenter", sub: "Fixed visit prices" },
     { id: "tv", icon: "M3 5h18v11H3zM8 21h8M12 16v5", title: "TV wall mounting", sub: "All screen sizes" },
     { id: "appliance", icon: "M5 2h14a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM4 7h16M12 15a3 3 0 1 0 0-.01", title: "Washing machine & fridge", sub: "Repair visit ₹249 · gas refill" },
     { id: "painting", icon: "M18 3H4v6h14zM18 6h3v5h-9v4M10 15h4v6h-4z", title: "Home painting", sub: "Free site visit · fixed quote" },
@@ -167,8 +163,7 @@
       if (onHome) { close(); window.openBookingSheet(); return; }
       location.href = "/index.html?book=move"; return;
     }
-    if (id === "parcel") { location.href = "/parcel.html"; return; }
-    location.href = "/services.html?category=" + encodeURIComponent(id === "tv" ? "home" : id === "appliance" ? "appliance-repair" : id);
+    location.href = "/services.html?category=" + encodeURIComponent(id === "tv" ? "appliances" : id === "appliance" ? "appliance-repair" : id);
   }
   var dlg = null;
   function close() { if (dlg) dlg.hidden = true; }

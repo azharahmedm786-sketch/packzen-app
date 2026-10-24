@@ -33,10 +33,7 @@
       { name: "AC servicing", q: "AC Service", keywords: "cleaning wet service deep foam", status: "book" },
       { name: "AC repair", q: "AC Repair", keywords: "not cooling noise leak inspection", status: "book" },
       { name: "AC gas refill", q: "Gas Refill", keywords: "gas charging cooling", status: "book" } ] },
-    { id: "home", icon: "🏠", name: "Home Services", sub: "Electrician, carpenter, plumber and TV mounting", services: [
-      { name: "Electrical", q: "Electrician", keywords: "electrician wiring switch fan light", status: "book" },
-      { name: "Carpentry", q: "Carpenter", keywords: "carpenter furniture repair assembly", status: "book" },
-      { name: "Plumbing", q: "Plumber", keywords: "plumber tap leak pipe", status: "book" },
+    { id: "home", icon: "📺", name: "TV Mounting & Home Care", sub: "TV wall mounting · more coming soon", services: [
       { name: "TV wall mount", q: "TV Wall Mount", keywords: "television mount", status: "book" },
       { name: "Pest control", keywords: "termite cockroach", status: "soon" } ] },
     { id: "appliance-repair", icon: "🧺", name: "Washing Machine & Fridge", sub: "Repair, installation and gas refill", services: [
@@ -48,8 +45,7 @@
     { id: "painting", icon: "🎨", name: "Painting", sub: "Free site visit, fixed written quote", services: [
       { name: "Home & room painting", q: "Painting", keywords: "painter wall paint interior exterior room house", status: "book" } ] },
     { id: "delivery", icon: "📦", name: "Delivery & Transport", sub: "Single-item delivery from Bangalore", services: [
-      { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance", status: "book" },
-      { name: "Two-wheeler parcel", href: "parcel.html", keywords: "courier package documents parcel delivery", status: "book" } ] }
+      { name: "Single-item delivery", move: "single", href: "index.html#quote", keywords: "furniture appliance sofa fridge boxes", status: "book" } ] }
   ];
 
   /** WhatsApp link from the single existing source (catalog-public.js); null if unavailable. */

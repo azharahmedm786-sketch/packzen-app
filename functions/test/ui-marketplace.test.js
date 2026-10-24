@@ -39,10 +39,10 @@ test("taxonomy: categories with the approved service list (cleaning removed 2026
   const want = {
     moving: ["House shifting", "Office relocation", "Single item", "Packing & unpacking", "Bike transport", "Car transport"],
     ac: ["AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill"],
-    home: ["Electrical", "Carpentry", "Plumbing", "TV wall mount", "Pest control"],
+    home: ["TV wall mount", "Pest control"],
     "appliance-repair": ["Washing machine repair", "Washing machine installation", "Washing machine uninstallation", "Refrigerator repair", "Refrigerator gas refill"],
     painting: ["Home & room painting"],
-    delivery: ["Single-item delivery", "Two-wheeler parcel"],
+    delivery: ["Single-item delivery"],
   };
   assert.deepStrictEqual(mk.CATEGORIES.map((c) => c.id), Object.keys(want));
   for (const c of mk.CATEGORIES) assert.deepStrictEqual(c.services.map((s) => s.name), want[c.id], c.id);
@@ -57,20 +57,20 @@ test("search: keywords and partial words match; no match returns empty", () => {
   assert.ok(names("ac repair").includes("AC repair"));
   assert.ok(names("fridge").includes("Refrigerator repair"));
   assert.ok(names("washing").includes("Washing machine repair") && names("painter").includes("Home & room painting"));
-  assert.ok(names("plumber").includes("Plumbing"));
+  assert.deepStrictEqual(names("plumber"), []); // handyman retired (Oct 2026)
   assert.ok(names("scooter").includes("Bike transport"));
   assert.deepStrictEqual(names("helicopter"), []);
-  assert.strictEqual(mk.filter("").length, 24);
+  assert.strictEqual(mk.filter("").length, 20);
 });
 test("routing: moving uses existing quote flow / SEO pages; other services go to catalog search", () => {
   const find = (n) => mk.CATEGORIES.flatMap((c) => c.services).find((s) => s.name === n);
   assert.strictEqual(find("House shifting").move, "home");
   assert.strictEqual(mk.hrefFor(find("AC installation")), "services.html?q=AC%20installation");
-  assert.strictEqual(mk.hrefFor(find("Electrical")), "services.html?q=Electrician", "search wording matches the catalog item");
+  assert.strictEqual(mk.hrefFor(find("TV wall mount")), "services.html?q=TV%20Wall%20Mount", "search wording matches the catalog item");
   assert.strictEqual(mk.hrefFor(find("AC repair")), "services.html?q=AC%20Repair", "approved + priced → catalog");
   assert.strictEqual(mk.hrefFor(find("Pest control")), null, "not offered → no booking link");
   assert.strictEqual(mk.hrefFor(find("Home & room painting")), "services.html?q=Painting");
-  assert.strictEqual(mk.hrefFor(find("Two-wheeler parcel")), "parcel.html"); // parcel delivery launched (Oct 2026)
+  assert.ok(!find("Two-wheeler parcel")); // two-wheeler parcel delivery retired (Oct 2026)
   for (const s of mk.CATEGORIES.flatMap((c) => c.services)) if (s.href && !s.href.includes("#")) assert.ok(fs.existsSync(path.join(PUB, s.href.split("?")[0])), "missing page " + s.href);
 });
 
@@ -151,17 +151,17 @@ test("availability: every service has an honest status; only real booking paths 
   const st = (n) => all.find((x) => x.name === n).status;
   // Bookable online today: the move-quote flow, or items seeded in the live catalog (tools/seedCatalog.js).
   for (const n of ["House shifting", "Office relocation", "Single item", "Single-item delivery", "AC installation", "AC uninstallation", "AC servicing", "AC repair", "AC gas refill",
-                   "TV wall mount", "Electrical", "Carpentry", "Plumbing"]) assert.strictEqual(st(n), "book", n);
+                   "TV wall mount"]) assert.strictEqual(st(n), "book", n);
   for (const n of ["Packing & unpacking", "Bike transport"]) assert.strictEqual(st(n), "addon", n);
   for (const n of ["Pest control", "Car transport"]) assert.strictEqual(st(n), "soon", n);
   for (const n of ["Washing machine repair", "Refrigerator gas refill", "Home & room painting"]) assert.strictEqual(st(n), "book", n);
-  assert.strictEqual(st("Two-wheeler parcel"), "book");
+  for (const n of ["Two-wheeler parcel", "Electrical", "Carpentry", "Plumbing"]) assert.ok(!all.some((x) => x.name === n), n + " retired");
   const seed = fs.readFileSync(path.join(__dirname, "..", "..", "tools", "seedCatalog.js"), "utf8");
   // every catalog-backed "book" service has a priced catalog item (owner-approved prices)
-  for (const id of ["ac-installation", "ac-uninstallation", "ac-service-standard", "ac-service-deep", "ac-gas-refill", "ac-repair-inspection", "tv-wall-mount", "carpenter", "electrician",
-                    "plumber-visit"]) assert.ok(new RegExp('id: "' + id + '"[^}]*basePrice: [1-9]').test(seed), "priced catalog item " + id);
+  for (const id of ["ac-installation", "ac-uninstallation", "ac-service-standard", "ac-service-deep", "ac-gas-refill", "ac-repair-inspection", "tv-wall-mount"]) assert.ok(new RegExp('id: "' + id + '"[^}]*basePrice: [1-9]').test(seed), "priced catalog item " + id);
   assert.ok(/isActive: false,/.test(seed.slice(seed.indexOf("movingPackages"), seed.indexOf("packingPackages"))), "conflicting moving packages inactive");
   // PackZen doesn't offer cleaning: category and items seeded inactive, hidden client-side, refused server-side
+  for (const id of ["handyman", "electrician", "plumber-visit", "carpenter"]) assert.ok(new RegExp('id: "' + id + '",\\s+isActive: false').test(seed), "retired handyman " + id);
   for (const id of ["cleaning", "deep-cleaning-1bhk", "kitchen-cleaning", "bathroom-cleaning"]) assert.ok(new RegExp('id: "' + id + '",\\s+isActive: false').test(seed), id);
   assert.ok(/isActive: true, \.\.\.c/.test(seed) && /HIDDEN = \/clean\/i/.test(fs.readFileSync(path.join(__dirname, "..", "..", "public", "catalog-public.js"), "utf8")));
   assert.ok(/\/clean\/i\.test\(String\(d\.categoryId/.test(fs.readFileSync(path.join(__dirname, "..", "catalog-booking.js"), "utf8")));

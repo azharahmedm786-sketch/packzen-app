@@ -70,7 +70,7 @@ function fakeDb(data) {
 
   const leads = pub("pz-leads.js");
   assert.ok(/G-9JXKP58GP3/.test(leads) && /window\.pzTrack = function/.test(leads) && /wa\.me\/919945095453/.test(leads) && /pz_ref/.test(leads));
-  assert.ok(/pzTrack\("purchase"/.test(pub("script.js")) && /pzTrack\("purchase"/.test(pub("parcel-booking.js")) && /pzTrack\("purchase"/.test(pub("catalog-booking.js")));
+  assert.ok(/pzTrack\("purchase"/.test(pub("script.js")) && /pzTrack\("purchase"/.test(pub("catalog-booking.js")));
   assert.ok(!/₹500 off, you get ₹500/.test(pub("index.html")) && /shareReferralWhatsApp/.test(pub("index.html")));
   ok("analytics on every page (leads, picker, price shown, purchases); WhatsApp booking; referral link + WhatsApp share; ₹500 claim corrected");
 

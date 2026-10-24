@@ -632,7 +632,8 @@ Object.assign(exports, require("./scheduled-notifications"));
 Object.assign(exports, require("./auth-emails"));
 Object.assign(exports, require("./oauth-profile"));
 // Catalog bookings (additive — catalog-booking.js): pay-later, online payment, verification
-Object.assign(exports, require("./catalog-booking"));
+const { _catalogTest, ...catalogExports } = require("./catalog-booking");   // test hook kept out of deployed functions
+Object.assign(exports, catalogExports);
 // Parcel delivery (additive — parcel-booking.js): quote + online payment; verification uses the shared core
 const { _parcel, ...parcelExports } = require("./parcel-booking");
 Object.assign(exports, parcelExports);

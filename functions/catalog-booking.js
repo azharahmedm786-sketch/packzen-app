@@ -35,6 +35,8 @@ const ALLOWED_ORIGINS = ["https://packzenblr.in", "https://www.packzenblr.in", "
 const cors = require("cors")({ origin: ALLOWED_ORIGINS });
 
 const COLL = { services: "services", packages: "packages", addons: "addons", categories: "serviceCategories" };
+const RETIRED_CATEGORIES = ["handyman"];
+const RETIRED_ITEMS = ["electrician", "plumber-visit", "carpenter"];
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 
 /* ── Helpers ────────────────────────────────────────────────── */
@@ -58,7 +60,9 @@ async function loadCatalog(db, rawItems) {
   snaps.forEach((s, i) => {
     const d = s.exists ? (s.data() || {}) : null;
     // PackZen doesn't offer cleaning: such items are treated as not found (not bookable).
-    if (d && (/clean/i.test(String(d.categoryId || "")) || /clean/i.test(wanted[i].id))) return;
+    // Retired offerings (cleaning; handyman visits — electrician, plumber, carpenter) are
+    // treated as not found, so they can't be booked even if still active in Firestore.
+    if (d && (/clean/i.test(String(d.categoryId || "")) || /clean/i.test(wanted[i].id) || RETIRED_CATEGORIES.includes(String(d.categoryId || "")) || RETIRED_ITEMS.includes(wanted[i].id))) return;
     if (s.exists) {
       catalog[wanted[i].type][wanted[i].id] = s.data();
       if (s.data().categoryId) catIds.add(s.data().categoryId);
@@ -306,3 +310,4 @@ async function verifyLegacyServicePayment(req, res, razorpay) {
     return res.status(500).json({ success: false, error: "Could not confirm your payment. If money was deducted, contact us on WhatsApp with your payment ID." });
   }
 }
+exports._catalogTest = { loadCatalog };   // test hook: retired items are never returned

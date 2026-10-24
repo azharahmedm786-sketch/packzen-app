@@ -53,15 +53,18 @@ const S = [
   ["area", () => { const r = A("which areas do you serve"); has(r, "area"); says(r, "560xxx", "Hoskote"); }],
   ["intercity", () => { const r = A("do you do intercity moves to chennai"); has(r, "area"); says(r, "anywhere in India"); }],
   // parcel
-  ["parcel", () => { const r = A("can you deliver a parcel"); has(r, "parcel"); says(r, "₹49", "20 kg"); }],
-  ["parcel price km", () => { const r = A("price to send a parcel 12 km"); has(r, "parcel_price"); says(r, "₹159"); }],
-  ["parcel heavy", () => { const r = A("courier 5 km 15 kg"); says(r, "₹112"); }],
-  ["parcel too far", () => { const r = A("send a parcel 60 km"); says(r, "40 km"); }],
-  ["parcel follow-up", () => { const r = A("how much?", { lastService: "parcel" }); has(r, "parcel"); says(r, "₹49"); }],
+  // parcel delivery retired (Oct 2026): never priced, points to single-item moves
+  ["parcel", () => { const r = A("can you deliver a parcel"); has(r, "parcel"); says(r, "no longer offers", "mini move"); not(r, "₹49"); }],
+  ["parcel price km", () => { const r = A("price to send a parcel 12 km"); has(r, "parcel_price"); says(r, "no longer offers"); not(r, "₹159"); }],
+  ["parcel heavy", () => { const r = A("courier 5 km 15 kg"); says(r, "no longer offers"); not(r, "₹112"); }],
+  ["parcel too far", () => { const r = A("send a parcel 60 km"); says(r, "no longer offers"); }],
+  ["parcel follow-up", () => { const r = A("how much?", { lastService: "parcel" }); has(r, "parcel"); says(r, "single-item move"); }],
+  ["handyman retired", () => { const r = A("need an electrician for wiring"); has(r, "no_handyman"); says(r, "no longer offers"); }],
   // home services (catalog-grounded)
   ["ac service price", () => { const r = A("ac service price", { catalog }); has(r, "catalog_price"); says(r, "₹429", "per unit"); }],
   ["ac repair price", () => { const r = A("how much for ac repair", { catalog }); says(r, "₹249"); }],
-  ["home services", () => { const r = A("do you have electrician or plumber"); has(r, "home_services"); }],
+  ["home services", () => { const r = A("do you do ac repair and tv mounting"); has(r, "home_services"); }],
+  ["handyman asked", () => { const r = A("do you have electrician or plumber"); has(r, "no_handyman"); says(r, "no longer offers"); }],
   ["cleaning", () => { const r = A("deep cleaning available?"); has(r, "no_cleaning"); assert.ok(/doesn.t offer cleaning/.test(r.reply)); }],
   // unsupported
   ["painting", () => { const r = A("do you do painting"); has(r, "painting"); says(r, "free site visit"); }],

@@ -7,10 +7,9 @@
   var QA = [
     { k: "online offline go online start work duty available ऑनलाइन ಆನ್‌ಲೈನ್", q: "How do I start getting jobs?", a: "Tap the Online switch at the top. You'll only get job offers while you're online and your profile is active. Go offline when you finish for the day." },
     { k: "offer accept decline reject new job ऑफर ಆಫರ್ 5 minutes timer", q: "How do job offers work?", a: "A new offer shows the area, date, service and your earning. You have 5 minutes to accept — after that it moves to the next partner. Declining doesn't hurt you, but accepting and not going does." },
-    { k: "otp code complete finish done delivered close job कोड ಕೋಡ್", q: "How do I complete a job?", a: "At the end of the job, ask the customer for their 4–6 digit completion code (for parcels, the receiver has it by SMS). Enter it in the job and tap Complete. If the customer can't find it, call ops — never mark a job done without the code." },
+    { k: "otp code complete finish done delivered close job कोड ಕೋಡ್", q: "How do I complete a job?", a: "At the end of the job, ask the customer for their 4–6 digit completion code. Enter it in the job and tap Complete. If the customer can't find it, call ops — never mark a job done without the code." },
     { k: "cash upi balance collect payment money paisa पैसे ಹಣ due", q: "How do I collect the balance payment?", a: "If the job shows a balance due, collect it by UPI (preferred) or cash, then tap Record collection and choose Cash or UPI. The job can't be completed while money is still due. Cash you collect is deducted from your next payout." },
     { k: "earnings payout salary paid weekly money kamai कमाई ಗಳಿಕೆ", q: "How much do I earn and when am I paid?", a: "You keep 90% of each job's value (PackZen's fee is 10%). The Earnings tab shows your share, cash you hold, what's been paid to you and what's pending. Payouts are recorded by PackZen admin to your registered bank/UPI." },
-    { k: "parcel rider delivery receiver weight kg पार्सल ಪಾರ್ಸೆಲ್", q: "Parcel jobs — what should I check?", a: "Parcels are prepaid, up to 20 kg, within Bangalore. Check the item at pickup (no prohibited items), take it straight to the drop, and complete with the receiver's code. If the receiver isn't available, call ops before leaving." },
     { k: "damage broken scratch accident नुकसान ಹಾನಿ", q: "Something got damaged — what now?", a: "Stay calm, take clear photos immediately, tell the customer honestly and call ops on " + OPS + " before leaving the site. Don't promise compensation yourself — PackZen handles claims." },
     { k: "late traffic delay running late customer not answering wait", q: "I'm running late / customer not answering", a: "Call the customer from the job screen. If they don't answer in 10 minutes, call ops on " + OPS + ". Never cancel a job yourself." },
     { k: "reschedule cancel customer wants change date", q: "Customer wants to change the date or cancel", a: "Ask them to use My Bookings on the website or call PackZen — only the office can reschedule or cancel. Tell ops so your schedule is updated." },
@@ -27,7 +26,7 @@
     var panel = document.createElement("div");
     panel.id = "crewHelp"; panel.hidden = true; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Crew help");
     panel.innerHTML = '<div class="ch-head"><b>Crew help</b><button type="button" class="ch-x" aria-label="Close">×</button></div>' +
-      '<input class="ch-q" placeholder="Ask: OTP, cash, payout, parcel…" aria-label="Search help">' +
+      '<input class="ch-q" placeholder="Ask: OTP, cash, payout, packing…" aria-label="Search help">' +
       '<div class="ch-list"></div><a class="ch-call" href="tel:' + OPS + '">📞 Call ops · ' + OPS + '</a>';
     document.body.appendChild(btn); document.body.appendChild(panel);
     var list = panel.querySelector(".ch-list"), input = panel.querySelector(".ch-q");
