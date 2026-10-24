@@ -1,0 +1,22 @@
+{
+  "name": "PackZen Crew",
+  "short_name": "PZ Crew",
+  "description": "PackZen crew app: job offers, completion codes, earnings.",
+  "start_url": "/driver.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1F9D5C",
+  "icons": [
+    {
+      "src": "/assets/logo/newllogo1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo/newllogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

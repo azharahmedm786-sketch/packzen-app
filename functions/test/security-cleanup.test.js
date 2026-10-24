@@ -17,4 +17,10 @@ assert.ok(!/2026-0[0-9]-\d\d/.test(pub("sitemap.xml")) && /not access control/.t
 assert.ok(/preconnect" href="https:\/\/maps\.googleapis\.com/.test(pub("index.html")) && /preconnect" href="https:\/\/firestore\.googleapis\.com/.test(pub("services.html")));
 assert.ok(fs.existsSync(path.join(root, "SECURITY.md")) && fs.existsSync(path.join(root, "PRE-LAUNCH-CHECKLIST.md")));
 ok("sitemap dates current, robots note, preconnects, SECURITY.md + PRE-LAUNCH-CHECKLIST.md");
+const idx2 = pub("index.html");
+assert.ok(!/24\/7|Insured Moves|On-time guarantee|always here to help you anytime/.test(idx2) && /Support 8 AM – 9 PM/.test(idx2));
+const man = JSON.parse(pub("driver-manifest.json")); assert.ok(man.start_url === "/driver.html" && man.icons.length === 2);
+for (const k of ["privacy", "terms", "refund"]) { const h = pub("legal/" + k + ".html"); assert.ok(/name="description"/.test(h) && new RegExp('rel="canonical" href="https://packzenblr.in/legal/' + k + '.html"').test(h), k); }
+assert.ok(/rel="canonical" href="https:\/\/packzenblr\.in\/delete-account\.html"/.test(pub("delete-account.html")));
+ok("launch QA: no 24/7 / insured / guarantee overclaims, crew app manifest present, legal + delete-account canonicals");
 console.log(`\nsecurity-cleanup: ${pass} passed, 0 failed`);
