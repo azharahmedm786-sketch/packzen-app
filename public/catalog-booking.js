@@ -369,7 +369,8 @@
       '<div class="cat-ref">Reference <strong>' + esc(ref) + "</strong></div>" +
       (data.total ? '<p class="cat-sub">' + (paid ? "Paid " : pending ? "Estimated " : "Total ") + inr(data.total) + "</p>" : "") +
       '<a class="cat-submit" href="' + esc(wa) + '" target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>' +
-      '<button type="button" class="cat-link" data-act="done">Done</button></div>';
+      '<a class="cat-submit" href="/index.html#bookings" style="margin-top:8px">View in My Bookings</a>' +
+      '<button type="button" class="cat-link" data-act="done">Back to website</button></div>';
     cart = {}; resetAttempt();
     renderControls(); renderBar();
   }

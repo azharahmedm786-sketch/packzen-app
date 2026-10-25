@@ -511,3 +511,9 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-div-text { font-size: .94rem; opacity: .85; }
 .pz-div-cta { margin-top: auto; font-weight: 800; }
 .pz-div-log .pz-div-cta { color: var(--nb-green-deep); } .pz-div-dig .pz-div-cta { color: #B7A8FF; }
+
+/* Booking confirmation: clear way back to the website + to My Bookings */
+.cc-actions { flex-wrap: wrap; }
+.cc-btn-bookings { flex: 1 1 100%; padding: .8rem; border-radius: 999px; border: 0; cursor: pointer; font-weight: 800; font-size: .9rem;
+  background: var(--nb-green, #1F9D5C); color: #fff; }
+.cc-actions .cc-btn-close-action { flex: 1 1 100%; font-size: .9rem; padding: .75rem; color: var(--nb-text, #0C1A14); }

@@ -2039,41 +2039,41 @@ function toggleConfirmDetails() {
   if (expandBtn) expandBtn.textContent = isOpen ? "View Full Details ↓" : "Hide Details ↑";
 }
 
+/* Confirmation closed → back to the website (never back into the booking form).
+   The new booking is already saved; My Bookings is refreshed so it shows there. */
 function closeModal() {
+  const modal = document.getElementById("paymentModal");
+  if (modal) modal.style.display = "none";
+  // reset the form for the next booking, but keep the sheet closed
+  document.querySelectorAll(".form-step").forEach(step => { step.style.display = ""; });
+  const stepHeader = document.querySelector(".step-header");
+  if (stepHeader) stepHeader.style.display = "";
+  const successEl = document.getElementById("bookingSuccessState");
+  if (successEl) successEl.style.display = "none";
+  currentStep = 0;
+  try { showStep(0); } catch (e) {}
+  if (typeof closeBookingSheet === "function") closeBookingSheet();
+  else {
+    document.getElementById("bookingSheet")?.classList.remove("open");
+    document.getElementById("bookingSheetOverlay")?.classList.remove("open");
+    document.body.style.overflow = "";
+  }
+  document.body.style.overflow = "";
+  if (currentBookingId) showTrackOrderBanner();
+  if (typeof loadUserBookings === "function") loadUserBookings();   // new booking appears in My Bookings
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (typeof showToast === "function") showToast("✅ Booking saved in My Bookings");
+}
 
-    // Close confirmation popup
-    document.getElementById("paymentModal").style.display = "none";
-
-    // Restore booking form
-    document.querySelectorAll(".form-step").forEach(step => {
-        step.style.display = "";
+/* "View in My Bookings" on the confirmation: close it and open the bookings list. */
+function viewMyBookingsFromConfirmation() {
+  closeModal();
+  if (typeof openDashboard === "function") {
+    Promise.resolve(openDashboard()).then(() => {
+      if (typeof switchDashTab === "function") switchDashTab("bookings", document.querySelectorAll(".dash-tab")[0]);
+      if (typeof loadUserBookings === "function") loadUserBookings();
     });
-
-    const stepHeader = document.querySelector(".step-header");
-    if (stepHeader) {
-        stepHeader.style.display = "";
-    }
-
-    // Open booking sheet again
-    const bookingSheet = document.getElementById("bookingSheet");
-    if (bookingSheet) {
-        bookingSheet.style.display = "block";
-        bookingSheet.classList.add("open");
-    }
-
-    const overlay = document.getElementById("bookingSheetOverlay");
-    if (overlay) {
-        overlay.classList.add("open");
-    }
-
-    // Return to first step
-    currentStep = 0;
-    showStep(0);
-
-    // If booking exists, show tracking banner
-    if (currentBookingId) {
-        showTrackOrderBanner();
-    }
+  }
 }
 function showBookingSuccessState() {
 
