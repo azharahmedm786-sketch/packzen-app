@@ -13,6 +13,7 @@ for (const f of pages) {
   for (const t of ["Organization", "Service", "FAQPage", "BreadcrumbList"]) assert.ok(ld.some((b) => b["@type"] === t), f + " " + t);
   assert.ok((h.match(/<h1/g) || []).length === 1 && /<link rel="canonical" href="https:\/\/packzenblr\.in\/digital\//.test(h) && /og:title/.test(h), f);
   for (const p of ["₹7,999", "₹14,999", "from ₹29,999", "₹999"]) assert.ok(h.includes(p), f + " " + p);
+  assert.ok(/>Choose Care Plan<\/a>/.test(h) && !/>Choose Website<\/a>/.test(h), f + " care plan button label");
   assert.ok(/id="dzForm"/.test(h) && /name="consent"/.test(h) && /class="dz-hp"/.test(h) && /digital\.js/.test(h) && /dz-back" href="\/">/.test(h), f);
   assert.ok(!/pz-leads\.js|pzchatbot\.js|openBookingSheet/.test(h), f + " must not load moving flows");
   const cleaned = h.replace(/never promise guaranteed Google rankings/gi, "").replace(/Will you guarantee Google rankings or leads\?/g, "");
