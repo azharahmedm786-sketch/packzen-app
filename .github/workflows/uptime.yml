@@ -18,7 +18,8 @@ jobs:
           for url in \
             https://packzenblr.in/ \
             https://packzenblr.in/services.html \
-            https://packzenblr.in/parcel.html \
+            https://packzenblr.in/digital/ \
+            https://packzenblr.in/house-shifting-bangalore.html \
             https://packzenblr.in/packers-and-movers-bangalore.html \
             https://packzenblr.in/pz-premium.css \
             https://packzenblr.in/script.js ; do
