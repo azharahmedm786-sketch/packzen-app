@@ -124,6 +124,7 @@ service cloud.firestore {
       allow create: if isAdmin()
         || (isOwner(uid)
             && request.resource.data.verificationStatus == 'pending'
+            && request.resource.data.agreementAccepted == true      // must accept the Partner Agreement
             && request.resource.data.walletBalance == 0
             && request.resource.data.pendingEarnings == 0
             && request.resource.data.totalEarnings == 0);
@@ -393,6 +394,13 @@ service cloud.firestore {
     match /sentQuotes/{token} {
       allow create, delete: if false;
       allow read, update: if isAdmin();
+    }
+    // Packing-material stock (admin → Overview → Business readiness). Staff read/write, numbers only.
+    match /settings/inventory {
+      allow read: if isAdmin() || isAdvisor();
+      allow write: if (isAdmin() || isAdvisor())
+        && request.resource.data.keys().hasOnly(['items', 'updatedAt', 'updatedBy'])
+        && request.resource.data.items is map && request.resource.data.items.size() <= 20;
     }
     match /settings/leadFinder {
       allow read, write: if isAdmin();

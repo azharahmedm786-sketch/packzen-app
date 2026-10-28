@@ -737,7 +737,11 @@
         <div class="field-error" id="errTnc">You must agree to the terms to continue.</div>
 
         <!-- Submit loading state -->
-        <div id="regSubmitting" style="display:none; text-align:center; padding:1rem;">
+        <label class="pz-agree" id="pzAgreeWrap" style="display:flex;gap:10px;align-items:flex-start;margin:14px 0 6px;font-size:.9rem;line-height:1.45">
+    <input type="checkbox" id="pzAgree" style="margin-top:3px;width:18px;height:18px;flex:none">
+    <span>I have read and agree to the <a href="partner-agreement.html" target="_blank" rel="noopener">PackZen Partner Agreement</a> (payouts, customer care, damage, cancellations and conduct).</span>
+  </label>
+  <div id="regSubmitting" style="display:none; text-align:center; padding:1rem;">
           <div style="font-size:2rem;animation:spin 1s linear infinite;display:inline-block"><i data-lucide="clock"></i></div>
           <p style="margin-top:0.5rem;font-size:0.82rem;color:var(--text-muted)" id="regSubmitStatus">Creating your account…</p>
         </div>
@@ -1061,6 +1065,8 @@ function populateReview() {
 
 /* ─── SUBMIT REGISTRATION ────────────────────────────── */
 async function submitRegistration() {
+  const agree = document.getElementById('pzAgree');
+  if (agree && !agree.checked) { showAlert('Please read and accept the PackZen Partner Agreement to submit.'); agree.focus(); return; }
   const nextBtn = document.getElementById('regBtnNext');
   const submitBox = document.getElementById('regSubmitting');
   nextBtn.disabled = true;
@@ -1123,6 +1129,9 @@ async function submitRegistration() {
         email,
         role:               'partner',
         verificationStatus: 'pending',
+        agreementAccepted:  true,
+        agreementVersion:   '2026-10',
+        agreementAcceptedAt: now,
         createdAt:          now,
         updatedAt:          now,
         // Business

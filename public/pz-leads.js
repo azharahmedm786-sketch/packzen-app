@@ -131,7 +131,10 @@
         .then(function (j) {
           if (j && j.error) throw new Error(j.error.message || "Could not send.");
           form.innerHTML = '<button type="button" class="pz-cb-x" aria-label="Close">×</button><div class="pz-cb-done"><h2>Thanks! ✓</h2>' +
-            "<p>We'll call you on " + phone.replace(/^(\d{2})\d{5}/, "$1XXXXX") + " shortly (8 AM – 9 PM). Need us right now? Call <a href=\"tel:9945095453\">99450 95453</a>.</p></div>";
+            "<p>" + (function () { var h = new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000).getHours();
+              var open = h >= 8 && h < 21;
+              return (open ? "We'll call you on " : "We're closed right now (we work 8 AM – 9 PM). We'll call you on ") + phone.replace(/^(\d{2})\d{5}/, "$1XXXXX") + (open ? " shortly." : " after 8 AM.");
+            })() + " You can also see prices and book anytime at packzenblr.in.</p></div>";
           form.querySelector(".pz-cb-x").addEventListener("click", close);
           if (window.pzTrack) window.pzTrack("generate_lead", { method: "callback_form", service: payload.service });
         })

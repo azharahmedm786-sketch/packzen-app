@@ -84,7 +84,11 @@ function istDay(ms, offsetDays) { return new Date(ms + 5.5 * 3600e3 + (offsetDay
 const DONE = ["delivered", "completed"];
 
 /** Pure: build the briefing rows from plain arrays. */
-function buildBriefing({ bookings, leads, opportunities, prospects }, nowMs) {
+const STOCK_MIN = { boxes: 40, tape: 10, bubble: 4, stretch: 4, blankets: 10 };
+const STOCK_LABEL = { boxes: "boxes", tape: "tape", bubble: "bubble wrap", stretch: "stretch film", blankets: "blankets" };
+function lowStock(items) { return Object.keys(STOCK_MIN).filter((k) => Number((items || {})[k] || 0) < STOCK_MIN[k]).map((k) => STOCK_LABEL[k] + " (" + Number((items || {})[k] || 0) + ")"); }
+
+function buildBriefing({ bookings, leads, opportunities, prospects, crews, stock }, nowMs) {
   const today = istDay(nowMs), yesterday = istDay(nowMs, -1);
   const live = (b) => b.status !== "cancelled";
   const todays = bookings.filter((b) => b.date === today && live(b));
@@ -110,6 +114,8 @@ function buildBriefing({ bookings, leads, opportunities, prospects }, nowMs) {
     ["Follow-ups due", `${followUps.length}`],
     ["New opportunities to reply", `${newOpps.length}`],
     ["Partners to contact", `${toContact.length}`],
+    ["Active moving crews", crews == null ? "-" : (crews < 2 ? `⚠️ ${crews} — add or re-activate partners` : `${crews}`)],
+    ["Packing stock", stock == null ? "Not tracked yet (admin → Overview)" : (lowStock(stock).length ? "⚠️ Low: " + lowStock(stock).join(", ") : "OK")],
     ["Today's focus", unassigned.length ? "Assign today's jobs first." : hot.length || waiting.length ? "Call hot and waiting leads before 10 AM." : followUps.length ? "Clear today's follow-ups." : "Reach out to 5 new partners and reply to opportunities."],
   ];
   return { rows, counts: { todays: todays.length, unassigned: unassigned.length, hot: hot.length, waiting: waiting.length, followUps: followUps.length } };
@@ -118,16 +124,56 @@ function buildBriefing({ bookings, leads, opportunities, prospects }, nowMs) {
 async function runBriefing(deps) {
   const nowMs = deps.now();
   const from = istDay(nowMs, -1), to = istDay(nowMs, 2);
-  const [b, l, o, p] = await Promise.all([
+  const [b, l, o, p, dp, inv] = await Promise.all([
     deps.db.collection("bookings").where("date", ">=", from).where("date", "<=", to).limit(500).get(),
     deps.db.collection("leads").where("createdAtMs", ">=", nowMs - 45 * 86400e3).limit(800).get(),
     deps.db.collection("opportunities").where("status", "==", "new").limit(200).get(),
     deps.db.collection("prospects").where("status", "==", "to_contact").limit(300).get(),
+    deps.db.collection("driverProfiles").where("status", "==", "active").get().catch(() => null),
+    deps.db.collection("settings").doc("inventory").get().catch(() => null),
   ]);
+  const crews = dp ? dp.docs.map((d) => d.data()).filter((x) => (x.skills || []).includes("moving")).length : null;
+  const stock = inv && inv.exists ? (inv.data().items || {}) : null;
   const bookings = b.docs.map((d) => { const x = d.data() || {}; const c = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : null; return Object.assign({}, x, { createdDay: c ? istDay(c) : null }); });
-  const out = buildBriefing({ bookings, leads: l.docs.map((d) => d.data()), opportunities: o.docs.map((d) => d.data()), prospects: p.docs.map((d) => d.data()) }, nowMs);
+  const out = buildBriefing({ bookings, leads: l.docs.map((d) => d.data()), opportunities: o.docs.map((d) => d.data()), prospects: p.docs.map((d) => d.data()), crews, stock }, nowMs);
   await deps.sendAdminEmail(`Good morning ☀️ PackZen briefing — ${new Date(nowMs + 5.5 * 3600e3).toISOString().slice(0, 10)}`, out.rows, null);
   return out.counts;
 }
 
-module.exports = { handleStaff, TeamError, STAFF_ROLES, buildBriefing, runBriefing, istDay };
+/* ---------------- Weekly business report (Fridays 6 PM IST) ---------------- */
+function buildWeekly({ bookings, leads }, nowMs) {
+  const since = nowMs - 7 * 86400e3;
+  const ms = (x) => (x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : (x.createdAtMs || 0));
+  const wk = bookings.filter((b) => ms(b) >= since);
+  const live = wk.filter((b) => b.status !== "cancelled");
+  const sum = (arr, f) => arr.reduce((t, x) => t + (Number(f(x)) || 0), 0);
+  const rup = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+  const done = bookings.filter((b) => ["delivered", "completed"].includes(b.status) && ((b.completedAt && b.completedAt.toMillis ? b.completedAt.toMillis() : ms(b)) >= since));
+  const wl = leads.filter((l) => (l.createdAtMs || 0) >= since && (l.tierManual || l.tier) !== "junk");
+  const bySrc = {};
+  wl.forEach((l) => { const k = l.channel || l.source || "direct"; const r = bySrc[k] = bySrc[k] || { n: 0, hot: 0, booked: 0 }; r.n++; if ((l.tier) === "hot") r.hot++; if (l.status === "booked") r.booked++; });
+  const src = Object.entries(bySrc).sort((a, b) => b[1].booked - a[1].booked || b[1].n - a[1].n).slice(0, 6)
+    .map(([k, r]) => `${k}: ${r.n} leads, ${r.hot} hot, ${r.booked} booked`).join(" · ") || "No leads this week";
+  const best = Object.entries(bySrc).sort((a, b) => b[1].booked - a[1].booked || b[1].hot - a[1].hot)[0];
+  return { rows: [
+    ["New bookings", `${live.length} (${rup(sum(live, (b) => b.total))} booked value)`],
+    ["Paid online", rup(sum(live, (b) => (b.paid != null ? b.paid : b.paidAmount)))],
+    ["Jobs completed", `${done.length} (${rup(sum(done, (b) => b.total))})`],
+    ["Cancelled", `${wk.length - live.length}`],
+    ["Real leads", `${wl.length} · converted ${wl.filter((l) => l.status === "booked").length}`],
+    ["Leads by source", src],
+    ["Do more of", best ? `${best[0]} (best source this week)` : "Partner outreach and reviews"],
+  ], counts: { bookings: live.length, leads: wl.length } };
+}
+async function runWeekly(deps) {
+  const nowMs = deps.now(), since = nowMs - 8 * 86400e3;
+  const [b, l] = await Promise.all([
+    deps.db.collection("bookings").where("createdAt", ">=", new Date(since)).limit(1000).get(),
+    deps.db.collection("leads").where("createdAtMs", ">=", since).limit(1000).get(),
+  ]);
+  const out = buildWeekly({ bookings: b.docs.map((d) => d.data()), leads: l.docs.map((d) => d.data()) }, nowMs);
+  await deps.sendAdminEmail(`PackZen weekly report — week ending ${new Date(nowMs + 5.5 * 3600e3).toISOString().slice(0, 10)}`, out.rows, null);
+  return out.counts;
+}
+
+module.exports = { buildWeekly, runWeekly, lowStock, handleStaff, TeamError, STAFF_ROLES, buildBriefing, runBriefing, istDay };

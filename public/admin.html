@@ -495,6 +495,14 @@ function buildShell(adminName) {
     </div>
     <!-- OVERVIEW -->
     <div class="section active" id="sectionOverview">
+      <!-- BUSINESS READINESS (crews, technicians, packing stock, lead response) -->
+      <div class="table-card" id="readinessCard" style="padding:16px;margin-bottom:16px">
+        <div class="table-title" style="margin-bottom:10px">Business readiness</div>
+        <div id="readinessChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"><span class="badge">Loading…</span></div>
+        <div style="font-weight:700;margin:6px 0">Packing stock <small style="font-weight:500;color:#6B7D74">(update after each move; red = below minimum)</small></div>
+        <div id="stockGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px"></div>
+        <button class="btn-primary-sm" style="margin-top:10px" onclick="saveStock()">Save stock</button>
+      </div>
       <div class="stats-grid">
         <div class="stat-card"><div class="sc-lbl">Today's Bookings</div><div class="sc-val" id="statToday">0</div><div class="sc-sub">Today</div></div>
         <div class="stat-card"><div class="sc-lbl">Revenue</div><div class="sc-val" id="statRevenue" style="font-size:1.4rem;color:#00c96e">₹0</div><div class="sc-sub">Total</div></div>
@@ -2530,6 +2538,46 @@ function teamAct(uid, op, role, name, phone){
   requireAdmin(()=>_team({op,uid,role}).then(r=>{ if (op==="resetLink") document.getElementById("stResult").innerHTML=_shareLink(name||"",phone||"",r.setPasswordLink); else toast("✅ Saved"); loadTeam(); })
     .catch(e=>toast("❌ "+e.message)));
 }
+</script>
+
+<script>
+/* ── Business readiness: active crews, technicians, packing stock, lead response ── */
+const PZ_STOCK = [["boxes","Cartons / boxes",40],["tape","Tape rolls",10],["bubble","Bubble wrap (rolls)",4],["stretch","Stretch film (rolls)",4],["blankets","Moving blankets",10],["crates","Wooden crates",0]];
+function _esc2(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function loadReadiness() {
+  if (!window._firebase || !document.getElementById("readinessCard")) return;
+  const db = window._firebase.db, chip = (ok, t) => '<span class="badge ' + (ok ? 'badge-delivered' : 'badge-pending') + '">' + (ok ? '✅ ' : '⚠️ ') + _esc2(t) + '</span>';
+  Promise.all([
+    db.collection("driverProfiles").where("status","==","active").get().catch(()=>null),
+    db.collection("leads").where("status","==","new").limit(200).get().catch(()=>null),
+    db.collection("settings").doc("inventory").get().catch(()=>null),
+    db.collection("promos").doc("FIRSTMOVE").get().catch(()=>null)
+  ]).then(([dp, leads, inv, promo]) => {
+    const profiles = dp ? dp.docs.map(d=>d.data()) : [];
+    const movers = profiles.filter(p => (p.skills||[]).includes("moving")).length;
+    const techs = profiles.filter(p => (p.skills||[]).some(k => k==="ac" || k==="appliances")).length;
+    const waiting = leads ? leads.docs.map(d=>d.data()).filter(l => l.tier !== "junk" && Date.now() - (l.createdAtMs||0) > 10*60000).length : 0;
+    const items = (inv && inv.exists && inv.data().items) || {};
+    const low = PZ_STOCK.filter(([k,,min]) => min > 0 && Number(items[k]||0) < min).map(x=>x[1]);
+    document.getElementById("readinessChips").innerHTML =
+      chip(movers >= 2, movers + " active moving crew" + (movers===1?"":"s") + (movers < 2 ? " (aim for 2+)" : "")) +
+      chip(techs >= 1, techs + " AC / appliance technician" + (techs===1?"":"s")) +
+      chip(waiting === 0, waiting ? waiting + " lead(s) waiting > 10 min" : "No leads waiting") +
+      chip(!low.length, low.length ? "Low stock: " + low.join(", ") : "Packing stock OK") +
+      chip(!!(promo && promo.exists && promo.data().active), "FIRSTMOVE promo " + (promo && promo.exists && promo.data().active ? "active" : "missing"));
+    document.getElementById("stockGrid").innerHTML = PZ_STOCK.map(([k,label,min]) => {
+      const v = Number(items[k]||0), lowc = min > 0 && v < min;
+      return '<label style="display:block;font-size:.85rem;font-weight:600;color:' + (lowc ? '#B42318' : 'inherit') + '">' + _esc2(label) + (min ? ' <small style="font-weight:500;color:#6B7D74">min ' + min + '</small>' : '') +
+        '<input type="number" min="0" max="100000" step="1" data-stock="' + k + '" value="' + v + '" style="display:block;width:100%;margin-top:4px;padding:8px;border:1px solid ' + (lowc ? '#F2B8B5' : '#d6e2dc') + ';border-radius:10px;font:inherit"></label>';
+    }).join("");
+  });
+}
+function saveStock() {
+  const items = {}; document.querySelectorAll("#stockGrid [data-stock]").forEach(i => { items[i.dataset.stock] = Math.max(0, Math.min(100000, Math.round(Number(i.value)||0))); });
+  window._firebase.db.collection("settings").doc("inventory").set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: (window._firebase.auth.currentUser||{}).email || "admin" })
+    .then(() => { toast("✅ Stock saved"); loadReadiness(); }).catch(e => toast("❌ " + e.message));
+}
+(function waitReady(n){ if (window._firebase && window._firebase.auth && window._firebase.auth.currentUser && document.getElementById("readinessCard")) return loadReadiness(); if ((n||0) < 120) setTimeout(() => waitReady((n||0)+1), 1000); })();
 </script>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>

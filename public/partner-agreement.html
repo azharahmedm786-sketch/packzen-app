@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PackZen Partner Agreement</title>
+  <link rel="canonical" href="https://packzenblr.in/partner-agreement.html">
+  <meta name="description" content="Terms every PackZen partner (movers, crews, technicians) accepts: payouts, customer care, damage, cancellations, conduct and data.">
+  <link rel="icon" type="image/png" href="assets/logo/packzen-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* ── Legal Page Specific Styles ── */
+    .legal-hero {
+      background: linear-gradient(135deg, #157A47, #1F9D5C);
+      padding: 100px 1.5rem 3rem;
+      text-align: center;
+      color: white;
+    }
+    .legal-hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    .legal-hero p {
+      opacity: 0.8;
+      font-size: 0.95rem;
+    }
+
+    /* Tab nav */
+    .legal-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 1.5rem 1rem 0;
+      background: var(--bg-secondary);
+      border-bottom: 2px solid var(--border-light);
+      position: sticky;
+      top: 60px;
+      z-index: 100;
+    }
+    .legal-tab {
+      padding: 0.65rem 1.3rem;
+      border: none;
+      background: none;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      border-radius: 8px 8px 0 0;
+    }
+    .legal-tab:hover { color: var(--text-primary); }
+    .legal-tab.active {
+      color: #1F9D5C;
+      border-bottom-color: #1F9D5C;
+      background: var(--bg-primary);
+    }
+
+    /* Content */
+    .legal-content {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+    }
+    .legal-section { display: none; }
+    .legal-section.active { display: block; }
+
+    .legal-updated {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 0.5rem 0.9rem;
+      display: inline-block;
+      margin-bottom: 2rem;
+    }
+
+    .legal-content h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 0 0 0.3rem;
+    }
+    .legal-content h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 2rem 0 0.6rem;
+      padding-left: 0.8rem;
+      border-left: 3px solid #1F9D5C;
+    }
+    .legal-content p {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      margin-bottom: 1rem;
+      font-size: 0.93rem;
+    }
+    .legal-content ul {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      margin-bottom: 1rem;
+      padding-left: 1.4rem;
+      font-size: 0.93rem;
+    }
+    .legal-content ul li { margin-bottom: 0.4rem; }
+
+    /* Highlight boxes */
+    .info-box {
+      background: #EEF8F2;
+      border: 1px solid #BFE3CC;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 1.2rem 0;
+      font-size: 0.88rem;
+      color: #157A47;
+      line-height: 1.6;
+    }
+    body.dark-mode .info-box {
+      background: rgba(37,99,235,0.1);
+      border-color: rgba(37,99,235,0.3);
+      color: #93c5fd;
+    }
+    .warn-box {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 1.2rem 0;
+      font-size: 0.88rem;
+      color: #92400e;
+      line-height: 1.6;
+    }
+    body.dark-mode .warn-box {
+      background: rgba(251,191,36,0.1);
+      border-color: rgba(251,191,36,0.3);
+      color: #fcd34d;
+    }
+    .success-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 1.2rem 0;
+      font-size: 0.88rem;
+      color: #166534;
+      line-height: 1.6;
+    }
+    body.dark-mode .success-box {
+      background: rgba(22,163,74,0.1);
+      border-color: rgba(22,163,74,0.3);
+      color: #86efac;
+    }
+
+    /* Refund table */
+    .refund-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2rem 0 1.5rem;
+      font-size: 0.88rem;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-light);
+    }
+    .refund-table th {
+      background: #1F9D5C;
+      color: white;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 700;
+    }
+    .refund-table td {
+      padding: 0.7rem 1rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .refund-table tr:last-child td { border-bottom: none; }
+    .refund-table tr:nth-child(even) td { background: var(--bg-secondary); }
+    .refund-table .tag-green { color: #16a34a; font-weight: 700; }
+    .refund-table .tag-yellow { color: #d97706; font-weight: 700; }
+    .refund-table .tag-red    { color: #dc2626; font-weight: 700; }
+
+    /* Contact card */
+    .contact-card {
+      background: linear-gradient(135deg, #157A47, #1F9D5C);
+      border-radius: 16px;
+      padding: 1.5rem;
+      color: white;
+      margin-top: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .contact-card-text h4 { font-family: 'Space Grotesk',sans-serif; font-size: 1.1rem; margin-bottom: 0.2rem; }
+    .contact-card-text p  { font-size: 0.85rem; opacity: 0.85; margin: 0; }
+    .contact-card-btns { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .contact-card-btns a {
+      padding: 0.55rem 1rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-wa  { background: #25d366; color: white; }
+    .btn-tel { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
+
+    @media (max-width: 600px) {
+      .legal-content { padding: 1.5rem 1rem 4rem; }
+      .legal-tabs { top: 56px; padding: 1rem 0.5rem 0; gap: 0.3rem; }
+      .legal-tab { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
+      .refund-table { font-size: 0.78rem; }
+      .refund-table td, .refund-table th { padding: 0.5rem 0.6rem; }
+    }
+  </style>
+
+  <script src="https://unpkg.com/lucide@1.52.0/dist/umd/lucide.js" integrity="sha384-T6tTFChJBlmkxgMux1AgYV/mFGa/YZBBqpGIIaIfLMX2qvKRZVRZN148LkpWUjFN" crossorigin="anonymous"></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
+  <link rel="stylesheet" href="pz-premium.css?v=15d">
+</head>
+<body>
+<main style="max-width:780px;margin:0 auto;padding:28px 18px 60px;font-family:var(--nb-body,system-ui);color:var(--nb-text,#0C1A14);line-height:1.6"><p><a href="/">← PackZen</a> · <a href="/partner.html">Partner home</a></p><h1 style="font-family:var(--nb-display,inherit)">PackZen Partner Agreement</h1><p style="color:#5b6b63">Version 2026-10 · Applies to all partners who register or accept jobs on PackZen.</p><h2 style="font-size:1.15rem;margin-top:22px">1. Who this applies to</h2><p>This agreement applies to every person or business that registers as a PackZen partner (movers, packing crews, drivers, vehicle owners and technicians) and accepts jobs through the PackZen crew app. Partners work as independent service providers, not as PackZen employees.</p><h2 style="font-size:1.15rem;margin-top:22px">2. Jobs and acceptance</h2><p>PackZen offers jobs through the crew app. You may accept or decline any offer. Once you accept a job, you commit to reaching on time with the agreed vehicle, crew and tools. If you cannot attend, tell PackZen at least 12 hours before (or immediately in an emergency) so the customer can be helped.</p><h2 style="font-size:1.15rem;margin-top:22px">3. Payouts</h2><p>You receive 90% of the job value shown in the crew app; PackZen keeps 10% as its platform fee. Your Earnings tab shows your share, cash you have collected and amounts paid to you. Payouts are made to your registered bank account or UPI, normally once a week. Cash or UPI you collect directly from a customer is your money already received and is adjusted against your payout.</p><h2 style="font-size:1.15rem;margin-top:22px">4. Customer payments</h2><p>Collect only the balance shown in the crew app — never more, never in advance of the job. Record every collection in the app. Do not ask customers for tips, extra charges or payments outside the app; any extra work must be added by PackZen first.</p><h2 style="font-size:1.15rem;margin-top:22px">5. Completing a job</h2><p>A job is complete only when you enter the customer&#x27;s completion code in the crew app after the work is done. Never ask for the code before the job is finished. Jobs marked complete without a valid code are not paid until PackZen verifies them.</p><h2 style="font-size:1.15rem;margin-top:22px">6. Care, damage and claims</h2><p>Handle every item with care: wrap furniture and appliances, keep fragile items upright and follow society rules for lifts and gate passes. If anything is damaged, take photos immediately, tell the customer honestly and inform PackZen before leaving. PackZen handles customer claims. Where a review shows damage was caused by negligence, PackZen may recover a fair part of the cost from your payouts after discussing it with you.</p><h2 style="font-size:1.15rem;margin-top:22px">7. Cancellations and no-shows</h2><p>Repeated late cancellations or not turning up for accepted jobs harm customers. PackZen may pause offers to, or deactivate, partners with repeated no-shows.</p><h2 style="font-size:1.15rem;margin-top:22px">8. Conduct and safety</h2><p>Be polite and professional, carry your ID, do not smoke or drink on the job, and follow traffic and safety rules. Harassment, theft, abuse or unsafe behaviour leads to immediate deactivation and may be reported to the police.</p><h2 style="font-size:1.15rem;margin-top:22px">9. Documents and vehicles</h2><p>Keep your Aadhaar, PAN, vehicle RC, insurance and driving licence valid and up to date in your profile. Vehicles used for jobs must be roadworthy and legally permitted to carry goods.</p><h2 style="font-size:1.15rem;margin-top:22px">10. Customer data</h2><p>Customer names, phone numbers and addresses are shared only so you can do the job. Do not save, share or use them for anything else, and do not contact customers after the job except through PackZen.</p><h2 style="font-size:1.15rem;margin-top:22px">11. Ending the partnership</h2><p>You can stop working with PackZen at any time by informing us. PackZen may deactivate a partner for breaking this agreement. Payouts for completed jobs up to that date are still settled.</p><h2 style="font-size:1.15rem;margin-top:22px">12. Changes and contact</h2><p>PackZen may update this agreement; partners will be told in the crew app before changes apply. Questions: call or WhatsApp 99450 95453 or email moveeasyblr@gmail.com. This agreement is governed by the laws of India, with courts in Bengaluru having jurisdiction.</p><p style="margin-top:28px;color:#5b6b63">By ticking “I agree” when registering, you accept this agreement. Your acceptance date and version are recorded with your application.</p></main>
+</body>
+</html>

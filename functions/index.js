@@ -714,6 +714,12 @@ exports.morningBriefing = functions.region("asia-south1").runWith({ secrets: [..
   functions.logger.info("morning_briefing", r);
   return null;
 });
+exports.weeklyReport = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] }).pubsub.schedule("0 18 * * 5").timeZone("Asia/Kolkata").onRun(async () => {
+  const { sendAdminEmail } = require("./notification-service");
+  const r = await team.runWeekly({ db: admin.firestore(), now: () => Date.now(), sendAdminEmail });
+  functions.logger.info("weekly_report", r);
+  return null;
+});
 exports.intentRadarSweep = functions.region("asia-south1").pubsub.schedule("every 2 hours").timeZone("Asia/Kolkata").onRun(async () => {
   const r = await leadFinder.sweepIntent({ db: admin.firestore(), fetch: (...a) => fetch(...a), now: () => Date.now(), serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp() });
   functions.logger.info("intent_radar", r);
