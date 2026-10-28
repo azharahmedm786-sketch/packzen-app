@@ -24,6 +24,10 @@ const now = Date.parse("2026-10-21T06:00:00Z");
   assert.strictEqual(F.classifyPost(items[1]), null); assert.strictEqual(F.classifyPost(items[2]), null); assert.strictEqual(F.classifyPost(items[3]), null);
   assert.ok(F.classifyPost(items[5]).services.includes("ac"));
   assert.ok(/Disclosure: I run PackZen/.test(F.suggestReply(c)));
+  assert.strictEqual(F.classifyPost({ title: "Need a courier to send a parcel to Koramangala today?", summary: "" }), null);
+  assert.strictEqual(F.classifyPost({ title: "Any good electrician or plumber in HSR?", summary: "" }), null);
+  const ap = F.classifyPost({ title: "Washing machine not draining in BTM — need a reliable technician?", summary: "" });
+  assert.ok(ap && ap.services.includes("appliance") && /washing-machine-repair-bangalore/.test(F.suggestReply(ap)));
   ok("radar: parses Reddit Atom + Google Alerts RSS; keeps real requests (area, urgency → hot); drops ads, job posts, off-topic");
 
   const store = {};

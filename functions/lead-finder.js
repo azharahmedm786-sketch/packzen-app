@@ -24,9 +24,8 @@ const DEFAULT_FEEDS = [
 ];
 const SERVICE_RULES = [
   ["move", /\b(packers?|movers?|shifting|relocat\w*|moving (house|out|in|to)|house shift\w*|move (my|our) (stuff|things|furniture))\b/i],
-  ["parcel", /\b(courier|parcel|send (a )?package|deliver (a|my) (box|bag|package))\b/i],
   ["ac", /\b(ac|a\.c\.|air ?con\w*)\b.{0,40}\b(service|repair|gas|install|technician|not cooling)\b|\b(ac technician|ac repair)\b/i],
-  ["handyman", /\b(electrician|plumber|carpenter|tv (wall )?mount\w*|furniture assembl\w*)\b/i],
+  ["appliance", /\b(washing machine|washer|fridge|refrigerator)\b.{0,40}\b(repair|service|not (working|cooling|spinning|draining)|gas|install\w*|technician)\b/i],
 ];
 const ASKING = /\b(need|needed|looking for|recommend\w*|suggest\w*|any(one)? (know|used|tried)|reliable|good|best|help|planning|how much|cost|charges?|quote)\b|\?/i;
 const PROMO = /\b(we (provide|offer)|call us|contact us|dm (me|us) for|our services|best price guaranteed|book now|whatsapp us|discount)\b/i;
@@ -73,12 +72,13 @@ function classifyPost(p) {
   return { services, area, score: Math.min(100, score), tier: score >= 70 ? "hot" : "warm" };
 }
 
-const PAGE = { move: "https://packzenblr.in/", parcel: "https://packzenblr.in/parcel.html", ac: "https://packzenblr.in/ac-service-repair-bangalore.html", handyman: "https://packzenblr.in/electrician-plumber-carpenter-bangalore.html" };
+// Only services PackZen offers (parcel delivery and handyman visits retired Oct 2026)
+const PAGE = { move: "https://packzenblr.in/", ac: "https://packzenblr.in/ac-service-repair-bangalore.html", appliance: "https://packzenblr.in/washing-machine-repair-bangalore.html" };
 function suggestReply(c) {
   const s = c.services[0];
   const tip = s === "move"
     ? "Tip from moving a lot of Bangalore homes: get a fixed written price that includes packing, loading, floors and the truck, book a weekday if you can (cheaper and easier lift slots), and check whether your society needs a lift booking or gate pass."
-    : s === "parcel" ? "For same-day local delivery a two-wheeler courier is usually the cheapest for anything under ~20 kg."
+    : s === "appliance" ? "Before paying for a repair, ask the technician to confirm the fault (and the parts price) after the visit — the visit fee should be fixed and small."
     : s === "ac" ? "If it runs but doesn't cool, ask for a leak check before any gas refill — a refill without fixing the leak only lasts a few weeks."
     : "Ask for the visit charge and the work price before anything starts, so there are no surprises.";
   return `${tip}${c.area ? " " : ""}\n\nDisclosure: I run PackZen, a Bangalore service — if it helps, you can see fixed prices online here: ${PAGE[s] || PAGE.move} (no obligation).`;

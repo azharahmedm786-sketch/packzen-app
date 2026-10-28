@@ -5,7 +5,7 @@
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
   var opps = [], prospects = [], oppStatus = "new", pipeStatus = "to_contact", started = false;
   var STATUS = { to_contact: "To contact", messaged: "Messaged", partner: "Partner", sending: "Sending leads", no: "Not interested" };
-  var SVC = { move: "Shifting", parcel: "Parcel", ac: "AC", handyman: "Handyman" };
+  var SVC = { move: "Shifting", ac: "AC", appliance: "Washing machine / fridge", parcel: "Parcel (old)", handyman: "Handyman (old)" };
   function call(data) { return window._firebase.functions.httpsCallable("leadFinder")(data).then(function (r) { return r.data; }); }
   function ago(ms) { var h = Math.round((Date.now() - (ms || Date.now())) / 3600e3); return h < 1 ? "just now" : h < 48 ? h + "h ago" : Math.round(h / 24) + "d ago"; }
   function toast(t) { var el = $("toast") || (function () { var d = document.createElement("div"); d.id = "toast"; d.className = "toast"; document.body.appendChild(d); return d; })(); el.textContent = t; el.classList.add("on"); setTimeout(function () { el.classList.remove("on"); }, 2400); }
