@@ -162,6 +162,12 @@
 .period-summary{padding:8px 14px;font-size:.88rem;color:#3e5248;background:#f3faf6;border-top:1px solid #e3eee8;border-bottom:1px solid #e3eee8}
 /* mobile: admin usable on phones */
 @media (max-width: 860px){
+  .admin-main .table-card{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  .admin-main .table-card table{min-width:820px!important;width:max-content!important;table-layout:auto!important}
+  .admin-main .table-card th,.admin-main .table-card td{white-space:nowrap;word-break:normal!important;overflow-wrap:normal!important}
+  .admin-main .table-card td:nth-child(4){white-space:normal;min-width:160px;max-width:220px}
+  .flt-date{flex:1 1 100%!important;justify-content:space-between}
+  .flt-date input{flex:1;margin-left:8px;min-width:0}
   .table-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .table-card table{min-width:760px}
   .table-hdr{flex-direction:column;align-items:stretch;gap:8px}
