@@ -68,6 +68,17 @@ service cloud.firestore {
     }
 
     // USERS
+    // Saved addresses (My Bookings → Addresses; chips in the booking form). Owner only.
+    // Was missing entirely, so every save was refused (UAT Oct 2026).
+    match /users/{uid}/addresses/{addrId} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['address', 'label', 'createdAt'])
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 3 && request.resource.data.address.size() <= 300
+        && (!('label' in request.resource.data) || (request.resource.data.label is string && request.resource.data.label.size() <= 30));
+    }
+
     match /users/{uid} {
       // ✅ ADDED isAdvisor() so the advisor dashboard's customers/drivers
       // tables (db.collection("users").where("role","==",...)) can

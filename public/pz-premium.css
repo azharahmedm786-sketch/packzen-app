@@ -517,3 +517,9 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .cc-btn-bookings { flex: 1 1 100%; padding: .8rem; border-radius: 999px; border: 0; cursor: pointer; font-weight: 800; font-size: .9rem;
   background: var(--nb-green, #1F9D5C); color: #fff; }
 .cc-actions .cc-btn-close-action { flex: 1 1 100%; font-size: .9rem; padding: .75rem; color: var(--nb-text, #0C1A14); }
+
+/* Saved-address chips under pickup / drop */
+.pz-saved-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 2px; }
+.pz-saved-label { font-size: .78rem; font-weight: 700; color: var(--nb-muted, #6B7D74); }
+.pz-saved-chip { border: 1px solid var(--nb-line-2, rgba(10,40,28,.18)); background: var(--nb-green-soft, #E9F6EF); color: var(--nb-green-deep, #157A47);
+  border-radius: 999px; padding: 6px 10px; font: 600 .8rem var(--nb-body, system-ui); cursor: pointer; max-width: 100%; text-align: left; }

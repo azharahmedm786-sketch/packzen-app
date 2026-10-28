@@ -154,6 +154,24 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
   <link rel="stylesheet" href="pz-ops-premium.css?v=5s">
+
+<style id="pz-admin-uat">
+/* filters + period summary */
+.flt-date{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:#5b6b63}
+.flt-date input{padding:6px 8px;border:1px solid #d6e2dc;border-radius:10px;font:inherit}
+.period-summary{padding:8px 14px;font-size:.88rem;color:#3e5248;background:#f3faf6;border-top:1px solid #e3eee8;border-bottom:1px solid #e3eee8}
+/* mobile: admin usable on phones */
+@media (max-width: 860px){
+  .table-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-card table{min-width:760px}
+  .table-hdr{flex-direction:column;align-items:stretch;gap:8px}
+  .table-actions{display:flex;flex-wrap:wrap;gap:6px}
+  .table-actions > *{flex:1 1 140px;min-width:0}
+  .search-input{width:100%}
+  .ops-filters{flex-wrap:wrap}
+  input,select,textarea{font-size:16px}
+}
+</style>
 </head>
 <body>
 
@@ -527,12 +545,20 @@ function buildShell(adminName) {
               <option value="packing">Packing</option>
               <option value="transit">Transit</option>
               <option value="delivered">Delivered</option>
+              <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <input class="search-input" id="searchInput" placeholder="Search..." oninput="filterBookings(this.value)">
+            <select class="status-sel" id="filterType" onchange="filterBookings(document.getElementById('searchInput').value)" aria-label="Service type">
+              <option value="all">All services</option><option value="move">Moves</option><option value="service">Home services</option><option value="parcel">Parcels (old)</option>
+            </select>
+            <label class="flt-date">From <input type="date" id="filterFrom" onchange="filterBookings(document.getElementById('searchInput').value)"></label>
+            <label class="flt-date">To <input type="date" id="filterTo" onchange="filterBookings(document.getElementById('searchInput').value)"></label>
+            <input class="search-input" id="searchInput" placeholder="Search name, phone, ID…" oninput="filterBookings(this.value)">
+            <button class="btn-export" onclick="clearBookingFilters()">Clear</button>
             <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
           </div>
         </div>
+        <div id="bookingPeriodSummary" class="period-summary" aria-live="polite"></div>
         <table><thead><tr><th>ID</th><th>Customer</th><th>Phone</th><th>Route</th><th>Date</th><th>Amount</th><th>Status</th><th>Driver</th><th>Actions</th></tr></thead>
         <tbody id="bookingsTable"><tr class="empty-row"><td colspan="9">Loading...</td></tr></tbody></table>
       </div>
@@ -1300,21 +1326,44 @@ style="background:#7c3aed;color:white;margin-left:8px;text-decoration:none;">
 `; }).join("");
 }
   
+/* Booking filters: status, service type, date range (by moving/service date) and search.
+   The summary line shows the revenue for exactly what's filtered. */
+function _bType(b) { return b.bookingType === "parcel" || b.flow === "parcel" ? "parcel" : (b.bookingType === "service" || b.flow === "service" || b.serviceId || b.items) ? "service" : "move"; }
+function _bDay(b) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || ""))) return b.date;
+  const t = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate() : (b.createdAt ? new Date(b.createdAt) : null);
+  return t && !isNaN(t) ? new Date(t.getTime() + 5.5 * 3600e3).toISOString().slice(0, 10) : "";
+}
+function _num(v) { const n = Number(v); return isFinite(n) ? n : 0; }
 function filterBookings(q) {
   q = (q || "").toLowerCase();
-  const statusFilterEl = document.getElementById("filterStatus");
-  const status = statusFilterEl ? statusFilterEl.value : "all";
-
+  const val = (id, d) => { const el = document.getElementById(id); return el && el.value ? el.value : d; };
+  const status = val("filterStatus", "all"), type = val("filterType", "all"), from = val("filterFrom", ""), to = val("filterTo", "");
   filteredBookings = allBookings.filter(b => {
-    const matchesSearch = (b.customerName || "").toLowerCase().includes(q) ||
-      (b.id || "").toLowerCase().includes(q) ||
-      (b.bookingRef || "").toLowerCase().includes(q) ||
-      (b.phone || "").includes(q);
-    const matchesStatus = status === "all" || b.status === status;
-    return matchesSearch && matchesStatus;
+    const matchesSearch = !q || (b.customerName || b.name || "").toLowerCase().includes(q) || (b.id || "").toLowerCase().includes(q) ||
+      (b.bookingRef || "").toLowerCase().includes(q) || String(b.phone || "").includes(q);
+    const st = b.status === "delivered" ? "completed" : b.status;
+    const matchesStatus = status === "all" || b.status === status || st === status;
+    const matchesType = type === "all" || _bType(b) === type;
+    const day = _bDay(b);
+    const matchesDate = (!from || (day && day >= from)) && (!to || (day && day <= to));
+    return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
-
   renderBookingsTable(filteredBookings);
+  const live = filteredBookings.filter(b => b.status !== "cancelled");
+  const total = live.reduce((t, b) => t + _num(b.total), 0);
+  const paid = live.reduce((t, b) => t + _num(b.paid != null ? b.paid : (b.paidAmount != null ? b.paidAmount : b.amountPaid)), 0);
+  const done = live.filter(b => ["delivered", "completed"].includes(b.status));
+  const doneVal = done.reduce((t, b) => t + _num(b.total), 0);
+  const el = document.getElementById("bookingPeriodSummary");
+  if (el) el.innerHTML = "<b>" + filteredBookings.length + "</b> bookings" + (from || to ? " (" + (from || "start") + " → " + (to || "today") + ")" : "") +
+    " · Booked value <b>₹" + total.toLocaleString("en-IN") + "</b> · Paid online <b>₹" + paid.toLocaleString("en-IN") + "</b>" +
+    " · Completed <b>" + done.length + "</b> (₹" + doneVal.toLocaleString("en-IN") + ")" + " · Cancelled " + (filteredBookings.length - live.length);
+}
+function clearBookingFilters() {
+  ["filterFrom", "filterTo", "searchInput"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  ["filterStatus", "filterType"].forEach(id => { const el = document.getElementById(id); if (el) el.value = "all"; });
+  filterBookings("");
 }
 // "Delivered" can't be written from the browser (firestore.rules). Normally the
 // driver completes with the customer's code; this admin-only emergency
@@ -1342,21 +1391,26 @@ function deleteBooking(id, ref) {
       .catch(e => toast("❌ " + e.message));
   });
 }
+/* CSV export of exactly what's filtered. Proper quoting (commas, quotes, new lines),
+   UTF-8 BOM so Excel shows ₹ and Indian names correctly, Blob download (works on phones). */
 function exportCSV() {
-  const headers = ["ID","Customer","Phone","Pickup","Drop","Date","Total","Status","Driver"];
-  const rows = filteredBookings.map(b => [
-    b.id.slice(-6).toUpperCase(), b.customerName||"", b.phone||"",
-    (b.pickup||"").replace(/,/g," "), (b.drop||"").replace(/,/g," "),
-    b.date||"", b.total||0, b.status||"", b.driverName||""
-  ]);
-  const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-  a.download = "PackZen-Bookings-" + new Date().toLocaleDateString("en-IN").replace(/\//g,"-") + ".csv";
-  a.click();
-  toast("📁 CSV downloaded!");
+  const list = Array.isArray(filteredBookings) ? filteredBookings : allBookings;
+  if (!list || !list.length) { toast("⚠️ No bookings to export for these filters."); return; }
+  const headers = ["Booking ref", "Doc ID", "Type", "Customer", "Phone", "Email", "Pickup", "Drop", "Date", "Total (Rs)", "Paid online (Rs)", "Balance (Rs)", "Payment", "Status", "Driver", "Created"];
+  const cell = v => { const t = v == null ? "" : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const created = b => { const t = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate() : null; return t ? t.toISOString().slice(0, 16).replace("T", " ") : ""; };
+  const rows = list.map(b => [b.bookingRef || "", b.id || "", _bType(b), b.customerName || b.name || "", b.phone || "", b.email || "",
+    b.pickup || b.address || "", b.drop || "", b.date || "", _num(b.total), _num(b.paid != null ? b.paid : (b.paidAmount != null ? b.paidAmount : b.amountPaid)),
+    _num(b.balanceDue), b.paymentStatus || b.paymentMode || "", b.status || "", b.driverName || "", created(b)].map(cell).join(","));
+  const csv = "\ufeff" + [headers.join(",")].concat(rows).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = "PackZen-Bookings-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast("📁 Exported " + list.length + " bookings");
 }
- 
+
 function viewBooking(id) {
 
   if (expandedBookingId === id) {
@@ -1385,11 +1439,24 @@ function renderDrivers() {
       </div>
       <span class="badge ${d.isOnline?"badge-delivered":"badge-pending"}">${d.isOnline?"🟢 Active":"⚫ Offline"}</span>
       <button type="button" class="btn-cancel" style="margin-left:8px;padding:4px 10px" data-uid="${escapeHTML(raw.id)}" onclick="editDriverProfile(this.dataset.uid)">Profile</button>
+      <button type="button" class="btn-cancel" style="margin-left:6px;padding:4px 10px" data-uid="${escapeHTML(raw.id)}" onclick="setDriverActive(this.dataset.uid, false)">Deactivate</button>
+      <button type="button" class="btn-cancel" style="margin-left:6px;padding:4px 10px" data-uid="${escapeHTML(raw.id)}" onclick="setDriverActive(this.dataset.uid, true)">Activate</button>
     </div>`; }).join("");
 }
 // Phase 2A: driver profile (vehicles, skills, status, capacity) via the validated callable.
 const PZ_VEHICLES = ["tata_ace", "truck_14ft", "truck_17ft", "truck_22ft"];
-const PZ_SKILLS = ["moving", "packing", "assembly", "vehicle_transport", "parcel", "ac", "appliances", "plumbing", "electrical", "carpentry", "painting", "cleaning", "pest_control"];
+const PZ_SKILLS = ["moving", "packing", "assembly", "vehicle_transport", "ac", "appliances"];  // parcel, handyman, painting, cleaning retired
+/* Deactivate = profile status "suspended": no new jobs AND the crew app refuses to open. */
+function setDriverActive(uid, active) {
+  if (!active && !confirm("Deactivate this partner? They will be signed out of the crew app and get no new jobs.")) return;
+  requireAdmin(() => {
+    window._firebase.db.collection("driverProfiles").doc(uid).get().then(snap => {
+      const p = snap.exists ? snap.data() : { vehicleIds: [], skills: ["moving"], maxJobsPerDay: 3 };
+      return _adminCallable("adminUpsertDriverProfile")({ uid, profile: { status: active ? "active" : "suspended", vehicleIds: p.vehicleIds || [], skills: (p.skills && p.skills.length ? p.skills : ["moving"]), maxJobsPerDay: p.maxJobsPerDay || 3, serviceAreas: p.serviceAreas || ["bangalore"] } });
+    }).then(() => toast(active ? "✅ Partner activated" : "⏸ Partner deactivated"))
+      .catch(e => toast("❌ " + (e && e.message ? e.message : "Could not update")));
+  });
+}
 function editDriverProfile(uid) {
   requireAdmin(() => {
     window._firebase.db.collection("driverProfiles").doc(uid).get().then(snap => {
@@ -1852,7 +1919,8 @@ async function adminCreateDriver() {
     await secondaryAuth.signOut();
     await secondaryApp.delete();
     await db.collection("users").doc(driverUid).set({ name:name.trim(), email:email.trim(), phone:phone.trim()?"+91"+phone.trim():"", vehicle:vehicle||"", role:"driver", isOnline:false, rating:0, totalMoves:0, createdBy:adminUser?adminUser.uid:"admin", createdAt:firebase.firestore.FieldValue.serverTimestamp() });
-    setMsg('✅ Driver "'+name.trim()+'" created! They can now log in at driver.html', true);
+    try { await _adminCallable("adminUpsertDriverProfile")({ uid: driverUid, profile: { status: "active", vehicleIds: vehicle && PZ_VEHICLES.includes(vehicle) ? [vehicle] : [], skills: ["moving", "packing"], maxJobsPerDay: 3, serviceAreas: ["bangalore"] } }); } catch (e) { console.warn("driver profile", e && e.message); }
+    setMsg('✅ Driver "'+name.trim()+'" created and active! They can log in at packzenblr.in/driver.html with this email and password.', true);
     toast("✅ Driver account created for "+name.trim());
     ["newDriverName","newDriverEmail","newDriverPhone","newDriverVehicle","newDriverPassword"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
     loadDrivers();

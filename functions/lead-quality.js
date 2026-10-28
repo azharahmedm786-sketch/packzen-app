@@ -83,7 +83,17 @@ exports.onLeadScore = functions.region(REGION).runWith({ secrets: require("./bre
   const q = scoreLead(l, Date.now());
   const wasHot = change.before.exists && (change.before.data() || {}).tier === "hot";
   await change.after.ref.update({ score: q.score, tier: q.tier, scoreReasons: q.reasons, junkReason: q.junkReason || null, qualityKey: key, scoredAtMs: Date.now() });
-  if (q.tier === "hot" && !wasHot) {
+  // Every new PackZen Digital enquiry is emailed at once (website projects are high value
+  // even when the score isn't 'hot').
+  const isDigital = l.division === "digital" || ["website", "ecommerce", "seo", "maintenance"].includes(l.service);
+  if (!change.before.exists && isDigital && q.tier !== "junk") {
+    const { sendAdminEmail } = require("./notification-service");
+    await sendAdminEmail(`New PackZen Digital enquiry: ${l.business || l.name} (${l.serviceLabel || l.service})`, [
+      ["Name", l.name], ["Phone", l.phone], ["Email", l.email || "-"], ["Business", l.business || "-"], ["Service", l.serviceLabel || l.service],
+      ["Budget", l.budget || "-"], ["Prefers", l.contactPref || "-"], ["Area", l.area || "-"], ["Details", l.notes || "-"],
+    ], change.after.id).catch(() => {});
+  }
+  if (q.tier === "hot" && !wasHot && !(isDigital && !change.before.exists)) {
     const { sendAdminEmail } = require("./notification-service");
     await sendAdminEmail(`HOT lead: ${l.name} (${l.serviceLabel || l.service}) — call now`, [
       ["Name", l.name], ["Phone", l.phone], ["Service", l.serviceLabel || l.service], ["Area", l.area || "-"], ["When", l.when || l.date || "-"],

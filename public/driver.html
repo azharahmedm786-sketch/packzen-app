@@ -515,10 +515,18 @@ function driverLogin() {
     auth.signInWithEmailAndPassword(email, pass)
       .then(cred => db.collection("users").doc(cred.user.uid).get().then(doc => {
         const role = doc.exists ? doc.data().role : null;
-        if (role !== "driver" && role !== "admin") { auth.signOut(); err.textContent = "Access denied. Driver accounts only."; return; }
-        driverUser = cred.user;
-        if (role === "admin") pzDriverPreview();
-        showApp(doc.data());
+        if (role !== "driver" && role !== "admin") {
+          auth.signOut();
+          err.textContent = role === "partner" || role === "customer"
+            ? "This account isn't an approved PackZen partner yet. If you applied, we'll SMS you once approved."
+            : "Access denied. Driver accounts only.";
+          return;
+        }
+        if (role === "admin") { driverUser = cred.user; pzDriverPreview(); showApp(doc.data()); return; }
+        return pzCrewGate(cred.user).then(okToEnter => {
+          if (!okToEnter) { auth.signOut(); err.textContent = "Your partner account is deactivated. Please contact PackZen on 99450 95453."; return; }
+          driverUser = cred.user; showApp(doc.data());
+        });
       }))
       .catch(e => {
         console.error('Driver Auth Error:', e.code, e.message);
@@ -570,10 +578,22 @@ function showApp(data) {
 }
 
 waitFB(() => {
+  /* Deactivated partners (admin → Drivers → Profile → status "suspended") can't use the
+     crew app. No profile yet = allowed (legacy accounts); assignment still requires "active". */
+  window.pzCrewGate = function (user) {
+    return window._firebase.db.collection("driverProfiles").doc(user.uid).get()
+      .then(p => !(p.exists && p.data().status === "suspended"))
+      .catch(() => true);
+  };
   window._firebase.auth.onAuthStateChanged(u => {
     if (!u) return;
     window._firebase.db.collection("users").doc(u.uid).get().then(doc => {
-      if (doc.exists && doc.data().role === "driver") { driverUser = u; showApp(doc.data()); }
+      if (doc.exists && doc.data().role === "driver") {
+        pzCrewGate(u).then(okToEnter => {
+          if (!okToEnter) { window._firebase.auth.signOut(); const e = document.getElementById("drvErr"); if (e) e.textContent = "Your partner account is deactivated. Please contact PackZen on 99450 95453."; return; }
+          driverUser = u; showApp(doc.data());
+        });
+      }
       else if (doc.exists && doc.data().role === "admin") { driverUser = u; pzDriverPreview(); showApp(doc.data()); }
     });
   });

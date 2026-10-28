@@ -42,7 +42,10 @@
     if (unsub) { unsub(); unsub = null; }
     if (!u) return showLogin();
     db().collection("users").doc(u.uid).get().then(function (d) {
-      if (!d.exists || ["admin", "manager", "advisor"].indexOf(d.data().role) < 0) { window._firebase.auth.signOut(); return showLogin("This app is for the PackZen team only."); }
+      // Owner emails (same allow-list as firestore.rules isAdmin) always get in, like admin.html.
+      var OWNER = ["azharahmedm786@gmail.com", "azharahmednaz@gmail.com", "moveeasyblr@gmail.com"];
+      var role = d.exists ? d.data().role : null, email = String(u.email || "").toLowerCase();
+      if (["admin", "manager", "advisor"].indexOf(role) < 0 && OWNER.indexOf(email) < 0) { window._firebase.auth.signOut(); return showLogin("This app is for the PackZen team only. Signed in as " + (u.email || "unknown") + "."); }
       $("login").hidden = true; $("app").hidden = false; start();
     }).catch(function () { showLogin("Could not check your access. Try again."); });
   });
@@ -55,7 +58,10 @@
       leads = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
       if (!firstLoad && leads.some(function (l) { return l.tier === "hot" && before[l.id] !== "hot" && isOpen(l); })) { beep(); toast("🔥 New hot lead"); }
       firstLoad = false; $("liveDot").classList.add("on"); render();
-    }, function (e) { $("liveDot").classList.remove("on"); toast("Connection problem: " + e.message); });
+    }, function (e) {
+      $("liveDot").classList.remove("on");
+      $("list").innerHTML = '<p class="empty">Could not load leads: ' + esc(e.message) + (/permission/i.test(e.message) ? "<br>Your account doesn't have lead access. Sign in with your PackZen owner email, or ask the owner to add you under admin → Team." : "") + "</p>";
+    });
   }
 
   /* ---------- views ---------- */

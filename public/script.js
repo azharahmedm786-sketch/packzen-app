@@ -3475,16 +3475,37 @@ function loadUserAddresses() {
     }).catch(err => { console.error("Error loading addresses:", err); });
 }
 
+/* Saved addresses as one-tap chips under the pickup / drop fields of the booking form. */
+function renderSavedAddressChips() {
+  if (!currentUser || !window._firebase) return;
+  window._firebase.db.collection("users").doc(currentUser.uid).collection("addresses").limit(8).get().then(snap => {
+    const addrs = snap.docs.map(d => d.data().address).filter(Boolean);
+    ["pickup", "drop"].forEach(id => {
+      const input = document.getElementById(id); if (!input) return;
+      let box = document.getElementById(id + "SavedChips");
+      if (!addrs.length) { if (box) box.remove(); return; }
+      if (!box) { box = document.createElement("div"); box.id = id + "SavedChips"; box.className = "pz-saved-chips"; input.insertAdjacentElement("afterend", box); }
+      box.innerHTML = '<span class="pz-saved-label">Saved:</span>' + addrs.map((a, i) => '<button type="button" class="pz-saved-chip" data-i="' + i + '">📍 ' + escapeHTML(a.length > 38 ? a.slice(0, 36) + "…" : a) + "</button>").join("");
+      box.querySelectorAll(".pz-saved-chip").forEach(b => b.addEventListener("click", () => {
+        input.value = addrs[+b.dataset.i];
+        input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true }));
+        try { if (typeof calculateQuote === "function") calculateQuote(true); } catch (e) {}
+      }));
+    });
+  }).catch(() => {});
+}
+
 function addNewAddress() {
   if (!currentUser || !window._firebase) return;
   const input = document.getElementById("newAddressInput");
   const address = input?.value.trim();
-  if (!address) { showToast("⚠️ Please enter an address."); return; }
+  if (!address || address.length < 4) { showToast("⚠️ Please enter an address."); return; }
+  if (address.length > 300) { showToast("⚠️ Address is too long (max 300 characters)."); return; }
   window._firebase.db.collection("users").doc(currentUser.uid).collection("addresses").add({ address, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
     .then(() => {
       input.value = "";
-      showToast("✅ Address added!");
-      loadUserAddresses();
+      showToast("✅ Address saved — it will appear as a one-tap option when you book");
+      loadUserAddresses(); renderSavedAddressChips();
     }).catch(err => { console.error("Error adding address:", err); showToast("❌ Failed to add address."); });
 }
 
