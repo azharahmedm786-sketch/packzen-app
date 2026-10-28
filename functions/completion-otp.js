@@ -84,18 +84,22 @@ async function sendOtpEmail(deps, bookingId, b) {
 }
 
 /**
- * Parcels: the RECEIVER hands the rider the code (proof of delivery), so the code goes
- * to the receiver's mobile by SMS. Text contains no address or price.
- * deps.queueSms(mobile, message, bookingRef) must be provided.
+ * Completion code by SMS (the only SMS PackZen sends — OTP-only policy, Oct 2026).
+ * Moves / home services: to the customer's mobile. Old parcel bookings: to the receiver.
+ * Text has no address or price. deps.queueSms(mobile, message, bookingRef, kind) must be provided.
  */
-async function sendReceiverOtpSms(deps, bookingId, b) {
-  if (b.bookingType !== "parcel" || !b.receiverPhone || typeof deps.queueSms !== "function") return { sent: false, reason: "not_parcel_or_no_receiver" };
+const OTP_SMS_TEXT = (otp, ref) => `PackZen: your job completion code is ${otp} for booking ${ref}. Share it with the crew only after the job is done. Do not share it with anyone else.`;
+async function sendCompletionOtpSms(deps, bookingId, b) {
+  if (typeof deps.queueSms !== "function") return { sent: false, reason: "no_sms" };
+  const raw = b.bookingType === "parcel" ? b.receiverPhone : (b.phone || b.customerPhone);
+  const mobile = String(raw || "").replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+  if (!/^[6-9]\d{9}$/.test(mobile)) return { sent: false, reason: "no_valid_mobile" };
   const nonce = await ensureNonce(deps, bookingId);
   const otp = deriveOtp(deps.pepper, bookingId, nonce);
-  const from = String(b.customerName || "a PackZen customer").slice(0, 40);
-  await deps.queueSms(b.receiverPhone, `PackZen: a parcel from ${from} is on its way to you (ref ${b.bookingRef || bookingId}). Share code ${otp} with the rider ONLY when you receive it.`, b.bookingRef || null);
+  await deps.queueSms(mobile, OTP_SMS_TEXT(otp, b.bookingRef || bookingId), b.bookingRef || null, "otp");
   return { sent: true };
 }
+const sendReceiverOtpSms = sendCompletionOtpSms;   // old name, used by the transit trigger
 
 async function handleSendOtp(data, context, deps) {
   const uid = context && context.auth && context.auth.uid;
@@ -108,7 +112,7 @@ async function handleSendOtp(data, context, deps) {
   if (!OTP_STATUSES.includes(b.status)) throw new OtpError("failed-precondition", "This job is not in progress.");
   if (deps.rateLimit && !(await deps.rateLimit("completionOtpSend", bookingId)).ok) throw new OtpError("resource-exhausted", "The code was sent recently. Please ask the customer to check their email or My Bookings.");
   const r = await sendOtpEmail(deps, bookingId, b);
-  const sms = await sendReceiverOtpSms(deps, bookingId, b).catch(() => ({ sent: false }));
+  const sms = await sendCompletionOtpSms(deps, bookingId, b).catch(() => ({ sent: false }));
   return { sent: r.sent || sms.sent, reason: r.sent || sms.sent ? null : (r.reason || null) };
 }
 
@@ -205,4 +209,4 @@ function callable(handler, depsFactory, toHttpsError) {
   };
 }
 
-module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, handleAdminOverride, sendOtpEmail, sendReceiverOtpSms, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };
+module.exports = { handleGetOtp, handleSendOtp, handleVerifyOtp, handleAdminOverride, sendOtpEmail, sendReceiverOtpSms, sendCompletionOtpSms, OTP_SMS_TEXT, callable, deriveOtp, OtpError, OTP_STATUSES, MAX_ATTEMPTS };

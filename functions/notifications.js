@@ -25,13 +25,14 @@ const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
 /* ────────────────────────────────────────────────────────────
    HELPERS: queue SMS and WhatsApp messages directly to Firestore
    ──────────────────────────────────────────────────────────── */
-async function queueSMS(phone, message, bookingRef) {
+async function queueSMS(phone, message, bookingRef, kind) {
   if (!phone) return;
   try {
     await admin.firestore().collection("smsQueue").add({
       mobile: phone,
       message,
       bookingRef: bookingRef || null,
+      kind: kind || "info",          // only kind "otp" is actually sent (OTP-only SMS policy)
       status: "pending",
       retries: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -237,12 +238,13 @@ exports.onBookingUpdatedNotify = functions
           }, context.params.bookingId, Object.assign({}, after, { email }));
         } catch (e) { functions.logger.warn("completion_otp_email_failed", { bookingId: context.params.bookingId }); }
       }
-      // Parcels: the receiver gets the delivery code by SMS when the rider picks up.
-      if (statusChanged && after.status === "transit" && after.bookingType === "parcel" && after.receiverPhone) {
+      // Completion code by SMS when the job goes in transit (customer; old parcels: receiver).
+      // This is the only SMS PackZen sends (OTP-only policy).
+      if (statusChanged && after.status === "transit") {
         try {
-          await completionOtp.sendReceiverOtpSms({ db: admin.firestore(), now: () => Date.now(), pepper: COMPLETION_OTP_PEPPER.value(),
-            queueSms: (m, t, r) => queueSMS(m, t, r) }, context.params.bookingId, after);
-        } catch (e) { functions.logger.warn("receiver_otp_sms_failed", { bookingId: context.params.bookingId }); }
+          await completionOtp.sendCompletionOtpSms({ db: admin.firestore(), now: () => Date.now(), pepper: COMPLETION_OTP_PEPPER.value(),
+            queueSms: (m, t, r, k) => queueSMS(m, t, r, k) }, context.params.bookingId, after);
+        } catch (e) { functions.logger.warn("completion_otp_sms_failed", { bookingId: context.params.bookingId }); }
       }
 
       if (statusChanged) {

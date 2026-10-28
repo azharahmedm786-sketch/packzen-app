@@ -43,21 +43,25 @@ const ts = (ms) => ({ toMillis: () => ms });
 
   const sms = [];
   const fakeDb = { collection: () => ({ doc: () => ({}) }), runTransaction: async () => "nonce123" };
-  const deps = { db: fakeDb, now: () => 0, pepper: "p", queueSms: async (m, t) => sms.push([m, t]) };
+  const deps = { db: fakeDb, now: () => 0, pepper: "p", queueSms: async (m, t, r, k) => sms.push([m, t, k]) };
   const parcel = { bookingType: "parcel", receiverPhone: "9123456780", customerName: "Asha", bookingRef: "PZ9" };
-  let out = await otp.sendReceiverOtpSms(deps, "order_ABC123", parcel);
+  let out = await otp.sendCompletionOtpSms(deps, "order_ABC123", parcel);
   const code = otp.deriveOtp("p", "order_ABC123", "nonce123");
-  assert.ok(out.sent && sms[0][0] === "9123456780" && sms[0][1].includes(code) && sms[0][1].includes("ONLY when you receive"));
+  assert.ok(out.sent && sms[0][0] === "9123456780" && sms[0][1].includes(code) && sms[0][2] === "otp");
   assert.ok(!/₹|address|MG Road/.test(sms[0][1]));
-  out = await otp.sendReceiverOtpSms(deps, "order_ABC123", { bookingType: "move", receiverPhone: "9123456780" });
+  out = await otp.sendCompletionOtpSms(deps, "order_ABC123", { bookingType: "move", phone: "+91 98450 12345", bookingRef: "PZ10" });
+  assert.ok(out.sent && sms[1][0] === "9845012345" && sms[1][2] === "otp" && /completion code/.test(sms[1][1]));
+  out = await otp.sendCompletionOtpSms(deps, "order_ABC123", { bookingType: "move", phone: "123" });
   assert.ok(!out.sent);
-  ok("parcel receiver gets the delivery code by SMS (no price/address in the text); moves unaffected");
+  ok("completion code by SMS (kind otp): customer for moves/services, receiver for old parcels; no price/address in the text");
 
   const notif = fs.readFileSync(path.join(__dirname, "..", "notifications.js"), "utf8");
-  assert.ok(/after\.bookingType === "parcel" && after\.receiverPhone/.test(notif) && /has been delivered to you/.test(notif) && /parcel \$\{after\.bookingRef\} has been delivered to/.test(notif));
+  assert.ok(/after\.status === "transit"\) \{\s*try \{\s*await completionOtp\.sendCompletionOtpSms\(/.test(notif));
   const co = fs.readFileSync(path.join(__dirname, "..", "completion-otp.js"), "utf8");
-  assert.ok(/sendReceiverOtpSms\(deps, bookingId, b\)/.test(co));
-  ok("wiring: code sent at pickup and on driver 'resend'; sender + receiver told on delivery");
+  assert.ok(/sendCompletionOtpSms\(deps, bookingId, b\)/.test(co));
+  const idx = fs.readFileSync(path.join(__dirname, "..", "index.js"), "utf8");
+  assert.ok(/if \(data\.kind !== "otp"\) \{\s*await docRef\.update\(\{ status: "skipped", reason: "sms_otp_only_policy"/.test(idx));
+  ok("wiring: completion code SMS at transit and on driver 'resend'; every non-OTP SMS is skipped (OTP-only policy)");
 
   const rules = fs.readFileSync(path.join(__dirname, "..", "..", "firestore.rules"), "utf8");
   assert.ok(/request\.resource\.data\.get\('status', 'pending'\) == 'pending'/.test(rules));

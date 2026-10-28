@@ -42,6 +42,12 @@ exports.sendSMS = functions
 
     // Skip if already processed (safety check)
     if (data.status !== "pending") return null;
+    // OTP-only policy (owner decision, Oct 2026): SMS is used only for one-time codes.
+    // Confirmations, assignments, reminders etc. go by e-mail / WhatsApp / the app instead.
+    if (data.kind !== "otp") {
+      await docRef.update({ status: "skipped", reason: "sms_otp_only_policy", skippedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return null;
+    }
     // Claim it first so a duplicate trigger can't send the same SMS twice.
     if (!(await claimPending(admin.firestore(), docRef))) return null;
 
@@ -500,7 +506,7 @@ function completionOtpDeps() {
     pepper: COMPLETION_OTP_PEPPER.value(),
     logger: functions.logger,
     sendCustomerEmail,
-    queueSms: (mobile, message, bookingRef) => admin.firestore().collection("smsQueue").add({ mobile, message, bookingRef: bookingRef || null, status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
+    queueSms: (mobile, message, bookingRef, kind) => admin.firestore().collection("smsQueue").add({ mobile, message, bookingRef: bookingRef || null, kind: kind || "info", status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
     isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
     isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
     rateLimit: (scope, subject) => rateLimit.consume(admin.firestore(), Object.assign({ scope, subject }, rateLimit.LIMITS[scope])),
