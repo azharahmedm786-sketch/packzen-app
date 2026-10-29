@@ -41,4 +41,8 @@ ok("weekly report (Fridays 6 PM): bookings, paid online, completed, cancelled, r
 
 assert.ok(/We're closed right now \(we work 8 AM – 9 PM\)/.test(pub("pz-leads.js")) && /after 8 AM/.test(pub("pz-leads.js")));
 ok("callback form is honest after hours (we'll call after 8 AM)");
+const admRef = pub("admin.html");
+assert.ok(/async function refundCancelRequest\(reqId, bookingId\)/.test(admRef) && /_adminCallable\("adminRefundPayment"\)\(\{ bookingId, paymentId: b\.paymentId, requestId: \("cancel_" \+ reqId\)\.slice\(0, 64\)/.test(admRef) && /full: true/.test(admRef));
+assert.ok(/refunded \+ pending < paid/.test(admRef) && /confirm\(`Refund ₹/.test(admRef));
+ok("admin → Cancellations: one-click full refund via the admin-only refund function (no double refunds; shows paid/refunded/pending)");
 console.log(`\nbusiness-readiness: ${pass} passed, 0 failed`);

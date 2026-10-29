@@ -1881,25 +1881,56 @@ toast("✅ Claim marked as " + newStatus);
   } catch(e) { alert("Error: " + e.message); }
 }
 
-/* ── CANCELLATIONS ── */
+/* ── CANCELLATIONS ── (with one-click full refund through the admin-only adminRefundPayment function) ── */
 async function loadCancelRequests() {
   const tbody = document.getElementById("cancelsTable");
   if (!tbody || !window._firebase) return;
   tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;padding:1rem'>Loading...</td></tr>";
   try {
-    const snap = await window._firebase.db.collection("cancelRequests").orderBy("createdAt","desc").limit(50).get();
+    const db = window._firebase.db;
+    const snap = await db.collection("cancelRequests").orderBy("createdAt","desc").limit(50).get();
     if (snap.empty) { tbody.innerHTML = "<tr class='empty-row'><td colspan='6'>No cancellation requests yet.</td></tr>"; return; }
+    const ids = [...new Set(snap.docs.map(d => d.data().bookingDocId).filter(Boolean))];
+    const bookings = {};
+    await Promise.all(ids.map(id => db.collection("bookings").doc(id).get().then(b => { if (b.exists) bookings[id] = b.data(); }).catch(() => {})));
     tbody.innerHTML = snap.docs.map(d => {
-      const c = escFields(d.data());
-      const date = c.createdAt?.toDate?.().toLocaleDateString("en-IN") || "—";
+      const raw = d.data(), c = escFields(raw), b = bookings[raw.bookingDocId] || {};
+      const date = raw.createdAt?.toDate?.().toLocaleDateString("en-IN") || "—";
+      const paid = Number(b.paid) || 0, refunded = Number(b.refundedAmount) || 0, pending = Number(b.refundPendingAmount) || 0;
+      const canRefund = paid > 0 && /^pay_/.test(String(b.paymentId || "")) && refunded + pending < paid;
+      let money = paid ? "Paid online ₹" + paid.toLocaleString("en-IN") : "Not paid online";
+      if (refunded) money += " · refunded ₹" + refunded.toLocaleString("en-IN");
+      if (pending) money += " · refund pending ₹" + pending.toLocaleString("en-IN");
+      const refundBtn = canRefund ? `<button onclick="refundCancelRequest(${jsArg(d.id)}, ${jsArg(raw.bookingDocId)})" style="padding:.3rem .7rem;background:#16a34a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem;margin-right:6px">💸 Refund ₹${(paid - refunded - pending).toLocaleString("en-IN")}</button>` : "";
       return `<tr>
-        <td>${c.bookingDocId||"—"}</td><td>${c.customerUid?.slice(0,8)||"—"}</td>
+        <td>${escapeHTML(b.bookingRef || raw.bookingDocId || "—")}<br><small style="color:#6B7D74">${escapeHTML(money)}</small></td><td>${escapeHTML(b.customerName || (raw.customerUid||"").slice(0,8) || "—")}</td>
         <td>${c.reason||"—"}</td><td>${date}</td>
-        <td><span style="color:${c.resolved?'#16a34a':'#dc2626'}">${c.resolved?"✅ Resolved":"⏳ Pending"}</span></td>
-        <td><button onclick="resolveCancelRequest(${jsArg(d.id)})" style="padding:.3rem .7rem;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Mark Resolved</button></td>
+        <td><span style="color:${raw.resolved?'#16a34a':'#dc2626'}">${raw.resolved?"✅ Resolved":"⏳ Pending"}</span></td>
+        <td style="white-space:nowrap">${refundBtn}<button onclick="resolveCancelRequest(${jsArg(d.id)})" style="padding:.3rem .7rem;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:.75rem">Mark Resolved</button></td>
       </tr>`;
     }).join("");
   } catch(e) { tbody.innerHTML = `<tr><td colspan='6' style='color:red'>Error: ${escapeHTML(e.message)}</td></tr>`; }
+}
+/* Full refund of what was paid online (policy: cancellations before the day get everything back).
+   The server checks the payment belongs to the booking and blocks double / over-refunds. */
+async function refundCancelRequest(reqId, bookingId) {
+  if (!window._firebase) return;
+  const db = window._firebase.db;
+  const req = await db.collection("cancelRequests").doc(reqId).get();
+  const bk = await db.collection("bookings").doc(bookingId).get();
+  if (!bk.exists) { toast("❌ Booking not found"); return; }
+  const b = bk.data(), amount = (Number(b.paid) || 0) - (Number(b.refundedAmount) || 0) - (Number(b.refundPendingAmount) || 0);
+  if (!(amount > 0)) { toast("Nothing left to refund"); return; }
+  if (!confirm(`Refund ₹${amount.toLocaleString("en-IN")} to the customer's original payment method for booking ${b.bookingRef || bookingId}?\n\nRazorpay usually credits it in 5–7 working days.`)) return;
+  requireAdmin(async () => {
+    try {
+      const r = await _adminCallable("adminRefundPayment")({ bookingId, paymentId: b.paymentId, requestId: ("cancel_" + reqId).slice(0, 64),
+        reason: "Customer cancellation: " + String((req.exists && req.data().reason) || "cancelled").slice(0, 150), full: true });
+      await db.collection("cancelRequests").doc(reqId).update({ resolved: true });
+      toast("✅ Refund started" + (r && r.data && r.data.status ? " (" + r.data.status + ")" : "") + " — it appears in Razorpay → Refunds");
+      loadCancelRequests();
+    } catch (e) { toast("❌ " + (e && e.message ? e.message : "Refund failed")); }
+  });
 }
 async function resolveCancelRequest(docId) {
   if (!window._firebase) return;
