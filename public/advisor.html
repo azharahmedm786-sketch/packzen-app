@@ -760,6 +760,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
   <link rel="stylesheet" href="pz-ops-premium.css?v=5s">
+
+<style id="pz-advisor-fix">
+/* Light palette that matches the white premium cards (was dark-theme text on white → unreadable) */
+:root{--bg:#F6F8F7;--surface:#FFFFFF;--surface2:#F3F6F4;--border:rgba(10,40,28,.12);--border2:rgba(10,40,28,.2);
+  --text:#0C1A14;--muted:#4E6158;--muted2:#6B7D74;--gold:#A86400;--gold2:#C77A00;--blue:#1F5FD1;--green:#147A45;--red:#C0262D;--purple:#6B47D6}
+.nb-field input,.nb-field select,.nb-field textarea{background:#fff!important;color:#0C1A14!important;border:1px solid rgba(10,40,28,.2)!important}
+.nb-select-card,.nb-type-card,.nb-furn-card,.nb-pay-opt{color:#0C1A14}
+/* Phone: no sideways page, single-column cards, menu button */
+.adv-menu-btn{display:none}
+@media (max-width:650px){
+  html,body{overflow-x:hidden}
+  .main{margin-left:0!important;padding:14px!important;min-width:0!important;width:100%!important;max-width:100vw}
+  .topbar{flex-wrap:wrap;gap:8px;padding-right:96px}
+  .stats-grid,.kpi-row,.chart-row{grid-template-columns:1fr!important}
+  .section > *{max-width:100%}
+  .section table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+  .adv-menu-btn{display:inline-flex;align-items:center;gap:6px;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:1001;border:0;border-radius:999px;padding:9px 14px;background:#0C1A14;color:#fff;font:700 .9rem system-ui;box-shadow:0 8px 20px -8px rgba(0,0,0,.5)}
+  body.adv-menu-open .sidebar{display:flex!important;flex-direction:column;position:fixed!important;inset:0;width:100%!important;z-index:1000;overflow-y:auto;padding-top:60px}
+  body.adv-menu-open .sidebar .nav-item{font-size:1rem;padding:13px 16px}
+  body.adv-menu-open{overflow:hidden}
+}
+</style>
 </head>
 <body>
 
@@ -1859,6 +1881,7 @@ function toast(msg, dur=3000) {
 }
 </script>
      <script src="advisor-dashboard-patch.js"></script>
+<script src="advisor-booking.js?v=1"></script>
 
 
 
@@ -1891,5 +1914,19 @@ function toast(msg, dur=3000) {
 
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
+
+<script>
+/* Advisor on phones: ☰ Menu; charts skip if Chart.js hasn't loaded (slow networks) */
+(function () {
+  const btn = document.createElement("button"); btn.className = "adv-menu-btn"; btn.type = "button"; btn.textContent = "☰ Menu"; btn.setAttribute("aria-label", "Open menu");
+  btn.addEventListener("click", () => { const o = document.body.classList.toggle("adv-menu-open"); btn.textContent = o ? "✕ Close" : "☰ Menu"; });
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest(".sidebar .nav-item") && document.body.classList.contains("adv-menu-open")) { document.body.classList.remove("adv-menu-open"); btn.textContent = "☰ Menu"; window.scrollTo(0, 0); } });
+  // show the button once the dashboard (its sidebar) exists — not on the login screen
+  setInterval(() => { const sb = document.querySelector(".sidebar"); const login = document.getElementById("loginScreen") || document.querySelector(".login-wrap,.login-screen");
+    const loggedIn = sb && !(login && login.offsetParent !== null);
+    if (loggedIn && !document.body.contains(btn)) document.body.appendChild(btn); if (!loggedIn && document.body.contains(btn)) btn.remove(); }, 800);
+  ["renderCharts", "renderRevenue"].forEach((fn) => { const orig = window[fn]; if (typeof orig === "function") window[fn] = function () { if (typeof Chart === "undefined") return; return orig.apply(this, arguments); }; });
+})();
+</script>
 </body>
 </html>

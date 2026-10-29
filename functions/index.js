@@ -382,6 +382,91 @@ exports.createBooking = functions
     return { docId: docRef.id, total: quote.finalTotal };
   });
 
+/* ── Advisor / staff manual booking ("phone booking") ──────────────────────────
+   Same pricing (calculateServerQuote), same record shape and same Pay-Later rules as
+   createBooking — so confirmation e-mail, ops board, assignment, completion code,
+   reviews and follow-ups all behave exactly like a website booking.
+   ops: "quote" (price preview, no write) | "create".
+   Customer: e-mail → existing account or a new one (set-password link returned so the
+   advisor can WhatsApp it; the booking then shows in My Bookings); no e-mail → matched
+   by phone in users, else a guest booking (customerUid null).                       */
+const STAFF_BOOKING_ROLES = ["admin", "manager", "advisor"];
+exports.advisorCreateBooking = functions.region("asia-south1").runWith({ secrets: [GOOGLE_MAPS_KEY] })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in.");
+    const OWNER_EMAILS = ["azharahmedm786@gmail.com", "azharahmednaz@gmail.com", "moveeasyblr@gmail.com"];   // same allow-list as firestore.rules isAdmin
+    const role = OWNER_EMAILS.includes(String(context.auth.token.email || "").toLowerCase()) && context.auth.token.email_verified ? "admin" : await staffRole(context);
+    if (!STAFF_BOOKING_ROLES.includes(role)) throw new functions.https.HttpsError("permission-denied", "Only PackZen staff can create bookings for customers.");
+    const rl = await rateLimit.consumeAll(admin.firestore(), [Object.assign({ scope: "advisorBooking", subject: context.auth.uid }, { limit: 60, windowMs: 10 * 60 * 1000 })], functions.logger);
+    if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please wait a minute.");
+    const op = data && data.op;
+    const quoteInput = data && data.quoteInput, d = (data && data.bookingDetails) || {};
+    if (!quoteInput || typeof quoteInput !== "object" || !d.pickup || !d.drop) throw new functions.https.HttpsError("invalid-argument", "Enter pickup and drop addresses.");
+    if (d.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(d.date))) throw new functions.https.HttpsError("invalid-argument", "Invalid date.");
+    const name = String(d.customerName || "").replace(/[<>]/g, "").trim().slice(0, 80);
+    const phone = String(d.phone || "").replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+    const email = String(d.email || "").trim().toLowerCase().slice(0, 120);
+    let quote;
+    try { quote = await calculateServerQuote(JSON.parse(JSON.stringify(quoteInput)), String(d.pickup), String(d.drop), { uid: null, date: d.date }); }
+    catch (e) { throw new functions.https.HttpsError("invalid-argument", e.message); }
+    if (op === "quote") return { total: quote.finalTotal, km: quote.km, breakdown: quote.breakdown, promo: quote.promo || null };
+    if (op !== "create") throw new functions.https.HttpsError("invalid-argument", "Unknown action.");
+    if (name.length < 2) throw new functions.https.HttpsError("invalid-argument", "Enter the customer's name.");
+    if (!/^[6-9]\d{9}$/.test(phone)) throw new functions.https.HttpsError("invalid-argument", "Enter a valid 10-digit mobile number.");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new functions.https.HttpsError("invalid-argument", "Check the e-mail address.");
+    if (!d.date) throw new functions.https.HttpsError("invalid-argument", "Choose the moving date.");
+    const requestId = /^[A-Za-z0-9_-]{8,64}$/.test(String(data.requestId || "")) ? String(data.requestId) : null;
+    const db = admin.firestore();
+    if (requestId) {   // double-click / retry safety
+      const dup = await db.collection("bookings").where("advisorRequestId", "==", requestId).limit(1).get();
+      if (!dup.empty) { const x = dup.docs[0].data(); return { docId: dup.docs[0].id, bookingRef: x.bookingRef, total: x.total, duplicate: true }; }
+    }
+    // Resolve / create the customer account
+    let customerUid = null, setPasswordLink = null, accountCreated = false;
+    if (email) {
+      let u = null; try { u = await admin.auth().getUserByEmail(email); } catch (e) { u = null; }
+      if (u) {
+        const ud = await db.collection("users").doc(u.uid).get();
+        const r = ud.exists ? (ud.data() || {}).role : null;
+        if (r && r !== "customer") throw new functions.https.HttpsError("failed-precondition", "That e-mail belongs to a staff or partner account. Use the customer's own e-mail.");
+        customerUid = u.uid;
+      } else {
+        u = await admin.auth().createUser({ email, displayName: name, password: require("crypto").randomBytes(18).toString("base64url") });
+        customerUid = u.uid; accountCreated = true;
+        await db.collection("users").doc(u.uid).set({ name, email, phone, role: "customer", createdByStaff: context.auth.uid, createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        try { setPasswordLink = await admin.auth().generatePasswordResetLink(email); } catch (e) { setPasswordLink = null; }
+      }
+    } else {
+      const byPhone = await db.collection("users").where("phone", "==", phone).limit(2).get();
+      const cust = byPhone.docs.find((x) => ((x.data() || {}).role || "customer") === "customer");
+      if (cust) customerUid = cust.id;
+    }
+    // Promos tied to "first booking" are checked against the real customer
+    if (customerUid && quoteInput.promoCode) {
+      try { quote = await calculateServerQuote(JSON.parse(JSON.stringify(quoteInput)), String(d.pickup), String(d.drop), { uid: customerUid, date: d.date }); }
+      catch (e) { throw new functions.https.HttpsError("invalid-argument", e.message); }
+    }
+    const SAFE = ["date", "shiftTime", "shiftTimeLabel", "moveType", "house", "vehicle", "furniture", "pickupFloor", "dropFloor", "liftAvailable",
+      "packingService", "unpackingService", "dismantling", "assembly", "fragileItems", "specialItems", "remarks", "isIntercity", "altPhone", "leadSource"];
+    const b = {};
+    for (const k of SAFE) if (d[k] !== undefined) b[k] = typeof d[k] === "string" ? d[k].slice(0, 500) : d[k];
+    Object.assign(b, {
+      bookingRef: "PKZ-" + Date.now().toString(36).toUpperCase().slice(-6),
+      customerName: name, phone, email: email || null, pickup: String(d.pickup).slice(0, 300), drop: String(d.drop).slice(0, 300),
+      customerUid, source: "advisor", createdByStaff: { uid: context.auth.uid, email: context.auth.token.email || null, role },
+      createdByAdvisor: context.auth.token.email || context.auth.uid,   // read by advisor → Advisor Stats
+      advisorRequestId: requestId,
+      total: quote.finalTotal, distance: quote.km, originalTotal: quote.finalTotal, quoteBreakdown: quote.breakdown,
+      pricedInput: pricingGuard.pricedInputSnapshot(quoteInput, quote),
+      promoCode: quote.promo ? quote.promo.code : null, promoDiscount: quote.promo ? quote.promo.applied : 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(), status: "confirmed",
+      paymentType: "pay_later", paid: 0, balanceDue: quote.finalTotal, paymentStatus: "unpaid", currency: "INR",
+    });
+    const ref = await db.collection("bookings").add(b);
+    functions.logger.info("advisor_booking", { bookingId: ref.id, by: context.auth.uid, accountCreated, guest: !customerUid });
+    return { docId: ref.id, bookingRef: b.bookingRef, total: b.total, km: b.distance, customerLinked: !!customerUid, accountCreated, setPasswordLink };
+  });
+
 const movePayment = require("./move-payment");
 
 // Shared wiring for the two move-payment HTTPS endpoints. All logic lives in
