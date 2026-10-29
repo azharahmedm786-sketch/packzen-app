@@ -186,5 +186,5 @@ function aiFor() {
 }
 
 exports.assistantAsk = functions.region(REGION).https.onCall((data, context) => handleAsk(data, context, liveDeps(context)));
-exports.assistantSupportRequest = functions.region(REGION).https.onCall((data, context) => handleSupportRequest(data, context, liveDeps(context)));
+exports.assistantSupportRequest = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).https.onCall((data, context) => handleSupportRequest(data, context, liveDeps(context)));
 exports._assistant = { handleAsk, handleSupportRequest, redact, callbackFromChat };

@@ -464,6 +464,7 @@ function buildShell(adminName) {
     <div class="nav-item active" onclick="showSection('overview',this)"><span class="ni">📊</span> Overview</div>
     <div class="nav-item" onclick="showSection('ops',this)"><span class="ni">🗂️</span> Operations board</div>
     <div class="nav-item" onclick="showSection('team',this)"><span class="ni">👥</span> Team</div>
+    <div class="nav-item" onclick="showSection('support',this)"><span class="ni">🆘</span> Support <span class="svc-count" id="supportOpenCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('partners',this)"><span class="ni">🤝</span> Partners <span class="svc-count" id="partnersPendingCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
@@ -668,6 +669,17 @@ function buildShell(adminName) {
       </div>
       <div id="opsBoard" class="ops-board"></div>
       <div id="opsCalendar" class="ops-cal" hidden></div>
+    </div>
+
+    <!-- SUPPORT: chat requests (reschedule / cancel / human / photo quote) + partner tickets -->
+    <div class="section" id="sectionSupport">
+      <div class="table-card" style="padding:14px">
+        <div class="ops-filters" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <div class="table-title" style="margin-right:auto">Support requests</div>
+          <select id="supFilter" onchange="loadSupport()" class="status-sel"><option value="open">Open</option><option value="all">All</option></select>
+        </div>
+        <div id="supportList"><div class="empty-td">Loading…</div></div>
+      </div>
     </div>
 
     <!-- TEAM: staff logins -->
@@ -1647,7 +1659,7 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", ops:"Operations board", team:"Team", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") renderCharts();
@@ -1656,6 +1668,7 @@ function showSection(name, el) {
   if (name==="ops")      loadOps();
   if (name==="partners") loadPartners();
   if (name==="team")     loadTeam();
+  if (name==="support")  loadSupport();
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
@@ -2609,6 +2622,46 @@ function saveStock() {
     .then(() => { toast("✅ Stock saved"); loadReadiness(); }).catch(e => toast("❌ " + e.message));
 }
 (function waitReady(n){ if (window._firebase && window._firebase.auth && window._firebase.auth.currentUser && document.getElementById("readinessCard")) return loadReadiness(); if ((n||0) < 120) setTimeout(() => waitReady((n||0)+1), 1000); })();
+</script>
+
+<script>
+/* ── Support: website-assistant requests + partner tickets in one list ── */
+async function loadSupport() {
+  const box = document.getElementById("supportList"); if (!box || !window._firebase) return;
+  const db = window._firebase.db, onlyOpen = (document.getElementById("supFilter") || {}).value !== "all";
+  box.innerHTML = '<div class="empty-td">Loading…</div>';
+  try {
+    const [a, b] = await Promise.all([
+      db.collection("supportRequests").orderBy("createdAt", "desc").limit(100).get().catch(() => null),
+      db.collection("supportTickets").orderBy("createdAt", "desc").limit(100).get().catch(() => null)]);
+    const rows = [];
+    (a ? a.docs : []).forEach(d => { const x = d.data(); rows.push({ coll: "supportRequests", id: d.id, from: "Customer (chat)", who: (x.name || "") + (x.phone ? " · " + x.phone : ""), phone: x.phone || "", topic: x.topic || "help", text: x.message || "", status: x.status || "open", at: x.createdAt && x.createdAt.toDate ? x.createdAt.toDate() : null, urgent: !!x.urgent }); });
+    (b ? b.docs : []).forEach(d => { const x = d.data(); rows.push({ coll: "supportTickets", id: d.id, from: "Partner", who: x.partnerName || x.partnerId || "", phone: "", topic: x.subject || "ticket", text: x.message || "", status: x.status || "open", at: x.createdAt && x.createdAt.toDate ? x.createdAt.toDate() : null }); });
+    rows.sort((p, q) => (q.at || 0) - (p.at || 0));
+    const open = rows.filter(r => r.status !== "resolved");
+    const badge = document.getElementById("supportOpenCount"); if (badge) badge.textContent = open.length || "";
+    const list = onlyOpen ? open : rows;
+    box.innerHTML = list.length ? '<table><thead><tr><th>When</th><th>From</th><th>Topic</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>' + list.map(r =>
+      '<tr><td>' + (r.at ? r.at.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—") + '</td>' +
+      '<td>' + escapeHTML(r.from) + '<br><small>' + escapeHTML(r.who) + '</small></td>' +
+      '<td>' + (r.urgent ? '🔴 ' : '') + escapeHTML(r.topic) + '</td>' +
+      '<td style="white-space:normal;min-width:220px;max-width:380px">' + escapeHTML(String(r.text).slice(0, 400)) + '</td>' +
+      '<td>' + (r.status === "resolved" ? '<span style="color:#16a34a">✅ Resolved</span>' : '<span style="color:#dc2626">⏳ Open</span>') + '</td>' +
+      '<td style="white-space:nowrap">' + (r.phone ? '<a class="btn-assign" style="text-decoration:none" href="tel:' + escapeHTML(r.phone) + '">Call</a> <a class="btn-export" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91' + escapeHTML(String(r.phone).replace(/\D/g, "").slice(-10)) + '">WhatsApp</a> ' : '') +
+      (r.status !== "resolved" ? '<button class="btn-export" onclick="resolveSupport(' + jsArg(r.coll) + ',' + jsArg(r.id) + ')">Resolve</button>' : '') + '</td></tr>').join("") + '</tbody></table>'
+      : '<div class="empty-td">' + (onlyOpen ? "No open requests 🎉" : "No requests yet.") + '</div>';
+  } catch (e) { box.innerHTML = '<div class="empty-td">Could not load: ' + escapeHTML(e.message) + '</div>'; }
+}
+function resolveSupport(coll, id) {
+  if (!["supportRequests", "supportTickets"].includes(coll)) return;
+  requireAdmin(() => window._firebase.db.collection(coll).doc(id).update({ status: "resolved", resolvedAt: firebase.firestore.FieldValue.serverTimestamp() })
+    .then(() => { toast("✅ Resolved"); loadSupport(); }).catch(e => toast("❌ " + e.message)));
+}
+(function supportBadge(n){ if (window._firebase && window._firebase.auth && window._firebase.auth.currentUser && document.getElementById("supportOpenCount")) {
+  Promise.all([window._firebase.db.collection("supportRequests").where("status","==","open").limit(50).get().catch(()=>null),
+               window._firebase.db.collection("supportTickets").where("status","==","open").limit(50).get().catch(()=>null)])
+    .then(([a,b]) => { const c = (a ? a.size : 0) + (b ? b.size : 0); const el = document.getElementById("supportOpenCount"); if (el) el.textContent = c || ""; });
+  return; } if ((n||0) < 120) setTimeout(() => supportBadge((n||0)+1), 1000); })();
 </script>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>

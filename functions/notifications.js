@@ -434,3 +434,18 @@ exports.retryFailedEmailNotifications = functions
     const result = await retryFailedNotifications();
     return result;
   });
+
+/* Partner support ticket → admin email (partner portal → Support). */
+exports.onSupportTicketCreatedNotify = functions
+  .region("asia-south1")
+  .runWith({ secrets: BREVO_SECRETS })
+  .firestore.document("supportTickets/{ticketId}")
+  .onCreate(async (snap, context) => {
+    const t = snap.data() || {};
+    await sendAdminEmail("Partner support ticket: " + String(t.subject || "").slice(0, 80), [
+      ["Partner", t.partnerName || t.partnerId || "-"], ["Subject", t.subject || "-"], ["Message", String(t.message || "").slice(0, 1500)],
+      ["Open in", "packzenblr.in/admin.html → Support"],
+    ], context.params.ticketId).catch(() => {});
+    return null;
+  });
+

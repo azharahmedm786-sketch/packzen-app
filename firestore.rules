@@ -408,6 +408,18 @@ service cloud.firestore {
 
     // Website assistant: support requests and unanswered-question log are
     // written only by Cloud Functions (assistant-functions.js); admins manage them.
+    // Partner support tickets (partner portal → Support). Was missing → every ticket was refused.
+    match /supportTickets/{ticketId} {
+      allow create: if isAuth()
+        && request.resource.data.partnerId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly(['partnerId', 'partnerName', 'subject', 'message', 'status', 'createdAt'])
+        && request.resource.data.subject is string && request.resource.data.subject.size() <= 150
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000;
+      allow read: if isAuth() && (resource.data.partnerId == request.auth.uid || isAdmin() || isAdvisor());
+      allow update: if isAdmin() || isAdvisor();
+      allow delete: if false;
+    }
     match /supportRequests/{requestId} {
       allow create, delete: if false;
       allow read, update: if isAdmin();

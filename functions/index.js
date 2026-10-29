@@ -525,7 +525,7 @@ exports.verifyCompletionOtp = functions.region("asia-south1").runWith({ secrets:
   .https.onCall(completionOtp.callable(completionOtp.handleVerifyOtp, completionOtpDeps, toHttpsError));
 
 // Admin-only emergency completion without the customer's code (reason recorded).
-exports.adminCompleteBooking = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER] })
+exports.adminCompleteBooking = functions.region("asia-south1").runWith({ secrets: [COMPLETION_OTP_PEPPER, ...BREVO_SECRETS] })
   .https.onCall(completionOtp.callable(completionOtp.handleAdminOverride, completionOtpDeps, toHttpsError));
 
 /* === Phase 2A/2B: driver profiles, shadow recommendations, manual assignment === */
