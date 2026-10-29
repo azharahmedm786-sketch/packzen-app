@@ -17,4 +17,8 @@ assert.ok(/assistantSupportRequest = functions\.region\(REGION\)\.runWith\(\{ se
 assert.ok(/adminCompleteBooking = functions\.region\("asia-south1"\)\.runWith\(\{ secrets: \[COMPLETION_OTP_PEPPER, \.\.\.BREVO_SECRETS\] \}\)/.test(idx));
 assert.ok(/onSupportTicketCreatedNotify[\s\S]{0,120}runWith\(\{ secrets: BREVO_SECRETS \}\)/.test(nt));
 ok("e-mail key mounted on the chat support-request and admin-complete functions; new partner tickets e-mail the admin");
+const drv = rd("public/driver.html");
+assert.ok(!/switchTab\('parcel'/.test(drv) && /html,body\{overflow-x:hidden\}/.test(drv));
+assert.ok(/class="pz-menu-btn"|pz-menu-btn/.test(adm) && /body\.pz-menu-open/.test(adm) && /if \(typeof Chart === "undefined"\) return;/.test(adm) && /if \(typeof loadReadiness === "function"\) loadReadiness\(\);/.test(adm));
+ok("apps UX: admin ☰ Menu on phones, charts can't crash Overview, readiness refreshes; crew app without the retired Parcel tab");
 console.log(`\naudit-support: ${pass} passed, 0 failed`);

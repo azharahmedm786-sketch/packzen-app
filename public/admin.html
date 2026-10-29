@@ -178,6 +178,19 @@
   input,select,textarea{font-size:16px}
 }
 </style>
+
+<style id="pz-admin-mobile-menu">
+.pz-menu-btn{display:none}
+@media (max-width:768px){
+  .pz-menu-btn{display:inline-flex;align-items:center;gap:6px;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:1001;border:0;border-radius:999px;padding:9px 14px;background:#0C1A14;color:#fff;font:700 .9rem system-ui;box-shadow:0 8px 20px -8px rgba(0,0,0,.5)}
+  .admin-shell.active .sidebar{display:none!important}
+  body.pz-menu-open .admin-shell.active .sidebar{display:flex!important;position:fixed!important;inset:0;z-index:1000;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;padding:64px 12px 24px!important;height:100%!important;width:100%!important;flex-wrap:nowrap!important}
+  body.pz-menu-open .admin-shell.active .sidebar .nav-item{font-size:1rem!important;padding:13px 14px!important;border-bottom:1px solid rgba(255,255,255,.08)!important}
+  body.pz-menu-open .admin-shell.active .sidebar .sidebar-logo,body.pz-menu-open .admin-shell.active .sidebar .sb-section{display:block!important}
+  body.pz-menu-open{overflow:hidden}
+  .admin-main{padding-top:8px}
+}
+</style>
 </head>
 <body>
 
@@ -468,7 +481,7 @@ function buildShell(adminName) {
     <div class="nav-item" onclick="showSection('partners',this)"><span class="ni">🤝</span> Partners <span class="svc-count" id="partnersPendingCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('leads',this)"><span class="ni">📞</span> Leads <span class="svc-count" id="leadsNewCount" style="margin-left:auto"></span></div>
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
-    <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcel</div>
+    <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcels (history)</div>
     <div class="nav-item" onclick="showSection('drivers',this)"><span class="ni">🚚</span> Drivers</div>
     <div class="sb-role">Manage</div>
     <div class="nav-item" onclick="showSection('customers',this)"><span class="ni">👥</span> Customers</div>
@@ -988,6 +1001,7 @@ function renderAnalytics() {
     if (analyticsTrendsChart) analyticsTrendsChart.destroy();
     if (analyticsRoutesChart) analyticsRoutesChart.destroy();
 
+    if (typeof Chart === "undefined") return;
     analyticsTrendsChart = new Chart(ctxT, {
       type:"line", data:{ labels:monthNames, datasets:[{ label:"Bookings", data:bByMonth, borderColor:"#0057ff", backgroundColor:"rgba(0,87,255,0.1)", fill:true, tension:0.4, borderWidth:2, pointRadius:4 }] },
       options: commonOpt
@@ -1169,6 +1183,7 @@ function updateStats() {
 
 /* ── CHARTS ── */
 function renderCharts() {
+  if (typeof Chart === "undefined") return;   // chart library not loaded yet (slow network) — skip, don't crash
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const bookingsByMonth = new Array(12).fill(0), revenueByMonth = new Array(12).fill(0);
   allBookings.forEach(b => {
@@ -1662,7 +1677,7 @@ function showSection(name, el) {
   const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
-  if (name==="overview") renderCharts();
+  if (name==="overview") { renderCharts(); if (typeof loadReadiness === "function") loadReadiness(); }
   if (name==="parcel")   loadParcelBookings();
   if (name==="leads")    loadLeads();
   if (name==="ops")      loadOps();
@@ -2662,6 +2677,22 @@ function resolveSupport(coll, id) {
                window._firebase.db.collection("supportTickets").where("status","==","open").limit(50).get().catch(()=>null)])
     .then(([a,b]) => { const c = (a ? a.size : 0) + (b ? b.size : 0); const el = document.getElementById("supportOpenCount"); if (el) el.textContent = c || ""; });
   return; } if ((n||0) < 120) setTimeout(() => supportBadge((n||0)+1), 1000); })();
+</script>
+
+<script>
+/* Phone: ☰ Menu shows every admin section as a full-screen list; picking one closes it. */
+(function () {
+  const btn = document.createElement("button");
+  btn.className = "pz-menu-btn"; btn.type = "button"; btn.setAttribute("aria-label", "Open menu"); btn.innerHTML = "☰ Menu";
+  btn.addEventListener("click", () => { const open = document.body.classList.toggle("pz-menu-open"); btn.innerHTML = open ? "✕ Close" : "☰ Menu"; });
+  document.addEventListener("click", (e) => {
+    if (e.target.closest && e.target.closest(".sidebar .nav-item") && document.body.classList.contains("pz-menu-open")) {
+      document.body.classList.remove("pz-menu-open"); btn.innerHTML = "☰ Menu"; window.scrollTo(0, 0);
+    }
+  });
+  const add = () => { if (document.querySelector(".admin-shell.active") && !document.body.contains(btn)) document.body.appendChild(btn); };
+  setInterval(add, 1000); add();
+})();
 </script>
   <script src="admin-services.js"></script>
   <script src="icon-init.js"></script>
