@@ -123,12 +123,20 @@ function nurtureText(l, step) {
     : `Hi ${first}, still planning your ${l.serviceLabel || "request"}? First move? Use code FIRSTMOVE for Rs.200 off above Rs.4,000: ${link}. PackZen, 9945095453.`;
 }
 
-exports.leadNurture = functions.region(REGION).pubsub.schedule("30 10 * * *").timeZone("Asia/Kolkata").onRun(async () => {
+exports.leadNurture = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).pubsub.schedule("30 10 * * *").timeZone("Asia/Kolkata").onRun(async () => {
   const db = admin.firestore();
   const snap = await db.collection("leads").where("tier", "==", "warm").limit(300).get();
   const plan = nurturePlan(snap.docs.map((d) => Object.assign({ _ref: d.ref }, d.data())), Date.now());
   for (const p of plan) {
-    await db.collection("smsQueue").add({ mobile: p.lead.phone, message: nurtureText(p.lead, p.step), status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    // E-mail only (SMS is reserved for OTPs). Leads without an e-mail are left for a phone call.
+    if (p.lead.email) {
+      const { sendCustomerEmail } = require("./notification-service");
+      await sendCustomerEmail("follow_up", p.lead.email, { customerName: p.lead.name || "", emoji: p.step === "d1" ? "💬" : "🎁",
+        subject: p.step === "d1" ? "Your PackZen price is one click away" : "Still planning? ₹200 off your first move",
+        title: p.step === "d1" ? "Thanks for contacting PackZen" : "Still planning your move?", subtitle: p.lead.serviceLabel || "",
+        paragraphs: [nurtureText(p.lead, p.step).replace(/^Hi [^,]*, /, "").replace(/Rs\./g, "₹")],
+        ctaLabel: "See your price", ctaUrl: "https://packzenblr.in/" }).catch(() => {});
+    }
     await p.lead._ref.update({ nurtureSent: admin.firestore.FieldValue.arrayUnion(p.step) });
   }
   functions.logger.info("lead_nurture", { sent: plan.length });

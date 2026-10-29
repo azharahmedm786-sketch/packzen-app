@@ -298,7 +298,18 @@ function completionOtp(d) {
   };
 }
 
+/* Marketing-light follow-ups (post-move cross-sell, referral reward, lead nurture,
+   win-back). Plain paragraphs + one button. data: { customerName, emoji, title,
+   subtitle, paragraphs[], ctaLabel, ctaUrl, subject } */
+function followUp(d) {
+  const first = String(d.customerName || "").split(" ")[0] || "there";
+  const body = `<p style="margin:0 0 14px">Hi ${esc(first)},</p>` + (d.paragraphs || []).map((p) => `<p style="margin:0 0 14px">${esc(p)}</p>`).join("");
+  return { subject: d.subject || "A note from PackZen",
+    html: renderShell({ headerEmoji: d.emoji || "📦", headerTitle: d.title || "PackZen", headerSubtitle: d.subtitle || "", bodyHtml: body, ctaLabel: d.ctaLabel, ctaUrl: d.ctaUrl }) };
+}
+
 const TEMPLATES = {
+  follow_up: followUp,
   completion_otp: completionOtp,
   booking_confirmed: bookingConfirmed,
   payment_successful: paymentSuccessful,

@@ -49,8 +49,12 @@ async function rewardReferrer(deps, bookingRef, before, after) {
   });
   if (!claimed) return { skipped: "already_rewarded" };
   const r = referrer.data() || {};
-  if (r.phone) {
-    await deps.queueSms(r.phone, `PackZen: thanks for referring a friend! Use code ${reward} for Rs.${REWARD_AMOUNT} off your next booking (valid 6 months). packzenblr.in`, after.bookingRef || null);
+  // E-mail (SMS is reserved for OTPs). Falls back to nothing if no e-mail on file.
+  if (r.email && deps.sendEmail) {
+    await deps.sendEmail("follow_up", r.email, { bookingRef: after.bookingRef || null, customerName: r.name || "", emoji: "🎁",
+      subject: `Your ₹${REWARD_AMOUNT} PackZen reward: ${reward}`, title: "Thanks for referring a friend!", subtitle: "Your reward code is ready",
+      paragraphs: [`Your friend just completed their move with PackZen — thank you for recommending us!`, `Use code ${reward} for ₹${REWARD_AMOUNT} off your next booking (moves, AC or appliance services). Valid for 6 months.`],
+      ctaLabel: "Book with your reward", ctaUrl: "https://packzenblr.in/" }).catch(() => {});
   }
   return { rewarded: reward, referrerUid: referrer.id };
 }
@@ -63,9 +67,13 @@ async function followUps(deps) {
   let sent = 0;
   for (const d of q.docs) {
     const b = d.data() || {};
-    if (b.postMoveFollowUpAt || !DONE.includes(b.status) || b.bookingType === "parcel" || b.bookingType === "service" || !b.phone) continue;
+    if (b.postMoveFollowUpAt || !DONE.includes(b.status) || b.bookingType === "parcel" || b.bookingType === "service" || !b.email) continue;
     await d.ref.update({ postMoveFollowUpAt: nowMs });
-    await deps.queueSms(b.phone, `Hi ${String(b.customerName || "").split(" ")[0] || "there"}, settled into your new home? PackZen can help with AC installation and handyman work: packzenblr.in/services.html`, b.bookingRef || null);
+    if (b.email && deps.sendEmail) await deps.sendEmail("follow_up", b.email, { bookingRef: b.bookingRef || null, customerName: b.customerName || "", emoji: "🏠",
+      subject: "Settled into your new home? 🏠", title: "Hope the move went well!", subtitle: "A little help for your new place",
+      paragraphs: ["We hope you're settling in nicely. If your AC needs installing or servicing, or your washing machine or fridge needs installing or a check-up, we can help — fixed prices, booked online in a minute.",
+        "If you were happy with your move, a quick Google review helps other families find us. And share your referral code from My Bookings — your friends get ₹200 off and you get ₹200 off your next booking."],
+      ctaLabel: "See AC & appliance services", ctaUrl: "https://packzenblr.in/services.html" }).catch(() => {});
     sent++;
   }
   return { sent };
@@ -75,16 +83,17 @@ const liveDeps = () => ({
   db: admin.firestore(), now: () => Date.now(), rand: Math.random,
   serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
   increment: (n) => admin.firestore.FieldValue.increment(n),
+  sendEmail: (tpl, to, data) => require("./notification-service").sendCustomerEmail(tpl, to, data),
   queueSms: (mobile, message, bookingRef) => admin.firestore().collection("smsQueue").add({ mobile, message, bookingRef: bookingRef || null, status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
 });
 
-exports.onBookingDoneReferral = functions.region(REGION).firestore.document("bookings/{bookingId}").onUpdate(async (change) => {
+exports.onBookingDoneReferral = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).firestore.document("bookings/{bookingId}").onUpdate(async (change) => {
   try { await rewardReferrer(liveDeps(), change.after.ref, change.before.data(), change.after.data()); }
   catch (e) { functions.logger.warn("referral_reward_failed", { message: String(e && e.message).slice(0, 120) }); }
   return null;
 });
 
-exports.postMoveFollowUp = functions.region(REGION).pubsub.schedule("0 11 * * *").timeZone("Asia/Kolkata").onRun(async () => {
+exports.postMoveFollowUp = functions.region(REGION).runWith({ secrets: require("./brevo-client").BREVO_SECRETS }).pubsub.schedule("0 11 * * *").timeZone("Asia/Kolkata").onRun(async () => {
   const r = await followUps(liveDeps());
   functions.logger.info("post_move_followups", r);
   return null;

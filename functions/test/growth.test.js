@@ -25,31 +25,31 @@ function fakeDb(data) {
 }
 
 (async () => {
-  const data = { users: { ref1: { referralCode: "ASHA2026", phone: "9876543210", referralCount: 0, referralCredits: 0 }, friend: { referralCode: "KIRAN01" } },
+  const data = { users: { ref1: { referralCode: "ASHA2026", phone: "9876543210", email: "asha@x.in", name: "Asha K", referralCount: 0, referralCredits: 0 }, friend: { referralCode: "KIRAN01" } },
     bookings: { b1: { customerUid: "friend", promoCode: "ASHA2026", status: "delivered", bookingRef: "PZ1" } }, promos: {} };
   const db = fakeDb(data); const sms = [];
-  const deps = { db, now: () => Date.parse("2026-10-20T06:00:00Z"), rand: () => 0.1, serverTimestamp: () => "TS", increment: (n) => ({ __inc: n }), queueSms: async (m, t) => sms.push([m, t]) };
+  const deps = { db, now: () => Date.parse("2026-10-20T06:00:00Z"), rand: () => 0.1, serverTimestamp: () => "TS", increment: (n) => ({ __inc: n }), queueSms: async (m, t) => sms.push([m, t]), sendEmail: async (tpl, to, d) => sms.push([to, JSON.stringify(d), tpl]) };
   const r = await G.rewardReferrer(deps, db.collection("bookings").doc("b1"), { status: "transit" }, data.bookings.b1);
   assert.ok(r.rewarded && /^RWD-[A-Z2-9]{6}$/.test(r.rewarded));
   const p = data.promos[r.rewarded];
   assert.ok(p.ownerUid === "ref1" && p.value === 200 && p.max === 1 && p.active);
   assert.strictEqual(data.users.ref1.referralCount, 1); assert.strictEqual(data.users.ref1.referralCredits, 200);
-  assert.ok(sms[0][0] === "9876543210" && sms[0][1].includes(r.rewarded));
+  assert.ok(sms[0][0] === "asha@x.in" && sms[0][1].includes(r.rewarded) && sms[0][2] === "follow_up");
   const again = await G.rewardReferrer(deps, db.collection("bookings").doc("b1"), { status: "transit" }, data.bookings.b1);
   assert.ok(again.skipped); assert.strictEqual(Object.keys(data.promos).length, 1);
   data.promos.FIRSTMOVE = { active: true }; data.bookings.b2 = { customerUid: "x", promoCode: "FIRSTMOVE", status: "delivered" };
   assert.strictEqual((await G.rewardReferrer(deps, db.collection("bookings").doc("b2"), { status: "transit" }, data.bookings.b2)).skipped, "promo_not_referral");
-  ok("referral: completed friend's booking → referrer gets a personal ₹200 code by SMS, once; normal promo codes ignored");
+  ok("referral: completed friend's booking → referrer gets a personal ₹200 code by e-mail, once; normal promo codes ignored");
 
   const now = deps.now();
-  data.bookings.m1 = { status: "delivered", deliveredAt: ts(now - 3.5 * 86400e3), phone: "9000000001", customerName: "Ravi K", bookingRef: "PZ7" };
+  data.bookings.m1 = { status: "delivered", deliveredAt: ts(now - 3.5 * 86400e3), phone: "9000000001", email: "ravi@x.in", customerName: "Ravi K", bookingRef: "PZ7" };
   data.bookings.m2 = { status: "delivered", deliveredAt: ts(now - 3.5 * 86400e3), phone: "9000000002", bookingType: "parcel" };
   data.bookings.m3 = { status: "delivered", deliveredAt: ts(now - 1 * 86400e3), phone: "9000000003" };
   sms.length = 0;
   const f = await G.followUps(deps);
-  assert.strictEqual(f.sent, 1); assert.ok(sms[0][0] === "9000000001" && /Ravi/.test(sms[0][1]) && /services/.test(sms[0][1]));
+  assert.strictEqual(f.sent, 1); assert.ok(sms[0][0] === "ravi@x.in" && /Ravi/.test(sms[0][1]) && /services/.test(sms[0][1]) && /washing machine/.test(sms[0][1]));
   assert.strictEqual((await G.followUps(deps)).sent, 0);
-  ok("post-move follow-up: one SMS 3 days after a completed move (not parcels, not twice)");
+  ok("post-move follow-up: one e-mail 3 days after a completed move (AC + appliances + review + referral; not parcels, not twice)");
 
   const pdb = (promoDoc, bookings, users) => ({ collection: (c) => ({
     doc: () => ({ get: async () => ({ exists: c === "promos" && !!promoDoc, data: () => promoDoc }) }),

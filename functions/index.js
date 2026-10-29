@@ -686,12 +686,17 @@ exports.getSentQuote = functions.region("asia-south1").https.onCall(async (data,
   if (rl && rl.ok === false) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please try again later.");
   try { return await sales.getSentQuote(data, { db: admin.firestore(), now: () => Date.now() }); } catch (e) { throw salesErr(e); }
 });
-exports.leadWinback = functions.region("asia-south1").pubsub.schedule("0 11 * * *").timeZone("Asia/Kolkata").onRun(async () => {
+exports.leadWinback = functions.region("asia-south1").runWith({ secrets: [...BREVO_SECRETS] }).pubsub.schedule("0 11 * * *").timeZone("Asia/Kolkata").onRun(async () => {
   const db = admin.firestore();
   const snap = await db.collection("leads").where("status", "==", "lost").limit(300).get();
   const plan = sales.winbackPlan(snap.docs.map((d) => Object.assign({ _ref: d.ref }, d.data())), Date.now());
   for (const l of plan) {
-    await db.collection("smsQueue").add({ mobile: l.phone, message: sales.winbackText(l), status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    if (l.email) {   // e-mail only (SMS reserved for OTPs)
+      const { sendCustomerEmail } = require("./notification-service");
+      await sendCustomerEmail("follow_up", l.email, { customerName: l.name || "", emoji: "👋", subject: "Can we still help with your move?",
+        title: "Can we still help?", subtitle: l.serviceLabel || "", paragraphs: [sales.winbackText(l).replace(/^Hi [^,]*, /, "").replace(/Rs\./g, "₹")],
+        ctaLabel: "See today's price", ctaUrl: "https://packzenblr.in/" }).catch(() => {});
+    }
     await l._ref.update({ winbackSentAtMs: Date.now() });
   }
   functions.logger.info("lead_winback", { sent: plan.length });
