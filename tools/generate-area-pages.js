@@ -97,7 +97,7 @@ for (const [slug, d] of Object.entries(areas)) {
       if (!page.includes(token)) {
         throw new Error(`Token ${token} not found in template for ${slug}`);
       }
-      page = page.replace(token, value);
+      page = page.split(token).join(value);   // every occurrence (tokens may repeat)
     }
   }
 

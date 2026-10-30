@@ -30,4 +30,13 @@ const fn = cb.slice(cb.indexOf("exports.advisorCreateServiceBooking"), cb.indexO
 assert.ok(/SC\.staffRoleOf/.test(fn) && /priceCart\(catalog, data && data\.items\)/.test(fn) && /buildBooking\(\{ uid: who\.customerUid/.test(fn) && /paymentType: "pay_later"/.test(fn) && /source: "advisor"/.test(fn));
 assert.ok(/httpsCallable\("advisorCreateServiceBooking"\)/.test(ab) && /nbSelectMoveType\('services'\)/.test(pub("advisor.html")) && /RETIRED_CATS/.test(ab));
 ok("advisor can book every active service (AC, washing machine / fridge) through the same catalog pricing and booking record; retired services excluded");
+const NEWP = ["single-item-shifting-bangalore", "intercity-relocation-from-bangalore", "washing-machine-installation-bangalore", "refrigerator-gas-refill-bangalore",
+  "digital/ecommerce-website-bangalore", "digital/booking-website-bangalore", "digital/website-maintenance-bangalore", "digital/google-business-profile-seo-setup-bangalore"];
+for (const s of NEWP) { const h = pub(s + ".html"); assert.ok(/pz-quick-answer/.test(h) && /pz-facts/.test(h) && /"dateModified"/.test(h) && /"FAQPage"/.test(h) && sm.includes(s + ".html") && (h.match(/<h1/g) || []).length === 1, s); }
+const ALL = ["house-shifting-bangalore", "ac-gas-refill-bangalore", "refrigerator-repair-bangalore", "packers-and-movers-hsr-layout", "packers-and-movers-whitefield", "digital/index", "digital/website-design-for-clinics-bangalore", "corporate-employee-relocation-bangalore"];
+for (const s of ALL) { const h = pub(s + ".html"); assert.ok(/pz-quick-answer/.test(h) && /pz-facts/.test(h) && /"dateModified"/.test(h), s); }
+assert.ok(/Get instant price/.test(pub("house-shifting-bangalore.html")) && /Fixed price before booking/.test(pub("packers-and-movers-hsr-layout.html")));
+assert.ok(!/\{\{[A-Z_]+\}\}/.test(pub("packers-and-movers-hsr-layout.html")), "area page fully generated");
+const L2 = pub("llms.txt"); assert.ok(/## All pages/.test(L2) && /packers-and-movers-whitefield\.html/.test(L2) && /digital\/ecommerce-website-bangalore\.html/.test(L2));
+ok("GEO/LLMO/SXO: 8 new SEO pages; quick answer (with CTA + trust row), At-a-glance facts, freshness and speakable markup on every service, area, business and Digital page; llms.txt maps every page");
 console.log(`\nseo-aeo: ${pass} passed, 0 failed`);
