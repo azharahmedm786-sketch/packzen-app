@@ -39,10 +39,43 @@ Disallow: /pages/
 # Transactional / internal-only pages — no search value
 Disallow: /registration-success.html
 Disallow: /delete-account.html
-Disallow: /msg91-setup-guide.html
 
 # Parcel delivery — feature not yet live, thin/placeholder content
 Disallow: /parcel1.html
 Disallow: /parcel-tracking.html
 
 Sitemap: https://packzenblr.in/sitemap.xml
+
+# Answer engines (ChatGPT search, Perplexity, Claude, Google AI) may read public pages;
+# private pages stay excluded. Plain-text summary: https://packzenblr.in/llms.txt
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /env-config.js
+Disallow: /firebase-config.js
+Disallow: /admin.html
+Disallow: /leads-app/
+Disallow: /quote.html
+Disallow: /driver.html
+Disallow: /advisor.html
+Disallow: /driver-manifest.json
+Disallow: /partner-login.html
+Disallow: /partner-register.html
+Disallow: /partner-forgot-password.html
+Disallow: /partner-dashboard.html
+Disallow: /partner-bookings.html
+Disallow: /partner-booking-details.html
+Disallow: /partner-drivers.html
+Disallow: /partner-vehicles.html
+Disallow: /partner-wallet.html
+Disallow: /partner-notifications.html
+Disallow: /partner-profile.html
+Disallow: /partner-settings.html
+Disallow: /partner-support.html
+Disallow: /pages/
+Disallow: /registration-success.html
+Disallow: /delete-account.html
+Disallow: /parcel1.html
+Disallow: /parcel-tracking.html

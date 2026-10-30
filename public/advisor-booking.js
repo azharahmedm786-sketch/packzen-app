@@ -31,6 +31,55 @@
     dishwasherCheck: "Dishwasher", microwaveCheck: "Microwave", ovenCheck: "Oven", chimneyCheck: "Chimney", diningCheck: "Dining table", waterPurifierCheck: "Water purifier",
     deskCheck: "Desk", chairCheck: "Chair", serverCheck: "Server rack", printerCheck: "Printer", confCheck: "Conference table", cabinetCheck: "Cabinet", bikeCheck: "Bike",
     cycleCheck: "Cycle", gymCheck: "Gym equipment", treadmillCheck: "Treadmill" };
+  var RETIRED_CATS = ["handyman", "painting", "cleaning", "appliances", "ac-installation", "washing-machine-and-fridge"];
+  var SVC = { list: [], cats: {}, qty: {}, loaded: false };
+  function loadServices() {
+    if (SVC.loaded) return Promise.resolve();
+    var db = window._firebase && window._firebase.db; if (!db) return Promise.resolve();
+    return Promise.all([db.collection("serviceCategories").get(), db.collection("services").get(), db.collection("addons").get()]).then(function (r) {
+      r[0].docs.forEach(function (d) { SVC.cats[d.id] = d.data(); });
+      var ok = function (x) { var c = SVC.cats[x.categoryId] || {}; return x.isActive !== false && c.isActive !== false && RETIRED_CATS.indexOf(x.categoryId) < 0 && !/clean/i.test(x.categoryId || "") && x.categoryId !== "moving" && x.categoryId !== "packing"; };
+      r[1].docs.forEach(function (d) { var x = d.data(); if (ok(x)) SVC.list.push({ type: "services", id: d.id, name: x.name, price: x.basePrice, unit: x.pricingUnit, cat: x.categoryId }); });
+      r[2].docs.forEach(function (d) { var x = d.data(); if (ok(x)) SVC.list.push({ type: "addons", id: d.id, name: x.name, price: x.basePrice, unit: x.pricingUnit, cat: x.categoryId }); });
+      SVC.list.sort(function (a, b) { return String(a.cat).localeCompare(String(b.cat)) || String(a.name).localeCompare(String(b.name)); });
+      SVC.loaded = true;
+    }).catch(function () { SVC.loaded = false; });
+  }
+  function svcCard() {
+    var card = $("nbSvcCard"); if (card) return card;
+    card = document.createElement("div"); card.className = "nb-card"; card.id = "nbSvcCard"; card.style.display = "none";
+    card.innerHTML = '<h3>🔧 Services</h3><div id="nbSvcList" class="nb-furniture-grid"><span style="color:var(--muted)">Loading services…</span></div>';
+    var typeCard = $("nbTypeGrid") && $("nbTypeGrid").closest(".nb-card"); if (typeCard) typeCard.parentNode.insertBefore(card, typeCard.nextSibling);
+    return card;
+  }
+  function renderSvc() {
+    var box = $("nbSvcList"); if (!box) return;
+    if (!SVC.list.length) { box.innerHTML = '<span style="color:var(--muted)">' + (SVC.loaded ? "No active services in the catalog." : "Loading services…") + "</span>"; return; }
+    var lastCat = null;
+    box.innerHTML = SVC.list.map(function (x) {
+      var q = SVC.qty[x.type + ":" + x.id] || 0, head = "";
+      if (x.cat !== lastCat) { lastCat = x.cat; head = '<div style="grid-column:1/-1;font-weight:800;margin-top:6px">' + esc((SVC.cats[x.cat] || {}).name || x.cat) + "</div>"; }
+      var price = x.unit === "quote" ? "Quote on visit" : "₹" + Number(x.price || 0).toLocaleString("en-IN") + (x.unit === "per_item" ? " each" : "");
+      return head + '<div class="nb-furn-card' + (q ? " active" : "") + '"><div style="font-size:.8rem;font-weight:700">' + esc(x.name) + '</div><div style="font-size:.72rem;color:var(--muted)">' + esc(price) + '</div>' +
+        '<div class="nb-qty-row"><button type="button" class="nb-qty-btn" data-svc="' + esc(x.type + ":" + x.id) + '" data-d="-1">−</button><span style="min-width:22px;text-align:center;font-weight:800">' + q +
+        '</span><button type="button" class="nb-qty-btn" data-svc="' + esc(x.type + ":" + x.id) + '" data-d="1">+</button></div></div>';
+    }).join("");
+  }
+  function svcItems() { return Object.keys(SVC.qty).filter(function (k) { return SVC.qty[k] > 0; }).map(function (k) { var p = k.split(":"); return { type: p[0], id: p[1], qty: SVC.qty[k] }; }); }
+  function setServiceMode(on) {
+    svcCard().style.display = on ? "" : "none";
+    var hide = [$("nbDrop") && $("nbDrop").closest(".nb-field"), $("nbMap"), $("nbDistanceInfo"), $("nbVehicleCard") || ($("nbVehicleGrid") && $("nbVehicleGrid").closest(".nb-card")),
+      $("nbPickupFloor") && $("nbPickupFloor").closest(".nb-card"), $("nbFurnitureGrid") && $("nbFurnitureGrid").closest(".nb-card"), $("nbSizeGrid") && $("nbSizeGrid").parentNode];
+    hide.forEach(function (el) { if (el) el.style.display = on ? "none" : ""; });
+    var pl = $("nbPickup"); if (pl) { pl.placeholder = on ? "Service address (house / flat, area, Bangalore)" : "Enter pickup address"; var lab = pl.closest(".nb-field") && pl.closest(".nb-field").querySelector("label"); if (lab) lab.textContent = on ? "Service Address *" : "Pickup Address *"; }
+    if (on) loadServices().then(renderSvc);
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest("[data-svc]"); if (!t) return;
+    var k = t.dataset.svc; SVC.qty[k] = Math.max(0, Math.min(20, (SVC.qty[k] || 0) + Number(t.dataset.d))); renderSvc(); window.nbCalc();
+  });
+  function callSvc(data) { return firebase.app().functions("asia-south1").httpsCallable("advisorCreateServiceBooking")(data).then(function (r) { return r.data; }); }
+
   var S = { moveType: "home", size: "", vehicleId: "", furniture: {}, cartons: 0, coupon: "", quote: null, requestId: null, busy: false };
   var calcTimer = null, calcSeq = 0;
 
@@ -80,6 +129,7 @@
   /* ---------- public functions used by the form ---------- */
   window.nbSelectMoveType = function (type) {
     S.moveType = type; S.size = ""; S.furniture = {}; S.cartons = 0;
+    setServiceMode(type === "services");
     document.querySelectorAll("#nbTypeGrid .nb-type-card").forEach(function (c) { c.classList.toggle("selected", (c.getAttribute("onclick") || "").indexOf("'" + type + "'") >= 0); });
     renderSizes(); renderFurniture(); window.nbSaveDraft(); window.nbCalc();
   };
@@ -116,6 +166,20 @@
 
   window.nbCalc = function (now) {
     clearTimeout(calcTimer);
+    if (S.moveType === "services") {
+      calcTimer = setTimeout(function () {
+        var box = $("nbSummaryLines"), tot = $("nbTotalDisplay"), items = svcItems();
+        if (!items.length) { if (box) box.innerHTML = '<div class="nb-summary-line"><span>Choose at least one service</span></div>'; if (tot) tot.textContent = "—"; S.quote = null; return; }
+        var seq = ++calcSeq; if (tot) tot.textContent = "…";
+        callSvc({ op: "quote", items: items }).then(function (q) {
+          if (seq !== calcSeq) return; S.quote = q; err("");
+          if (box) box.innerHTML = (q.lines || []).map(function (l) { return '<div class="nb-summary-line"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + "</span><strong>" + (l.lineTotal != null ? "₹" + Math.round(l.lineTotal).toLocaleString("en-IN") : "Quote") + "</strong></div>"; }).join("") +
+            (q.needsQuote ? '<div class="nb-summary-line"><span>Includes items priced on visit</span></div>' : "");
+          if (tot) tot.textContent = "₹" + Math.round(q.total || 0).toLocaleString("en-IN") + (q.needsQuote ? "+" : "");
+        }).catch(function (e) { if (seq !== calcSeq) return; S.quote = null; if (tot) tot.textContent = "—"; err((e && e.message) || "Couldn't price these services."); });
+      }, now ? 50 : 400);
+      return;
+    }
     calcTimer = setTimeout(function () {
       var box = $("nbSummaryLines"), tot = $("nbTotalDisplay");
       if (!val("nbPickup") || !val("nbDrop") || !S.size) { if (box) box.innerHTML = '<div class="nb-summary-line"><span>Enter pickup, drop and size to see the price</span></div>'; if (tot) tot.textContent = "—"; S.quote = null; return; }
@@ -133,6 +197,7 @@
 
   window.nbSaveBooking = function () {
     if (S.busy) return; err("");
+    if (S.moveType === "services") return saveServices();
     var d = details();
     if (d.customerName.length < 2) return err("Enter the customer's name.");
     if (!/^[6-9]\d{9}$/.test(d.phone.replace(/\D/g, "").slice(-10))) return err("Enter a valid 10-digit mobile number.");
@@ -166,6 +231,39 @@
       err((e && e.message) || "Could not create the booking. Please try again.");
     });
   };
+
+  function saveServices() {
+    var name = val("nbName"), phone = val("nbPhone").replace(/\D/g, "").slice(-10), t = $("nbTime");
+    if (name.length < 2) return err("Enter the customer's name.");
+    if (!/^[6-9]\d{9}$/.test(phone)) return err("Enter a valid 10-digit mobile number.");
+    if (!val("nbPickup")) return err("Enter the service address.");
+    if (!svcItems().length) return err("Choose at least one service.");
+    if (!val("nbDate")) return err("Choose the date.");
+    if (!val("nbTime")) return err("Choose a time slot.");
+    if (!S.quote) return err("Wait for the price to load.");
+    if (!confirm("Create this service booking for " + name + " — ₹" + Math.round(S.quote.total || 0).toLocaleString("en-IN") + (S.quote.needsQuote ? "+ (some items priced on visit)" : "") + " (Pay Later)?")) return;
+    S.busy = true; S.requestId = S.requestId || rid();
+    var btn = $("nbSaveBtn"); if (btn) { btn.disabled = true; btn.textContent = "Creating booking…"; }
+    var details = { customerName: name, phone: phone, email: val("nbEmail"), address: val("nbPickup"), date: val("nbDate"),
+      timeSlot: t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : val("nbTime"), notes: val("nbRemarks") };
+    callSvc({ op: "create", requestId: S.requestId, items: svcItems(), details: details, leadSource: val("nbLeadSource") }).then(function (r) {
+      S.busy = false; S.requestId = null; SVC.qty = {}; renderSvc(); try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      var msg = "Hi " + name.split(" ")[0] + ", your PackZen service booking is " + (r.status === "pending" ? "received" : "confirmed") + " ✅\nBooking ID: " + r.bookingRef +
+        "\nDate: " + details.date + " (" + details.timeSlot + ")\nAddress: " + details.address + "\nTotal: ₹" + Math.round(r.total || 0).toLocaleString("en-IN") + (r.needsQuote ? "+ (final price after inspection)" : "") + " — pay later\n" +
+        (r.setPasswordLink ? "Set your password to track it in My Bookings: " + r.setPasswordLink + "\n" : r.customerLinked ? "Track it in My Bookings at packzenblr.in\n" : "") + "Questions? Call 99450 95453.";
+      showDone(r, "https://wa.me/91" + phone + "?text=" + encodeURIComponent(msg), btn);
+    }).catch(function (e) { S.busy = false; if (btn) { btn.disabled = false; btn.textContent = "✅ Create Booking"; } err((e && e.message) || "Could not create the booking."); });
+  }
+  function showDone(r, wa, btn) {
+    var sec = $("secNewbooking"), old = $("nbDone"); if (old) old.remove();
+    var box = document.createElement("div"); box.className = "nb-card"; box.id = "nbDone";
+    box.innerHTML = "<h3>✅ Booking created</h3><p style=\"margin:0 0 10px\"><b>" + esc(r.bookingRef) + "</b> · ₹" + Math.round(r.total || 0).toLocaleString("en-IN") + " · Pay Later" + (r.status === "pending" ? " · awaiting price confirmation" : "") + "</p>" +
+      "<p style=\"margin:0 0 12px;color:var(--muted)\">" + (r.accountCreated ? "A customer account was created — send the message so they can set a password and see the booking." : r.customerLinked ? "Linked to the customer's account (shows in My Bookings)." : "Saved as a guest booking (no e-mail given).") + "</p>" +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="nb-btn-save" style="text-decoration:none;text-align:center" target="_blank" rel="noopener" href="' + esc(wa) + '">Send WhatsApp to customer</a>' +
+      '<button type="button" class="nb-btn-save" style="background:var(--surface);color:var(--text);border:1px solid var(--border)" onclick="document.getElementById(\'nbDone\').remove();nbInit(true)">New booking</button></div>';
+    if (sec) sec.insertBefore(box, sec.firstChild); window.scrollTo({ top: 0, behavior: "smooth" });
+    if (btn) { btn.disabled = false; btn.textContent = "✅ Create Booking"; }
+  }
 
   /* ---------- drafts ---------- */
   var FIELDS = ["nbName", "nbPhone", "nbAltPhone", "nbEmail", "nbLeadSource", "nbPickup", "nbDrop", "nbDate", "nbTime", "nbPickupFloor", "nbDropFloor", "nbFragile", "nbSpecial", "nbRemarks", "nbCoupon"];
@@ -201,6 +299,7 @@
     ["nbPickup", "nbDrop"].forEach(function (id) { var el = $(id); if (el && !el._nb) { el._nb = 1; el.addEventListener("input", function () { window.nbSaveDraft(); window.nbCalc(); }); } });
     ["nbLift", "nbPacking", "nbUnpacking", "nbDismantle", "nbAssembly"].forEach(function (id) { var el = $(id); if (el && !el._nb) { el._nb = 1; el.addEventListener("change", function () { window.nbSaveDraft(); window.nbCalc(); }); } });
     if (!S.moveType) S.moveType = "home";
+    setServiceMode(S.moveType === "services");
     document.querySelectorAll("#nbTypeGrid .nb-type-card").forEach(function (c) { c.classList.toggle("selected", (c.getAttribute("onclick") || "").indexOf("'" + S.moveType + "'") >= 0); });
     renderSizes(); renderVehicles(); renderFurniture();
     var btn = $("nbSaveBtn"); if (btn) btn.textContent = "✅ Create Booking";

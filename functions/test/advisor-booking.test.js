@@ -16,7 +16,7 @@ ok("server: staff-only manual booking — same pricing engine, Pay Later + confi
 const ab = rd("public/advisor-booking.js"), adv = rd("public/advisor.html");
 for (const f of ["nbInit", "nbSaveDraft", "nbRestoreDraft", "nbDiscardDraft", "nbSelectMoveType", "nbCartonQty", "nbApplyCoupon", "nbSelectPayment", "nbCalc", "nbSaveBooking"])
   assert.ok(new RegExp("window\\." + f + " = function").test(ab), f);
-assert.ok(/httpsCallable\("advisorCreateBooking"\)/.test(ab) && /op: "quote"/.test(ab) && /op: "create", requestId: S\.requestId/.test(ab) && /advisor-booking\.js\?v=1/.test(adv));
+assert.ok(/httpsCallable\("advisorCreateBooking"\)/.test(ab) && /op: "quote"/.test(ab) && /op: "create", requestId: S\.requestId/.test(ab) && /advisor-booking\.js\?v=2/.test(adv));
 assert.ok(!/total:\s*S\.quote|paid:\s*true|status:\s*val\("nbStatus"\)/.test(ab), "browser never sends price, paid flag or status");
 ok("advisor New Booking form wired (was a dead stub): live server price, coupon, drafts, WhatsApp confirmation; price/status never from the browser");
 assert.ok(/id="pz-advisor-fix"/.test(adv) && /--text:#0C1A14/.test(adv) && /adv-menu-btn/.test(adv) && /if \(typeof Chart === "undefined"\) return;/.test(adv));

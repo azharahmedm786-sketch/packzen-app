@@ -1116,11 +1116,12 @@ function buildShell() {
           </div>
 
           <div class="nb-card">
-            <h3>📦 Move Type</h3>
+            <h3>📦 Booking Type</h3>
             <div class="nb-type-grid" id="nbTypeGrid">
               <div class="nb-type-card" data-type="home" onclick="nbSelectMoveType('home')">🏠<br>Home</div>
               <div class="nb-type-card" data-type="office" onclick="nbSelectMoveType('office')">🏢<br>Office</div>
               <div class="nb-type-card" data-type="single" onclick="nbSelectMoveType('single')">📦<br>Single Item</div>
+<div class="nb-type-card" data-type="services" onclick="nbSelectMoveType('services')">🔧<br>Home services</div>
             </div>
             <div style="margin-top:16px">
               <label style="display:block;font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px" id="nbSizeLabel">House Type</label>
@@ -1881,7 +1882,7 @@ function toast(msg, dur=3000) {
 }
 </script>
      <script src="advisor-dashboard-patch.js"></script>
-<script src="advisor-booking.js?v=1"></script>
+<script src="advisor-booking.js?v=2"></script>
 
 
 

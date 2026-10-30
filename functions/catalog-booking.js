@@ -179,6 +179,47 @@ exports.createServiceBooking = functions
     return { docId: ref.id, bookingRef: booking.bookingRef, status, total: booking.total, needsQuote: booking.needsQuote };
   });
 
+/* ── 1b. Staff ("advisor") booking of home services for a customer ─────────────
+   Same catalog pricing (priceCart), same record (buildBooking), same status rule
+   (quote items → pending, else confirmed) and Pay Later — just created by staff.
+   ops: "quote" (price preview) | "create". */
+const SC = require("./staff-customer");
+exports.advisorCreateServiceBooking = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in.");
+    const role = await SC.staffRoleOf(admin, context);
+    if (!SC.STAFF_ROLES.includes(role)) throw new functions.https.HttpsError("permission-denied", "Only PackZen staff can create bookings for customers.");
+    const db = admin.firestore();
+    const rl = await rateLimit.consumeAll(db, [Object.assign({ scope: "advisorBooking", subject: context.auth.uid }, { limit: 60, windowMs: 10 * 60 * 1000 })], functions.logger);
+    if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many requests. Please wait a minute.");
+    const catalog = await loadCatalog(db, data && data.items);
+    const cart = priceCart(catalog, data && data.items);
+    if (!cart.ok) throw new functions.https.HttpsError("invalid-argument", cart.errors.join(" "));
+    if (data && data.op === "quote") {
+      return { total: cart.estimatedTotal, needsQuote: !!(cart.hasQuoteItems || cart.hasEstimateItems), lines: bookingLines(cart.lines) };
+    }
+    if (!data || data.op !== "create") throw new functions.https.HttpsError("invalid-argument", "Unknown action.");
+    if (!validRequestId(data.requestId)) throw new functions.https.HttpsError("invalid-argument", "Missing request id.");
+    const dup = await db.collection("bookings").where("requestId", "==", data.requestId).where("source", "==", "advisor").limit(1).get();
+    if (!dup.empty) { const b = dup.docs[0].data(); return { docId: dup.docs[0].id, bookingRef: b.bookingRef, status: b.status, total: b.total, duplicate: true }; }
+    const det = validateDetails(data.details);
+    if (!det.ok) throw new functions.https.HttpsError("invalid-argument", det.errors.join(" "));
+    const c = SC.cleanContact(det.value);
+    let who;
+    try { who = await SC.resolveCustomer(admin, c, context.auth.uid); }
+    catch (e) { if (e instanceof SC.StaffCustomerError) throw new functions.https.HttpsError(e.code, e.publicMessage); throw e; }
+    const status = (cart.hasQuoteItems || cart.hasEstimateItems) ? "pending" : "confirmed";
+    const booking = buildBooking({ uid: who.customerUid, requestId: data.requestId, details: det.value, cart, status,
+      paid: 0, paymentType: "pay_later", paymentStatus: "unpaid", extra: { balanceDue: cart.estimatedTotal, currency: "INR" } });
+    Object.assign(booking, { source: "advisor", createdByStaff: { uid: context.auth.uid, email: (context.auth.token || {}).email || null, role },
+      createdByAdvisor: (context.auth.token || {}).email || context.auth.uid, leadSource: String(data.leadSource || "").slice(0, 40) || null });
+    const ref = await db.collection("bookings").add(booking);
+    functions.logger.info("advisor_service_booking", { bookingId: ref.id, by: context.auth.uid });
+    return { docId: ref.id, bookingRef: booking.bookingRef, status, total: booking.total, needsQuote: booking.needsQuote,
+      customerLinked: !!who.customerUid, accountCreated: who.accountCreated, setPasswordLink: who.setPasswordLink };
+  });
+
 /* ── 2. Start an online payment (shared hardened payment core) ── */
 // Orders are stored in `pendingPayments` with flow:"service", so verification,
 // capture check, idempotency, webhook and hourly reconciliation are the same
