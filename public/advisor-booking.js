@@ -286,7 +286,35 @@
   };
   window.nbDiscardDraft = function () { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} if ($("nbDraftBanner")) $("nbDraftBanner").style.display = "none"; };
 
+  /* Google address suggestions on pickup / drop (same Maps key and Places library as the
+     website's booking form). Picking a suggestion fills the full address and re-prices. */
+  var mapsRequested = false;
+  function attachAutocomplete() {
+    if (typeof google === "undefined" || !google.maps || !google.maps.places) return false;
+    ["nbPickup", "nbDrop"].forEach(function (id) {
+      var input = $(id); if (!input || input._pzAuto) return;
+      var ac = new google.maps.places.Autocomplete(input, { componentRestrictions: { country: "in" }, fields: ["formatted_address", "geometry", "name"] });
+      input._pzAuto = ac;
+      ac.addListener("place_changed", function () {
+        var pl = ac.getPlace();
+        if (pl && pl.formatted_address) input.value = (pl.name && pl.formatted_address.indexOf(pl.name) !== 0 ? pl.name + ", " : "") + pl.formatted_address;
+        window.nbSaveDraft(); window.nbCalc(true);
+      });
+    });
+    return true;
+  }
+  function loadMaps() {
+    if (attachAutocomplete() || mapsRequested) return;
+    var key = window.ENV && window.ENV.GOOGLE_MAPS_KEY; if (!key) return;
+    mapsRequested = true;
+    window.pzAdvisorMapsReady = function () { attachAutocomplete(); };
+    var sc = document.createElement("script");
+    sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&callback=pzAdvisorMapsReady";
+    sc.async = true; sc.defer = true; document.head.appendChild(sc);
+  }
+
   window.nbInit = function (reset) {
+    loadMaps();
     if (reset) {
       FIELDS.forEach(function (id) { if ($(id)) $(id).value = ""; }); TOGGLES.forEach(function (id) { if ($(id)) $(id).checked = false; });
       Object.assign(S, { moveType: "home", size: "", vehicleId: "", furniture: {}, cartons: 0, coupon: "", quote: null, requestId: null });
