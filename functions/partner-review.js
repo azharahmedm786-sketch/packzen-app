@@ -50,19 +50,22 @@ async function handleReview(data, context, deps) {
     const pd = p.data() || {};
     const u = await tx.get(uRef);
     const ud = u.exists ? (u.data() || {}) : {};
+    const existing = await tx.get(dRef);   // Firestore: every read must happen before the first write
     if (ud.role && !["partner", "driver", "customer"].includes(ud.role)) return { error: ["failed-precondition", "This account has a staff role and can't be a partner."] };
     if (decision === "reject") {
       tx.update(pRef, { verificationStatus: "rejected", rejectionReason: reason, reviewedBy: caller, reviewedAt: deps.serverTimestamp() });
       return { pd, approved: false };
     }
     const profile = profileFromApplication(Object.assign({ uid }, pd));
+    let clean;
+    try { clean = driverProfile.validatePatch(profile); }
+    catch (e) { return { error: ["failed-precondition", "This application has invalid details (" + String(e && e.message || "profile").slice(0, 80) + "). Edit the partner's details and approve again."] }; }
     tx.update(pRef, { verificationStatus: "approved", rejectionReason: null, reviewedBy: caller, reviewedAt: deps.serverTimestamp() });
     tx.set(uRef, Object.assign({ role: "driver", name: pd.ownerName || pd.businessName || "", email: pd.email || ud.email || null,
       phone: String(pd.ownerPhone || "").replace(/^\+?91/, ""), partnerUid: uid, updatedAt: deps.serverTimestamp() },
       u.exists ? {} : { createdAt: deps.serverTimestamp() }), { merge: true });
-    const existing = await tx.get(dRef);
-    if (existing.exists) tx.update(dRef, Object.assign({}, driverProfile.validatePatch(profile), { updatedAt: deps.serverTimestamp() }));
-    else tx.set(dRef, driverProfile.newProfile(driverProfile.validatePatch(profile), deps.serverTimestamp()));
+    if (existing.exists) tx.update(dRef, Object.assign({}, clean, { updatedAt: deps.serverTimestamp() }));
+    else tx.set(dRef, driverProfile.newProfile(clean, deps.serverTimestamp()));
     return { pd, approved: true, profile };
   });
   if (out.error) throw new ReviewError(out.error[0], out.error[1]);

@@ -21,8 +21,11 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
     users: {}, driverProfiles: {} };
   const ref = (c, id) => ({ _c: c, id });
   const db = { collection: (c) => ({ doc: (id) => ref(c, id) }),
-    runTransaction: async (fn) => fn({ get: async (r) => ({ exists: !!store[r._c][r.id], data: () => store[r._c][r.id] }),
-      update: (r, u) => Object.assign(store[r._c][r.id], u), set: (r, d, o) => { store[r._c][r.id] = Object.assign(o && o.merge ? (store[r._c][r.id] || {}) : {}, d); } }) };
+    // Behaves like real Firestore: a read after any write in the same transaction throws.
+    runTransaction: async (fn) => { let wrote = false; return fn({
+      get: async (r) => { if (wrote) throw new Error("Firestore transactions require all reads to be executed before all writes."); return { exists: !!store[r._c][r.id], data: () => store[r._c][r.id] }; },
+      update: (r, u) => { wrote = true; Object.assign(store[r._c][r.id], u); },
+      set: (r, d, o) => { wrote = true; store[r._c][r.id] = Object.assign(o && o.merge ? (store[r._c][r.id] || {}) : {}, d); } }); } };
   const sent = [];
   const deps = (admin) => ({ db, isAdmin: async () => admin, serverTimestamp: () => "TS", now: () => 0, notify: async (n) => sent.push(n), logger: { info() {}, warn() {} } });
   const ctx = { auth: { uid: "adminuid" } };
