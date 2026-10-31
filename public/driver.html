@@ -1212,16 +1212,24 @@ async function updateParcelStatus(jobId, newStatus) {
 
 let allCompletedBookings = [];
 
+/* This driver's completed jobs, newest first. Queries only by driverUid (needs no composite
+   index — the old driverUid + status + orderBy query failed without one), then filters and
+   sorts on the phone. Returns an object shaped like a QuerySnapshot ({ docs }). */
+function pzMyCompletedJobs() {
+  const ms = (b) => (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt && b.createdAt.seconds ? b.createdAt.seconds * 1000 : 0));
+  return window._firebase.db.collection("bookings").where("driverUid", "==", driverUser.uid).limit(500).get().then(snap => {
+    const docs = snap.docs.filter(d => ["delivered", "completed"].includes((d.data() || {}).status))
+      .sort((a, b) => ms(b.data()) - ms(a.data()));
+    return { docs, size: docs.length, empty: !docs.length };
+  });
+}
+
 function loadHistory() {
   if (!driverUser) return;
   const list = document.getElementById("historyList");
   list.innerHTML = '<div class="hist-empty">⏳ Loading...</div>';
 
-  window._firebase.db.collection("bookings")
-    .where("driverUid", "==", driverUser.uid)
-    .where("status", "==", "delivered")
-    .orderBy("createdAt", "desc")
-    .get()
+  pzMyCompletedJobs()
     .then(snap => {
       allCompletedBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderHistory(allCompletedBookings);
@@ -1279,11 +1287,7 @@ function loadEarnings(period) {
   const list = document.getElementById("earningsList");
   list.innerHTML = '<div class="hist-empty">⏳ Loading...</div>';
 
-  window._firebase.db.collection("bookings")
-    .where("driverUid", "==", driverUser.uid)
-    .where("status", "==", "delivered")
-    .orderBy("createdAt", "desc")
-    .get()
+  pzMyCompletedJobs()
     .then(snap => {
       let bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 

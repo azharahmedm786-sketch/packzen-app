@@ -21,4 +21,8 @@ const drv = rd("public/driver.html");
 assert.ok(!/switchTab\('parcel'/.test(drv) && /html,body\{overflow-x:hidden\}/.test(drv));
 assert.ok(/class="pz-menu-btn"|pz-menu-btn/.test(adm) && /body\.pz-menu-open/.test(adm) && /if \(typeof Chart === "undefined"\) return;/.test(adm) && /if \(typeof loadReadiness === "function"\) loadReadiness\(\);/.test(adm));
 ok("apps UX: admin ☰ Menu on phones, charts can't crash Overview, readiness refreshes; crew app without the retired Parcel tab");
+{ const d = rd("public/driver.html");
+  assert.ok(/function pzMyCompletedJobs\(\)/.test(d) && (d.match(/pzMyCompletedJobs\(\)/g) || []).length === 3);
+  assert.ok(!/where\("driverUid", "==", driverUser\.uid\)\s*\.where\("status", "==", "delivered"\)\s*\.orderBy/.test(d), "no composite-index query left");
+  ok("crew app: history and earnings load without a composite index (driverUid only, filtered and sorted on the phone)"); }
 console.log(`\naudit-support: ${pass} passed, 0 failed`);
