@@ -27,7 +27,9 @@
     panel.id = "crewHelp"; panel.hidden = true; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Crew help");
     panel.innerHTML = '<div class="ch-head"><b>Crew help</b><button type="button" class="ch-x" aria-label="Close">×</button></div>' +
       '<input class="ch-q" placeholder="Ask: OTP, cash, payout, packing…" aria-label="Search help">' +
-      '<div class="ch-list"></div><a class="ch-call" href="tel:' + OPS + '">📞 Call ops · ' + OPS + '</a>';
+      '<div class="ch-list"></div><a class="ch-call" href="tel:' + OPS + '">📞 Call ops · ' + OPS + '</a>' +
+      '<a class="ch-call ch-ticket" href="partner-support.html">🎫 Raise a support ticket</a>' +
+      '<a class="ch-call ch-ticket" href="partner-profile.html">👤 My profile & documents</a>';
     document.body.appendChild(btn); document.body.appendChild(panel);
     var list = panel.querySelector(".ch-list"), input = panel.querySelector(".ch-q");
     function render() {
@@ -44,6 +46,7 @@
   css.textContent = '#crewHelpBtn{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:900;width:48px;height:48px;border-radius:50%;border:0;background:#1F9D5C;color:#fff;font:800 1.3rem system-ui;box-shadow:0 10px 24px -10px rgba(21,122,71,.7);cursor:pointer}' +
     '#crewHelp{position:fixed;right:12px;left:12px;bottom:calc(140px + env(safe-area-inset-bottom,0px));max-width:420px;margin-left:auto;max-height:65vh;overflow:auto;z-index:901;background:#fff;color:#0C1A14;border:1px solid rgba(10,40,28,.14);border-radius:18px;padding:12px;box-shadow:0 30px 70px -30px rgba(12,26,20,.5);font:15px/1.45 system-ui}' +
     '#crewHelp[hidden]{display:none}.ch-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.ch-x{border:0;background:none;font-size:1.5rem;cursor:pointer;color:#3E5248}' +
+    '.ch-ticket{background:#fff!important;color:#0C1A14!important;border:1px solid rgba(10,40,28,.2)!important;margin-top:8px}' +
     '.ch-q{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(10,40,28,.2);border-radius:12px;font:inherit;margin-bottom:8px}' +
     '#crewHelp details{border-bottom:1px solid rgba(10,40,28,.08);padding:8px 2px}#crewHelp summary{font-weight:700;cursor:pointer}#crewHelp details p{margin:6px 0 0;color:#3E5248}' +
     '.ch-call{display:block;text-align:center;margin-top:10px;padding:10px;border-radius:999px;background:#0C1A14;color:#fff!important;text-decoration:none;font-weight:700}.ch-none{color:#6B7D74}';

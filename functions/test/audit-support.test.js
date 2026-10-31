@@ -25,4 +25,6 @@ ok("apps UX: admin ☰ Menu on phones, charts can't crash Overview, readiness re
   assert.ok(/function pzMyCompletedJobs\(\)/.test(d) && (d.match(/pzMyCompletedJobs\(\)/g) || []).length === 3);
   assert.ok(!/where\("driverUid", "==", driverUser\.uid\)\s*\.where\("status", "==", "delivered"\)\s*\.orderBy/.test(d), "no composite-index query left");
   ok("crew app: history and earnings load without a composite index (driverUid only, filtered and sorted on the phone)"); }
+assert.ok(/href="partner-support\.html">🎫 Raise a support ticket/.test(rd("public/crew-help.js")));
+ok("crew app help panel links to Support tickets and Profile");
 console.log(`\naudit-support: ${pass} passed, 0 failed`);
