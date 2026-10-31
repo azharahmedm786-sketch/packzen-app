@@ -74,8 +74,15 @@ function pzTrackUnsub(fn) { if (typeof fn === "function") PZ.unsub.push(fn); }
 function pzClearListeners() { PZ.unsub.forEach(function (u) { try { u(); } catch (e) {} }); PZ.unsub = []; }
 
 /* Redirect helper that preserves intent */
+/* Remember which account page the partner wanted (support / profile / settings) so login
+   returns them there instead of always going to the crew app. */
+var PZ_PORTAL_PAGES = { support: "partner-support.html", profile: "partner-profile.html", settings: "partner-settings.html" };
 function goLogin() {
-  window.location.href = "partner-login.html";
+  var pg = (document.body && document.body.getAttribute("data-page")) || "";
+  window.location.href = "partner-login.html" + (PZ_PORTAL_PAGES[pg] ? "?next=" + pg : "");
+}
+function pzAfterLoginPage() {
+  try { var n = new URLSearchParams(location.search).get("next"); return PZ_PORTAL_PAGES[n] || null; } catch (e) { return null; }
 }
 
 /* Core guard: every authenticated page calls this once on load.
@@ -271,7 +278,7 @@ function initLoginPage() {
       window._firebase.db.collection("partners").doc(user.uid).get().then(function (doc) {
         if (!doc.exists) return;
         var status = doc.data().verificationStatus;
-        if (status === "approved") window.location.href = "driver.html";
+        if (status === "approved") window.location.href = pzAfterLoginPage() || "driver.html";
         else if (status === "pending") window.location.href = "registration-success.html?status=pending";
         else if (status === "rejected") window.location.href = "registration-success.html?status=rejected";
       });
@@ -311,7 +318,7 @@ function initLoginPage() {
             return;
           }
           var status = doc.data().verificationStatus;
-          if (status === "approved") window.location.href = "driver.html";
+          if (status === "approved") window.location.href = pzAfterLoginPage() || "driver.html";
           else if (status === "pending") window.location.href = "registration-success.html?status=pending";
           else window.location.href = "registration-success.html?status=rejected";
         })

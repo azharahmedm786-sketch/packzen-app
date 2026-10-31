@@ -27,4 +27,7 @@ ok("apps UX: admin ☰ Menu on phones, charts can't crash Overview, readiness re
   ok("crew app: history and earnings load without a composite index (driverUid only, filtered and sorted on the phone)"); }
 assert.ok(/href="partner-support\.html">🎫 Raise a support ticket/.test(rd("public/crew-help.js")));
 ok("crew app help panel links to Support tickets and Profile");
+{ const pj = rd("public/partner.js");
+  assert.ok(/"partner-login\.html" \+ \(PZ_PORTAL_PAGES\[pg\] \? "\?next=" \+ pg : ""\)/.test(pj) && (pj.match(/pzAfterLoginPage\(\) \|\| "driver\.html"/g) || []).length === 2);
+  ok("partner login returns to the page asked for (Support / Profile / Settings) instead of always the crew app"); }
 console.log(`\naudit-support: ${pass} passed, 0 failed`);
