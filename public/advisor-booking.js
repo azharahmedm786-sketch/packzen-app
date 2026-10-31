@@ -244,12 +244,16 @@
     if (!confirm("Create this service booking for " + name + " — ₹" + Math.round(S.quote.total || 0).toLocaleString("en-IN") + (S.quote.needsQuote ? "+ (some items priced on visit)" : "") + " (Pay Later)?")) return;
     S.busy = true; S.requestId = S.requestId || rid();
     var btn = $("nbSaveBtn"); if (btn) { btn.disabled = true; btn.textContent = "Creating booking…"; }
+    // Home services use morning / afternoon / evening windows; map the advisor's 2-hour slot
+    // and keep the exact time in the notes for the technician.
+    var hr = parseInt(String(val("nbTime")).split(":")[0], 10), slotLabel = t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : val("nbTime");
+    var window_ = isNaN(hr) ? "" : hr < 12 ? "morning" : hr < 16 ? "afternoon" : "evening";
     var details = { customerName: name, phone: phone, email: val("nbEmail"), address: val("nbPickup"), date: val("nbDate"),
-      timeSlot: t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : val("nbTime"), notes: val("nbRemarks") };
+      timeSlot: window_, notes: ("Preferred time: " + slotLabel + ". " + val("nbRemarks")).trim().slice(0, 480) };
     callSvc({ op: "create", requestId: S.requestId, items: svcItems(), details: details, leadSource: val("nbLeadSource") }).then(function (r) {
       S.busy = false; S.requestId = null; SVC.qty = {}; renderSvc(); try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
       var msg = "Hi " + name.split(" ")[0] + ", your PackZen service booking is " + (r.status === "pending" ? "received" : "confirmed") + " ✅\nBooking ID: " + r.bookingRef +
-        "\nDate: " + details.date + " (" + details.timeSlot + ")\nAddress: " + details.address + "\nTotal: ₹" + Math.round(r.total || 0).toLocaleString("en-IN") + (r.needsQuote ? "+ (final price after inspection)" : "") + " — pay later\n" +
+        "\nDate: " + details.date + " (" + slotLabel + ")\nAddress: " + details.address + "\nTotal: ₹" + Math.round(r.total || 0).toLocaleString("en-IN") + (r.needsQuote ? "+ (final price after inspection)" : "") + " — pay later\n" +
         (r.setPasswordLink ? "Set your password to track it in My Bookings: " + r.setPasswordLink + "\n" : r.customerLinked ? "Track it in My Bookings at packzenblr.in\n" : "") + "Questions? Call 99450 95453.";
       showDone(r, "https://wa.me/91" + phone + "?text=" + encodeURIComponent(msg), btn);
     }).catch(function (e) { S.busy = false; if (btn) { btn.disabled = false; btn.textContent = "✅ Create Booking"; } err((e && e.message) || "Could not create the booking."); });

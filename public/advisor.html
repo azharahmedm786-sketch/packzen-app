@@ -914,6 +914,7 @@ async function doLogin() {
         "auth/user-not-found":            "⚠️ No account found for this email.",
         "auth/invalid-email":             "⚠️ Invalid email address.",
         "auth/too-many-requests":         "⚠️ Too many attempts. Please wait.",
+        "auth/user-disabled":             "⚠️ This staff account was removed or disabled. Ask the admin to restore it under Admin → Team.",
       };
       err.textContent = msgs[e.code] || ("⚠️ " + e.message);
       btn.disabled = false; btn.textContent = "Access Dashboard →";
@@ -1883,7 +1884,7 @@ function toast(msg, dur=3000) {
 }
 </script>
      <script src="advisor-dashboard-patch.js"></script>
-<script src="advisor-booking.js?v=3"></script>
+<script src="advisor-booking.js?v=4"></script>
 
 
 
