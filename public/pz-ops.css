@@ -6,8 +6,11 @@
    ========================================================================== */
 /* Wide tables never push the page sideways: they scroll inside their box. */
 @media (max-width: 900px) {
+  /* The table box scrolls; header and body stay ONE table (aligned columns). Splitting
+     thead/tbody into separate tables made headings drift away from their data. */
   table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table thead, table tbody { display: table; width: 100%; min-width: 640px; }
+  table thead, table tbody { display: table-row-group; }
+  table th, table td { white-space: nowrap; }
 }
 th { position: sticky; top: 0; background: var(--pz-surface-2); z-index: 1; }
 th, td { vertical-align: top; }

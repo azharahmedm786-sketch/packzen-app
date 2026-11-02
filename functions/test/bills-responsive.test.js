@@ -1,0 +1,26 @@
+/** Admin manual bills + responsive fixes.  node test/bills-responsive.test.js */
+"use strict";
+const assert = require("assert"); const fs = require("fs"); const path = require("path"); const vm = require("vm");
+const root = path.join(__dirname, "..", ".."), pub = (f) => fs.readFileSync(path.join(root, "public", f), "utf8");
+let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
+const js = pub("admin-bills.js");
+const calcSrc = js.slice(js.indexOf("  function calc("), js.indexOf("  /* ---------- form ---------- */"));
+const ctx = { num: (v) => { const n = Number(v); return isFinite(n) ? n : 0; } }; vm.createContext(ctx); vm.runInContext(calcSrc + "; this.calc = calc;", ctx);
+let t = ctx.calc([{ qty: 1, rate: 6500 }, { qty: 10, rate: 28 }], 200, 0);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(t)), { subtotal: 6780, discount: 200, tax: 0, total: 6580 });
+t = ctx.calc([{ qty: 2, rate: 1000 }], 5000, 18); assert.strictEqual(t.total, 0, "discount can't exceed subtotal");
+t = ctx.calc([{ qty: 1, rate: 1000 }], 0, 18); assert.strictEqual(t.total, 1180);
+t = ctx.calc([{ qty: 1, rate: 1000 }], 0, 99); assert.strictEqual(t.tax, 280, "GST capped at 28%");
+ok("bill maths: subtotal, discount (never above subtotal), optional GST (0–28%), total");
+assert.ok(/"PZB-" \+ year \+ "-" \+ String\(next\)\.padStart\(4, "0"\)/.test(js) && /db\(\)\.runTransaction\(/.test(js) && /tx\.set\(cRef, \{ next: next \+ 1, year: year \}\)/.test(js));
+assert.ok(/pzBillPrint/.test(js) && /window\.print\(\)/.test(js) && /pzBillWhatsApp/.test(js) && /pzBillPayment/.test(js) && /status: "void"/.test(js) && !/\.delete\(\)/.test(js));
+const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
+assert.ok(/match \/bills\/\{billId\} \{\s*allow read: if isAdmin\(\);/.test(rules) && /allow delete: if false;   \/\/ never delete a bill/.test(rules) && /match \/settings\/billCounter/.test(rules));
+const adm = pub("admin.html");
+assert.ok(/showSection\('bills',this\)/.test(adm) && /id="sectionBills"/.test(adm) && /admin-bills\.js\?v=2/.test(adm) && /pzLoadBills\(\)/.test(adm));
+ok("admin → Bills: yearly numbering PZB-YYYY-0001 in a transaction, print/PDF, WhatsApp, payments, cancel (never delete); admin-only rules");
+assert.ok(/\.admin-main\{min-width:0;max-width:100%\}/.test(adm) && /\.main\{min-width:0;max-width:100%\}/.test(pub("advisor.html")));
+assert.ok(/table thead, table tbody \{ display: table-row-group; \}/.test(pub("pz-ops.css")) && !/table thead, table tbody \{ display: table; width: 100%; min-width: 640px; \}/.test(pub("pz-ops.css")));
+assert.ok(/\.header-actions\{flex-shrink:0\}/.test(pub("driver.html")));
+ok("responsive: admin/advisor content can't outgrow the screen on tablets, table headings stay aligned, crew header fits 360px phones");
+console.log(`\nbills-responsive: ${pass} passed, 0 failed`);

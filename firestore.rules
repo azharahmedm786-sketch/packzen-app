@@ -396,6 +396,24 @@ service cloud.firestore {
       allow read, update: if isAdmin();
     }
     // Packing-material stock (admin → Overview → Business readiness). Staff read/write, numbers only.
+    // Manual bills (admin → Bills). Admin only; numbering via settings/billCounter.
+    match /bills/{billId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.billNo is string && request.resource.data.billNo.size() <= 30
+        && request.resource.data.total is number && request.resource.data.total >= 0 && request.resource.data.total <= 10000000
+        && request.resource.data.items is list && request.resource.data.items.size() >= 1 && request.resource.data.items.size() <= 50
+        && request.resource.data.status in ['unpaid', 'partial', 'paid', 'void'];
+      allow delete: if false;   // never delete a bill — mark it 'void' instead (keeps numbering honest)
+    }
+    match /settings/billCounter {
+      allow read: if isAdmin();
+      allow write: if isAdmin() && request.resource.data.keys().hasOnly(['next', 'year'])
+        && request.resource.data.next is int && request.resource.data.next >= 1;
+    }
+    match /settings/billing {
+      allow read, write: if isAdmin();
+    }
     match /settings/inventory {
       allow read: if isAdmin() || isAdvisor();
       allow write: if (isAdmin() || isAdvisor())
