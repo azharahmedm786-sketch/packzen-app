@@ -1441,5 +1441,20 @@ function filterEarnings(period, el) {
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
 <script src="crew-help.js?v=3" defer></script>
+<script>
+/* "Install app" button for Android/desktop Chrome (the crew app is an installable web app). */
+(function () {
+  var deferred = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault(); deferred = e;
+    if (document.getElementById("pzInstallBtn")) return;
+    var b = document.createElement("button"); b.id = "pzInstallBtn"; b.type = "button"; b.textContent = "📲 Install crew app";
+    b.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:9999;border:0;border-radius:999px;padding:12px 18px;background:#1F9D5C;color:#fff;font:700 15px system-ui;box-shadow:0 10px 24px -10px rgba(0,0,0,.5)";
+    b.onclick = function () { if (!deferred) return; deferred.prompt(); deferred.userChoice.finally(function () { deferred = null; b.remove(); }); };
+    document.body.appendChild(b);
+  });
+  window.addEventListener("appinstalled", function () { var b = document.getElementById("pzInstallBtn"); if (b) b.remove(); });
+})();
+</script>
 </body>
 </html>

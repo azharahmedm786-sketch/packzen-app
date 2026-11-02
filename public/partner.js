@@ -76,7 +76,7 @@ function pzClearListeners() { PZ.unsub.forEach(function (u) { try { u(); } catch
 /* Redirect helper that preserves intent */
 /* Remember which account page the partner wanted (support / profile / settings) so login
    returns them there instead of always going to the crew app. */
-var PZ_PORTAL_PAGES = { support: "partner-support.html", profile: "partner-profile.html", settings: "partner-settings.html" };
+var PZ_PORTAL_PAGES = { support: "partner-support.html", profile: "partner-profile.html", settings: "partner-settings.html", earnings: "partner-earnings.html", crewapp: "partner-crew-app.html" };
 function goLogin() {
   var pg = (document.body && document.body.getAttribute("data-page")) || "";
   window.location.href = "partner-login.html" + (PZ_PORTAL_PAGES[pg] ? "?next=" + pg : "");
@@ -96,7 +96,7 @@ function requirePartner(onReady) {
           // Admin preview: exactly what an approved partner gets — account pages here,
           // everything else (jobs, earnings, wallet) in the crew app.
           var pg = (document.body && document.body.getAttribute("data-page")) || "";
-          if (["profile", "settings", "support"].indexOf(pg) < 0) { window.location.href = "driver.html"; return null; }
+          if (!PZ_PORTAL_PAGES[pg]) { window.location.href = "partner-support.html"; return null; }
           // Admin preview: see every partner page as a partner would, read-only.
           var demo = { ownerName: "Admin preview", ownerFirstName: "Admin", businessName: "PackZen (admin preview)", verificationStatus: "approved",
             businessType: "packers_movers", partnerCategory: "movers", email: user.email || "", adminPreview: true };
@@ -125,8 +125,8 @@ function requirePartner(onReady) {
           // Approved partners work from the crew app (job offers, OTP, earnings, payouts).
           // Only profile/settings/support stay in the partner portal.
           var page = (document.body && document.body.getAttribute("data-page")) || "";
-          if (data.verificationStatus === "approved" && ["profile", "settings", "support"].indexOf(page) < 0) {
-            window.location.href = "driver.html";
+          if (data.verificationStatus === "approved" && !PZ_PORTAL_PAGES[page]) {
+            window.location.href = "partner-support.html";
             return;
           }
           PZ.uid = user.uid;
@@ -161,12 +161,13 @@ function pzPreviewBanner() {
 /* Jobs, offers, completion codes, earnings and payouts live in the PackZen crew app
    (driver.html) — the one system that runs every job. The portal keeps account pages. */
 var NAV_ITEMS = [
-  { page: "crew", href: "driver.html", label: "Jobs & earnings", icon: "M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" },
-  { page: "profile", href: "partner-profile.html", label: "Profile", icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
   { page: "support", href: "partner-support.html", label: "Support", icon: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" },
-  { page: "settings", href: "partner-settings.html", label: "Settings", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.5.62 1.51.7" }
+  { page: "profile", href: "partner-profile.html", label: "Profile", icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+  { page: "settings", href: "partner-settings.html", label: "Settings", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.5.62 1.51.7" },
+  { page: "earnings", href: "partner-earnings.html", label: "Earnings", icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
+  { page: "crewapp", href: "partner-crew-app.html", label: "Jobs · crew app", icon: "M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" },
 ];
-var BOTTOM_PAGES = ["crew", "profile", "support", "settings"];
+var BOTTOM_PAGES = ["support", "profile", "earnings", "crewapp", "settings"];
 
 function svgIcon(path, size) {
   size = size || 20;
@@ -278,7 +279,7 @@ function initLoginPage() {
       window._firebase.db.collection("partners").doc(user.uid).get().then(function (doc) {
         if (!doc.exists) return;
         var status = doc.data().verificationStatus;
-        if (status === "approved") window.location.href = pzAfterLoginPage() || "driver.html";
+        if (status === "approved") window.location.href = pzAfterLoginPage() || "partner-support.html";
         else if (status === "pending") window.location.href = "registration-success.html?status=pending";
         else if (status === "rejected") window.location.href = "registration-success.html?status=rejected";
       });
@@ -304,7 +305,7 @@ function initLoginPage() {
             else localStorage.removeItem("pzPartnerRemember");
           } catch (er) {}
           return pzIsAdmin(cred.user.uid).then(function (isAdmin) {
-            if (isAdmin) { window.location.href = "partner-profile.html"; return { adminRedirect: true }; }
+            if (isAdmin) { window.location.href = pzAfterLoginPage() || "partner-support.html"; return { adminRedirect: true }; }
             return window._firebase.db.collection("partners").doc(cred.user.uid).get();
           });
         })
@@ -318,7 +319,7 @@ function initLoginPage() {
             return;
           }
           var status = doc.data().verificationStatus;
-          if (status === "approved") window.location.href = pzAfterLoginPage() || "driver.html";
+          if (status === "approved") window.location.href = pzAfterLoginPage() || "partner-support.html";
           else if (status === "pending") window.location.href = "registration-success.html?status=pending";
           else window.location.href = "registration-success.html?status=rejected";
         })
@@ -1273,7 +1274,9 @@ document.addEventListener("DOMContentLoaded", function () {
     "settings": initSettingsPage,
     "drivers": initDriversPage,
     "vehicles": initVehiclesPage,
-    "support": initSupportPage
+    "support": initSupportPage,
+    "earnings": initEarningsPage,
+    "crewapp": initCrewAppPage
   };
   if (routes[page]) routes[page]();
 });
@@ -1281,6 +1284,48 @@ document.addEventListener("DOMContentLoaded", function () {
 window.addEventListener("beforeunload", pzClearListeners);
 
 
+
+
+/* -------------------- Earnings (same maths as the crew app) -------------------- */
+var PZ_PLATFORM_PCT = 10;   // PackZen's share; same as the crew app and pricing engine
+function initEarningsPage() {
+  requirePartner(function () {
+    var box = qs("#portalContent");
+    box.innerHTML = '<div class="pform-card"><h3>Your earnings</h3><p class="pc-small">Completed jobs, your share after PackZen\'s ' + PZ_PLATFORM_PCT + '% fee, cash you collected and payouts.</p><div id="pzEarn">Loading…</div></div>';
+    var out = qs("#pzEarn");
+    if (PZ.preview) { out.innerHTML = '<p class="pc-small">Admin preview — a real partner sees their completed jobs and pay here.</p>'; return; }
+    var rup = function (n) { return "₹" + Math.round(n || 0).toLocaleString("en-IN"); };
+    var ms = function (b) { return b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : (b.createdAt && b.createdAt.seconds ? b.createdAt.seconds * 1000 : 0); };
+    window._firebase.db.collection("bookings").where("driverUid", "==", PZ.uid).limit(500).get().then(function (snap) {
+      var jobs = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); })
+        .filter(function (b) { return b.status === "delivered" || b.status === "completed"; }).sort(function (a, b) { return ms(b) - ms(a); });
+      var share = 0, cash = 0, paidOut = 0;
+      jobs.forEach(function (b) { share += Math.round((Number(b.total) || 0) * (100 - PZ_PLATFORM_PCT) / 100); cash += Number(b.cashCollected) || 0; paidOut += Number(b.riderPaidAmount) || 0; });
+      var pending = share - cash - paidOut;
+      var card = function (label, val, color) { return '<div class="support-quick-card" style="cursor:default"><div class="support-quick-label" style="font-size:1.4rem;color:' + (color || "inherit") + '">' + rup(val) + '</div><div class="pc-small">' + label + '</div></div>'; };
+      out.innerHTML = '<div class="support-quick-grid">' + card("Your earnings (" + jobs.length + " jobs)", share) + card("Paid to you", paidOut, "#147A45") + card("Cash you hold", cash, "#C2410C") +
+        (pending >= 0 ? card("Pending payout", pending, "#1F5FD1") : card("You owe PackZen", -pending, "#B42318")) + '</div>' +
+        (jobs.length ? '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:.92rem"><thead><tr><th style="text-align:left;padding:8px">Job</th><th style="text-align:left;padding:8px">Date</th><th style="text-align:right;padding:8px">Job value</th><th style="text-align:right;padding:8px">Your share</th><th style="text-align:right;padding:8px">Cash collected</th></tr></thead><tbody>' +
+          jobs.slice(0, 100).map(function (b) { return '<tr style="border-top:1px solid rgba(10,40,28,.1)"><td style="padding:8px">' + pzEsc(b.bookingRef || b.id.slice(0, 8)) + '</td><td style="padding:8px">' + pzEsc(b.date || "") + '</td><td style="padding:8px;text-align:right">' + rup(b.total) + '</td><td style="padding:8px;text-align:right">' + rup(Math.round((Number(b.total) || 0) * (100 - PZ_PLATFORM_PCT) / 100)) + '</td><td style="padding:8px;text-align:right">' + rup(b.cashCollected) + '</td></tr>'; }).join("") + '</tbody></table></div>'
+          : '<p class="pc-small" style="margin-top:12px">No completed jobs yet. New jobs come to you in the crew app.</p>') +
+        '<p class="pc-small" style="margin-top:12px">Questions about a payout? <a href="partner-support.html">Raise a ticket</a>.</p>';
+    }).catch(function (e) { out.innerHTML = '<p class="pc-small">Could not load earnings: ' + pzEsc(e && e.message) + '</p>'; });
+  });
+}
+
+/* -------------------- Get the crew app (install, instead of auto-redirect) -------------------- */
+function initCrewAppPage() {
+  requirePartner(function () {
+    qs("#portalContent").innerHTML =
+      '<div class="pform-card"><h3>📲 PackZen crew app</h3>' +
+      '<p>Your jobs happen in the crew app: go online, accept job offers, navigate, complete jobs with the customer\'s code and record cash collected.</p>' +
+      '<p><a class="portal-crew-btn" href="driver.html?install=1" style="display:inline-block;margin:6px 0 14px">Open & install the crew app</a></p>' +
+      '<h4 style="margin:10px 0 6px">Add it to your home screen</h4>' +
+      '<p class="pc-small"><b>Android (Chrome):</b> open the crew app → tap <b>Install app</b> when it appears, or tap ⋮ → <b>Add to Home screen</b> / <b>Install app</b>.</p>' +
+      '<p class="pc-small"><b>iPhone (Safari):</b> open the crew app → tap the <b>Share</b> button → <b>Add to Home Screen</b>.</p>' +
+      '<p class="pc-small">It then opens like an app, full screen, with the PackZen Crew icon. Sign in with the same email and password.</p></div>';
+  });
+}
 
 /* ============================================
 FIREBASE EMAIL ACTION HANDLER (PARTNER)

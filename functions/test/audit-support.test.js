@@ -28,6 +28,11 @@ ok("apps UX: admin ☰ Menu on phones, charts can't crash Overview, readiness re
 assert.ok(/href="partner-support\.html">🎫 Raise a support ticket/.test(rd("public/crew-help.js")));
 ok("crew app help panel links to Support tickets and Profile");
 { const pj = rd("public/partner.js");
-  assert.ok(/"partner-login\.html" \+ \(PZ_PORTAL_PAGES\[pg\] \? "\?next=" \+ pg : ""\)/.test(pj) && (pj.match(/pzAfterLoginPage\(\) \|\| "driver\.html"/g) || []).length === 2);
+  assert.ok(/"partner-login\.html" \+ \(PZ_PORTAL_PAGES\[pg\] \? "\?next=" \+ pg : ""\)/.test(pj) && (pj.match(/pzAfterLoginPage\(\) \|\| "partner-support\.html"/g) || []).length === 3);
   ok("partner login returns to the page asked for (Support / Profile / Settings) instead of always the crew app"); }
+{ const pj = rd("public/partner.js");
+  assert.ok(/function initEarningsPage\(\)/.test(pj) && /function initCrewAppPage\(\)/.test(pj) && /"earnings": initEarningsPage/.test(pj) && /"crewapp": initCrewAppPage/.test(pj));
+  assert.ok(/var BOTTOM_PAGES = \["support", "profile", "earnings", "crewapp", "settings"\]/.test(pj) && /PZ_PLATFORM_PCT = 10/.test(pj));
+  assert.ok(/data-page="earnings"/.test(rd("public/partner-earnings.html")) && /data-page="crewapp"/.test(rd("public/partner-crew-app.html")) && /pzInstallBtn/.test(rd("public/driver.html")));
+  ok("partner portal: login lands on the portal; Earnings page (same maths as the crew app) and Get-the-crew-app page with install; menu account-first"); }
 console.log(`\naudit-support: ${pass} passed, 0 failed`);

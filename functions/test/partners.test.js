@@ -46,7 +46,7 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   const reg = pub("partner-register.html");
   assert.ok(/aadhaarLast4/.test(reg) && !/aadhaarNumber:\s+aadRaw/.test(reg) && /name="skills"/.test(reg) && /parcel_rider/.test(reg) && /two_wheeler/.test(reg));
   const pj = pub("partner.js");
-  assert.ok(/window\.location\.href = "driver\.html"/.test(pj) && /Open crew app/.test(pj));
+  assert.ok(/window\.location\.href = "partner-support\.html"/.test(pj) && /Open crew app/.test(pj) && /partner-crew-app\.html/.test(pj));   // approved partners land on the portal; crew app is one tap away
   assert.ok(/id="sectionPartners"/.test(pub("admin.html")) && /adminReviewPartner/.test(pub("admin.html")));
   const rules = fs.readFileSync(path.join(__dirname, "..", "..", "storage.rules"), "utf8");
   assert.ok(/match \/partner-docs\/\{uid\}\/\{file\}/.test(rules) && /10 \* 1024 \* 1024/.test(rules) && /allow read, write: if false/.test(rules));
@@ -65,10 +65,12 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
   assert.ok(/\.partner-footer-full a \{ color: #9FE0BC/.test(pub("pz-ops-premium.css")));
   ok("admin preview: admins can sign in to the partner portal and crew app read-only (can't go online or take jobs); partner footer readable");
   const pj2 = pub("partner.js");
-  assert.ok(/page: "crew", href: "driver\.html"/.test(pj2) && !/page: "wallet"/.test(pj2.slice(pj2.indexOf("var NAV_ITEMS"), pj2.indexOf("var BOTTOM_PAGES"))));
-  assert.ok(/\["profile", "settings", "support"\]\.indexOf\(pg\) < 0\) \{ window\.location\.href = "driver\.html"/.test(pj2) && /window\.location\.href = "partner-profile\.html"; return \{ adminRedirect/.test(pj2));
-  ok("portal simplified: jobs & earnings in the crew app; admin preview follows the same path (no broken wallet/bookings pages)");
-  ok("wiring: Aadhaar number not stored (last 4 only), skills on sign-up, approved partners go to the crew app, admin Partners tab, storage rules");
+  const nav = pj2.slice(pj2.indexOf("var NAV_ITEMS"), pj2.indexOf("var BOTTOM_PAGES"));
+  assert.ok(/page: "crewapp", href: "partner-crew-app\.html"/.test(nav) && /page: "earnings", href: "partner-earnings\.html"/.test(nav) && !/page: "wallet"/.test(nav));
+  assert.ok(nav.indexOf('page: "support"') < nav.indexOf('page: "earnings"') && nav.indexOf('page: "earnings"') < nav.indexOf('page: "crewapp"'), "account pages first, earnings and crew app last");
+  assert.ok(/if \(!PZ_PORTAL_PAGES\[pg\]\) \{ window\.location\.href = "partner-support\.html"/.test(pj2) && /window\.location\.href = pzAfterLoginPage\(\) \|\| "partner-support\.html"; return \{ adminRedirect/.test(pj2));
+  ok("portal: account pages + Earnings + Get-the-crew-app; admin preview follows the same path (no broken wallet/bookings pages)");
+  ok("wiring: Aadhaar number not stored (last 4 only), skills on sign-up, approved partners land on the portal, admin Partners tab, storage rules");
 
   console.log(`\npartners: ${pass} passed, 0 failed`);
 })().catch((e) => { console.error("FAIL:", e && e.stack ? e.stack.split("\n").slice(0, 3).join(" | ") : e); process.exit(1); });
