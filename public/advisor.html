@@ -783,6 +783,7 @@
 }
 </style>
 <style>.pac-container{z-index:2000!important;border-radius:10px;font-family:inherit}</style>
+<script src="pz-metrics.js?v=1"></script>
 </head>
 <body>
 
@@ -1400,9 +1401,9 @@ function loadAll() {
    ════════════════════════════════════════════ */
 function updateStats() {
   const total     = allBookings.length;
-  const delivered = allBookings.filter(b => b.status === "delivered").length;
+  const delivered = allBookings.filter(b => PZM.isDone(b)).length;
   const active    = allBookings.filter(b => ["assigned","packing","transit"].includes(b.status)).length;
-  const revenue   = allBookings.reduce((s, b) => s + (b.total || 0), 0);
+  const revenue   = allBookings.reduce((s, b) => s + PZM.value(b), 0);
 
   setText("stTotal",     total);
   setText("stDelivered", delivered);
@@ -1445,7 +1446,7 @@ function renderBookingsTable(list) {
   if (!list.length) { tbody.innerHTML = '<tr><td class="empty-td" colspan="9">No bookings found</td></tr>'; return; }
 
   // Build summary strip
-  const total   = list.reduce((s,b) => s+(Number(b.total)||0), 0);
+  const total   = list.reduce((s, b) => s + PZM.value(b), 0);
   const strip   = document.getElementById("bookingSummary");
   if (strip) {
     strip.innerHTML = `
@@ -1515,7 +1516,7 @@ function renderCustomers(list) {
   tbody.innerHTML = list.map(raw => {
     const c = escFields(raw);
     const bookings = allBookings.filter(b => b.customerUid === raw.id);
-    const spent    = bookings.reduce((s, b) => s + (Number(b.total) || 0), 0);
+    const spent    = bookings.reduce((s, b) => s + PZM.value(b), 0);
     const joined   = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString("en-IN") : "—";
     return `<tr>
       <td>
@@ -1697,12 +1698,12 @@ function renderCharts() {
 let revenueTypeChart = null;
 
 function renderRevenue() {
-  const total    = allBookings.reduce((s,b)=>s+(b.total||0),0);
-  const avg      = allBookings.length ? Math.round(total/allBookings.length) : 0;
+  const total    = allBookings.reduce((s, b) => s + PZM.value(b),0);
+  const avg      = (allBookings.length - allBookings.filter(PZM.isCancelled).length) ? Math.round(total/(allBookings.length - allBookings.filter(PZM.isCancelled).length)) : 0;
   const thisM    = allBookings.filter(b => {
     const d = b.createdAt?.toDate?.();
     return d && d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
-  }).reduce((s,b)=>s+(b.total||0),0);
+  }).reduce((s, b) => s + PZM.value(b),0);
 
   setText("kpiRevTotal",   fmt(total));
   setText("kpiAvg",        "₹"+avg.toLocaleString("en-IN"));
@@ -1820,7 +1821,7 @@ function exportCustomersCSV() {
   const rows = [["Name","Email","Phone","Bookings","Total Spent","Joined"]];
   allCustomers.forEach(c => {
     const bookings = allBookings.filter(b=>b.customerUid===c.id);
-    const spent    = bookings.reduce((s,b)=>s+(b.total||0),0);
+    const spent    = bookings.reduce((s, b) => s + PZM.value(b),0);
     rows.push([c.name||"", c.email||"", c.phone||"", bookings.length, spent,
                c.createdAt?.toDate?c.createdAt.toDate().toLocaleDateString("en-IN"):"—"]);
   });

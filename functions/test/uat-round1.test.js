@@ -36,7 +36,7 @@ const exStart = adm.indexOf("function exportCSV() {"), exEnd = adm.indexOf("\nfu
 const els = { filterStatus: { value: "all" }, filterType: { value: "all" }, filterFrom: { value: "" }, filterTo: { value: "" }, searchInput: { value: "" }, bookingPeriodSummary: { innerHTML: "" } };
 let downloaded = null; const toasts = [];
 const ctx = { document: { getElementById: (id) => els[id] || null, createElement: () => ({ click() { downloaded = this; }, remove() {} }), body: { appendChild() {} } },
-  renderBookingsTable() {}, toast: (t) => toasts.push(t), Blob: function (parts) { this.text = parts.join(""); }, URL: { createObjectURL: (b) => (ctx._blob = b, "blob:x"), revokeObjectURL() {} }, setTimeout() {},
+  PZM: require("../../public/pz-metrics.js"), renderBookingsTable() {}, toast: (t) => toasts.push(t), Blob: function (parts) { this.text = parts.join(""); }, URL: { createObjectURL: (b) => (ctx._blob = b, "blob:x"), revokeObjectURL() {} }, setTimeout() {},
   allBookings: [
     { id: "a1", bookingRef: "PZ1", customerName: "Asha, K", phone: "9845012345", date: "2026-10-05", total: 6500, paid: 650, balanceDue: 5850, status: "confirmed", pickup: 'HSR "Layout"' },
     { id: "a2", bookingRef: "PZ2", customerName: "Ravi", phone: "9123456780", date: "2026-10-20", total: 449, paid: 449, status: "delivered", bookingType: "service" },

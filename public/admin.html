@@ -191,6 +191,7 @@
   .admin-main{padding-top:8px}
 }
 </style>
+<script src="pz-metrics.js?v=1"></script>
 </head>
 <body>
 
@@ -937,8 +938,8 @@ function renderAnalytics() {
   if (!el("analyticsTotalRev")) return;
 
   // Basic KPIs
-  const totalRev = allBookings.reduce((s, b) => s + (b.total || 0), 0);
-  const avgVal = allBookings.length ? Math.round(totalRev / allBookings.length) : 0;
+  const totalRev = allBookings.reduce((s, b) => s + PZM.value(b), 0);
+  const avgVal = (allBookings.length - allBookings.filter(PZM.isCancelled).length) ? Math.round(totalRev / (allBookings.length - allBookings.filter(PZM.isCancelled).length)) : 0;
   const convRate = allCustomers.length ? ((allBookings.length / allCustomers.length) * 100).toFixed(1) : 0;
 
   const currentMonth = new Date().getMonth();
@@ -1174,8 +1175,8 @@ function updateStats() {
   el("statToday").textContent     = allBookings.filter(b => b.date === today).length;
   el("statPending").textContent   = allBookings.filter(b => b.status === "pending").length;
   el("statCancelled").textContent  = allBookings.filter(b => b.status === "cancelled").length;
-  el("statDelivered").textContent = allBookings.filter(b => b.status === "delivered").length;
-  const rev = allBookings.reduce((s, b) => s + (b.total || 0), 0);
+  el("statDelivered").textContent = allBookings.filter(b => PZM.isDone(b)).length;
+  const rev = allBookings.reduce((s, b) => s + PZM.value(b), 0);
   el("statRevenue").textContent = "₹" + (rev >= 100000 ? (rev/100000).toFixed(1)+"L" : rev.toLocaleString("en-IN"));
   const onlineDrivers = allDrivers.filter(d => d.isOnline).length;
   el("statDrivers").textContent = `${onlineDrivers}/${allDrivers.length}`;
@@ -1393,7 +1394,7 @@ function filterBookings(q) {
   renderBookingsTable(filteredBookings);
   const live = filteredBookings.filter(b => b.status !== "cancelled");
   const total = live.reduce((t, b) => t + _num(b.total), 0);
-  const paid = live.reduce((t, b) => t + _num(b.paid != null ? b.paid : (b.paidAmount != null ? b.paidAmount : b.amountPaid)), 0);
+  const paid = live.reduce((t, b) => t + PZM.paid(b), 0);
   const done = live.filter(b => ["delivered", "completed"].includes(b.status));
   const doneVal = done.reduce((t, b) => t + _num(b.total), 0);
   const el = document.getElementById("bookingPeriodSummary");
@@ -1441,7 +1442,7 @@ function exportCSV() {
   const cell = v => { const t = v == null ? "" : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
   const created = b => { const t = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate() : null; return t ? t.toISOString().slice(0, 16).replace("T", " ") : ""; };
   const rows = list.map(b => [b.bookingRef || "", b.id || "", _bType(b), b.customerName || b.name || "", b.phone || "", b.email || "",
-    b.pickup || b.address || "", b.drop || "", b.date || "", _num(b.total), _num(b.paid != null ? b.paid : (b.paidAmount != null ? b.paidAmount : b.amountPaid)),
+    b.pickup || b.address || "", b.drop || "", b.date || "", _num(b.total), PZM.paid(b),
     _num(b.balanceDue), b.paymentStatus || b.paymentMode || "", b.status || "", b.driverName || "", created(b)].map(cell).join(","));
   const csv = "\ufeff" + [headers.join(",")].concat(rows).join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -2475,7 +2476,7 @@ function opsRender(){
   const rows = _opsFiltered();
   // money strip for the filtered set
   const live = rows.filter(b => b.status !== "cancelled");
-  const value = live.reduce((s,b)=>s+(Number(b.total)||0),0), paid = live.reduce((s,b)=>s+(Number(b.paid)||0),0);
+  const value = live.reduce((s, b) => s + PZM.value(b),0), paid = live.reduce((s,b)=>s+PZM.paid(b),0);
   const due = live.reduce((s,b)=>s+(Number(b.balanceDue)||0),0), refundsPending = rows.reduce((s,b)=>s+(Number(b.refundPendingAmount)||0),0);
   const unassigned = live.filter(b => !b.driverUid && !["delivered","completed"].includes(b.status)).length;
   document.getElementById("opsMoney").innerHTML = [["Jobs",live.length],["Unassigned",unassigned],["Booked value",_orup(value)],["Collected",_orup(paid)],["Balance due",_orup(due)],["Refunds pending",_orup(refundsPending)]]
