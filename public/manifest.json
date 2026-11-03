@@ -146,6 +146,26 @@
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Clear prices at a glance"
+    },
+    {
+      "src": "assets/screenshots/wide-home.jpg",
+      "sizes": "1280x800",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "PackZen on a laptop: instant moving quote"
+    }
+  ],
+  "dir": "ltr",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=in.packzenblr.app",
+      "id": "in.packzenblr.app"
     }
   ]
 }

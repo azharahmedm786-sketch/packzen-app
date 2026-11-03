@@ -25,7 +25,7 @@ const st = rd("public/pz-stability.js"), sj = rd("public/script.js");
 assert.ok(/sent >= 5/.test(st) && /window\.pzFallback = function/.test(st) && /window\.gm_authFailure/.test(st) && /WhatsApp us/.test(st) && /Request a call-back/.test(st));
 assert.ok(/window\.pzFallback\("booking"/.test(sj) && /window\.pzFallback\("payment"\)/.test(sj) && /window\.pzFallback\("payment", "razorpay_not_loaded"\)/.test(sj));
 assert.ok(/window\.pzFallback\("maps", e && e\.message\);\s*else applyPrice\(15\);/.test(sj) && /window\.pzFallback\("quote", "distance_unavailable:"/.test(sj), "no guessed 15 km price when Maps fails");
-for (const f of ["public/index.html", "public/services.html", "public/house-shifting-bangalore.html", "public/digital/index.html", "templates/area-page.template.html"]) assert.ok(/pz-stability\.js\?v=2/.test(rd(f)), f);
+for (const f of ["public/index.html", "public/services.html", "public/house-shifting-bangalore.html", "public/digital/index.html", "templates/area-page.template.html"]) assert.ok(/pz-stability\.js\?v=3/.test(rd(f)), f);
 ok("customer pages: errors reported (max 5/page), help card with WhatsApp / call-back / call on Maps, quote, booking and payment failures; no made-up prices");
 
 const wf = rd(".github/workflows/booking-check.yml"), bc = rd("scripts/booking-check.mjs");
