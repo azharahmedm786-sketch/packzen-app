@@ -25,7 +25,7 @@ const st = rd("public/pz-stability.js"), sj = rd("public/script.js");
 assert.ok(/sent >= 5/.test(st) && /window\.pzFallback = function/.test(st) && /window\.gm_authFailure/.test(st) && /WhatsApp us/.test(st) && /Request a call-back/.test(st));
 assert.ok(/window\.pzFallback\("booking"/.test(sj) && /window\.pzFallback\("payment"\)/.test(sj) && /window\.pzFallback\("payment", "razorpay_not_loaded"\)/.test(sj));
 assert.ok(/window\.pzFallback\("maps", e && e\.message\);\s*else applyPrice\(15\);/.test(sj) && /window\.pzFallback\("quote", "distance_unavailable:"/.test(sj), "no guessed 15 km price when Maps fails");
-for (const f of ["public/index.html", "public/services.html", "public/house-shifting-bangalore.html", "public/digital/index.html", "templates/area-page.template.html"]) assert.ok(/pz-stability\.js\?v=1/.test(rd(f)), f);
+for (const f of ["public/index.html", "public/services.html", "public/house-shifting-bangalore.html", "public/digital/index.html", "templates/area-page.template.html"]) assert.ok(/pz-stability\.js\?v=2/.test(rd(f)), f);
 ok("customer pages: errors reported (max 5/page), help card with WhatsApp / call-back / call on Maps, quote, booking and payment failures; no made-up prices");
 
 const wf = rd(".github/workflows/booking-check.yml"), bc = rd("scripts/booking-check.mjs");
@@ -33,4 +33,9 @@ assert.ok(/cron: "30 1 \* \* \*"/.test(wf) && /node scripts\/booking-check\.mjs/
 assert.ok(/healthCheck/.test(bc) && /getPlacePredictions/.test(bc) && /catRoot/.test(bc) && /#dzForm/.test(bc) && /process\.exit\(1\)/.test(bc));
 assert.ok(/clientErrors/.test(rd("public/admin.html")));
 ok("daily robot check at 07:00 IST (health, homepage, booking form + Google address search, catalog, Digital form) + admin website-errors indicator");
+{ const m = JSON.parse(rd("public/manifest.json")); const sw = rd("public/sw.js");
+  assert.ok(m.id === "/" && m.theme_color === "#1F9D5C" && m.display === "standalone" && m.icons.some((i) => i.purpose === "maskable" && i.sizes === "512x512") && m.shortcuts.length === 3);
+  assert.ok(/OFFLINE_URL = "\/Offline\.html"/.test(sw) && /e\.request\.mode !== "navigate"/.test(sw) && /navigator\.serviceWorker\.register\("\/sw\.js"/.test(st));
+  assert.ok(fs.existsSync(path.join(root, "public/assets/logo/icon-512-maskable.png")) && fs.existsSync(path.join(root, "public/Offline.html")));
+  ok("Play Store readiness: manifest (id, brand colours, maskable icons, shortcuts), network-first service worker with offline page"); }
 console.log(`\nstability: ${pass} passed, 0 failed`);

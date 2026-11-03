@@ -30,6 +30,11 @@
   });
   window.pzReportError = report;
 
+  /* ---------- offline page (needed for the Play Store app) ---------- */
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () {}); });
+  }
+
   /* ---------- help card ---------- */
   var COPY = {
     maps: ["Address search isn't working right now", "You can still book: send us your pickup and drop on WhatsApp, or ask for a call-back and we'll give you the exact price."],
