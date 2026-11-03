@@ -1433,12 +1433,16 @@ function calculateQuote(auto = false) {
           const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
           applyPrice(Math.max(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.3, 5));
         } else {
-          applyPrice(15);
+          // No route and no map points: don't show a made-up 15 km price — offer help instead.
+          if (window.pzFallback) window.pzFallback("quote", "distance_unavailable:" + status);
+          else applyPrice(15);
         }
       }
     });
   } catch (e) {
-    applyPrice(15);
+    // Google Maps isn't available (key / quota / network): never show a guessed price.
+    if (window.pzFallback) window.pzFallback("maps", e && e.message);
+    else applyPrice(15);
   }
 }
 
@@ -1719,6 +1723,7 @@ async function startPayment() {
     rzp.on("payment.failed", r => {
       _resetPayBtn();
       showToast("❌ Payment failed. No money was taken for this attempt — please try again.");
+      if (window.pzFallback) window.pzFallback("payment");
     });
     rzp.open();
   } catch (err) {
@@ -2027,6 +2032,7 @@ function bookWithoutPayment() {
       btn.textContent = "📋 Confirm Booking · Pay on Delivery";
     }
     showToast("❌ Booking failed: " + (err.message || "Please try again."));
+    if (window.pzFallback) window.pzFallback("booking", err && (err.code || err.message));
   });
 }
 
@@ -3428,7 +3434,7 @@ function attachBookingButtonListeners() {
 let _balancePayBusy = false;
 async function payBalanceOnline(bookingId, btn) {
   if (_balancePayBusy) return;
-  if (typeof window.Razorpay !== "function") { showToast("⚠️ Payment couldn't load. Please refresh and try again."); return; }
+  if (typeof window.Razorpay !== "function") { showToast("⚠️ Payment couldn't load. Please refresh and try again."); if (window.pzFallback) window.pzFallback("payment", "razorpay_not_loaded"); return; }
   _balancePayBusy = true; if (btn) btn.disabled = true;
   const fns = firebase.app().functions("asia-south1");
   const done = () => { _balancePayBusy = false; if (btn) btn.disabled = false; };

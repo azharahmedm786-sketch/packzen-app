@@ -2643,8 +2643,9 @@ function loadReadiness() {
     db.collection("driverProfiles").where("status","==","active").get().catch(()=>null),
     db.collection("leads").where("status","==","new").limit(200).get().catch(()=>null),
     db.collection("settings").doc("inventory").get().catch(()=>null),
-    db.collection("promos").doc("FIRSTMOVE").get().catch(()=>null)
-  ]).then(([dp, leads, inv, promo]) => {
+    db.collection("promos").doc("FIRSTMOVE").get().catch(()=>null),
+    db.collection("clientErrors").where("lastAtMs", ">=", Date.now() - 24*3600e3).limit(100).get().catch(()=>null)
+  ]).then(([dp, leads, inv, promo, errs]) => {
     const profiles = dp ? dp.docs.map(d=>d.data()) : [];
     const movers = profiles.filter(p => (p.skills||[]).includes("moving")).length;
     const techs = profiles.filter(p => (p.skills||[]).some(k => k==="ac" || k==="appliances")).length;
@@ -2656,7 +2657,11 @@ function loadReadiness() {
       chip(techs >= 1, techs + " AC / appliance technician" + (techs===1?"":"s")) +
       chip(waiting === 0, waiting ? waiting + " lead(s) waiting > 10 min" : "No leads waiting") +
       chip(!low.length, low.length ? "Low stock: " + low.join(", ") : "Packing stock OK") +
-      chip(!!(promo && promo.exists && promo.data().active), "FIRSTMOVE promo " + (promo && promo.exists && promo.data().active ? "active" : "missing"));
+      chip(!!(promo && promo.exists && promo.data().active), "FIRSTMOVE promo " + (promo && promo.exists && promo.data().active ? "active" : "missing")) +
+      (function () { const list = errs ? errs.docs.map(d => d.data()) : []; const n = list.reduce((t, e) => t + (e.hour === Math.floor(Date.now()/3600e3) || e.lastAtMs >= Date.now()-24*3600e3 ? 1 : 0), 0);
+        const fb = list.filter(e => e.kind === "fallback").length;
+        return '<span class="badge ' + (n ? 'badge-pending' : 'badge-delivered') + '" title="' + _esc2(list.slice(0,5).map(e => (e.count||1) + "× " + e.msg + " (" + (e.page||"") + ")").join("\n")) + '" style="cursor:help">' +
+          (n ? '⚠️ ' + n + ' website error type' + (n === 1 ? '' : 's') + ' in 24h' + (fb ? ' · ' + fb + ' customer(s) saw the help card' : '') : '✅ No website errors in 24h') + '</span>'; })();
     document.getElementById("stockGrid").innerHTML = PZ_STOCK.map(([k,label,min]) => {
       const v = Number(items[k]||0), lowc = min > 0 && v < min;
       return '<label style="display:block;font-size:.85rem;font-weight:600;color:' + (lowc ? '#B42318' : 'inherit') + '">' + _esc2(label) + (min ? ' <small style="font-weight:500;color:#6B7D74">min ' + min + '</small>' : '') +

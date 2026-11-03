@@ -414,6 +414,11 @@ service cloud.firestore {
     match /settings/billing {
       allow read, write: if isAdmin();
     }
+    // Browser error reports from customer pages (written only by the logClientError function)
+    match /clientErrors/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
     match /settings/inventory {
       allow read: if isAdmin() || isAdvisor();
       allow write: if (isAdmin() || isAdvisor())

@@ -727,6 +727,9 @@ const { _catalogTest, ...catalogExports } = require("./catalog-booking");   // t
 Object.assign(exports, catalogExports);
 // Two-wheeler parcel delivery removed (Oct 2026): getParcelQuote / createParcelRazorpayOrder are no longer deployed.
 // Existing parcel bookings stay in Firestore; move-payment.js still settles any pending parcel payment.
+// Customer-site stability: browser error reports, hourly spike alert, health check
+const { _siteHealth, ...siteHealthExports } = require("./site-health");
+Object.assign(exports, siteHealthExports);
 // Lead engine (Level-100 Phase 1): callback form, booking→lead linking, 10-minute SLA alert
 const { _leads, ...leadExports } = require("./leads");
 Object.assign(exports, leadExports);
