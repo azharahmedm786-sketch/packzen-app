@@ -523,3 +523,19 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-saved-label { font-size: .78rem; font-weight: 700; color: var(--nb-muted, #6B7D74); }
 .pz-saved-chip { border: 1px solid var(--nb-line-2, rgba(10,40,28,.18)); background: var(--nb-green-soft, #E9F6EF); color: var(--nb-green-deep, #157A47);
   border-radius: 999px; padding: 6px 10px; font: 600 .8rem var(--nb-body, system-ui); cursor: pointer; max-width: 100%; text-align: left; }
+
+
+/* PackZen five-vertical service directory: visible, responsive, and crawlable links. */
+.pz-service-directory { padding: 30px 16px 36px; background: var(--nb-surface, #f7faf8); }
+.pz-service-directory-inner { max-width: 1100px; margin: 0 auto; }
+.pz-service-directory h2 { margin: 5px 0 8px; color: var(--nb-text, #10251b); font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; }
+.pz-service-directory-inner > p { margin: 0 0 18px; color: var(--nb-text-2, #53645b); line-height: 1.55; }
+.pz-service-directory-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pz-service-directory-group { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; padding: 17px; border: 1px solid rgba(31,157,92,.18); border-radius: 16px; background: #fff; min-width: 0; }
+.pz-service-directory-group h3 { margin: 0 0 3px; color: #123b29; font-size: 1rem; }
+.pz-service-directory-group a { color: #167447; font-size: .92rem; line-height: 1.4; text-decoration: underline; text-underline-offset: 3px; }
+.pz-service-directory-group a:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; border-radius: 3px; }
+.pz-service-directory-digital { background: #10111b; border-color: rgba(124,92,255,.35); }
+.pz-service-directory-digital h3, .pz-service-directory-digital a { color: #e9e4ff; }
+@media (max-width: 760px) { .pz-service-directory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .pz-service-directory-grid { grid-template-columns: 1fr; } .pz-service-directory-group { padding: 15px; } }
