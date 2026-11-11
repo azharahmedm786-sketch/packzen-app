@@ -125,7 +125,7 @@ test("homepage: marketplace message, sections, Bangalore notice, design system a
   assert.ok(/pz-ui\.css\?v=\d+/.test(indexSrc));
   assert.ok(/marketplace\.js\?v=\d+"><\/script>\s*<script src="script\.js\?v=\d+">/.test(indexSrc));
   assert.ok(/booking-format\.js\?v=1/.test(indexSrc) && /payment-state\.js\?v=1/.test(indexSrc));
-  assert.ok(/<title>PackZen — Packers &amp; Movers, AC &amp; Home Services in Bangalore<\/title>|<title>PackZen — Packers & Movers, AC & Home Services in Bangalore<\/title>/.test(indexSrc));
+  assert.ok(/<title>PackZen Bangalore \| Packers &amp; Movers, AC, Fridge &amp; Washing Machine Services<\/title>|<title>PackZen Bangalore \| Packers & Movers, AC, Fridge & Washing Machine Services<\/title>/.test(indexSrc));
 });
 test("services page: Bangalore notice, marketplace + query results wired", () => {
   assert.ok(servicesSrc.includes("currently available in Bangalore only")); assert.ok(servicesSrc.includes('id="pzQueryResult"'));

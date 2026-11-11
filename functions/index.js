@@ -21,10 +21,12 @@ const RAZORPAY_KEY_SECRET = defineSecret("RAZORPAY_KEY_SECRET");
 // Pepper for deriving delivery-completion OTPs (completion-otp.js). Set before deploy:
 //   firebase functions:secrets:set COMPLETION_OTP_PEPPER   (>= 32 random bytes)
 const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
+const crypto = require("crypto");
 const rateLimit = require("./rate-limit");
 const opsAlerts = require("./ops-alerts");
 const completionOtp = require("./completion-otp");
 const { claimPending } = require("./queue-claim");
+const { validRequestId } = require("./catalog-pricing");
 /* ============================================================
    SEND SMS VIA MSG91
    Triggered whenever a new doc is added to /smsQueue
@@ -265,6 +267,7 @@ const pricingGuard = require("./pricing-guard");
 const serviceArea = require("./service-area");
 
 async function calculateServerQuote(quoteInput, pickup, drop, opts) {
+  quoteInput = Object.assign({}, quoteInput);
   // Offers that depend on the move date (weekday saver) use the BOOKING's date,
   // never a date the browser put in the price input.
   quoteInput.moveDate = (opts && typeof opts.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(opts.date)) ? opts.date : "";
@@ -313,6 +316,146 @@ async function calculateServerQuote(quoteInput, pickup, drop, opts) {
 }
 
 
+/**
+ * Recursively validates that an object contains only valid, finite JSON-serializable types.
+ * Rejects NaN, Infinity, functions, symbols, BigInt, circular references, and unsupported prototypes.
+ */
+function validateJsonSerializable(val, path = "$", seen = new WeakSet()) {
+  if (val === null || val === undefined) return;
+
+  const type = typeof val;
+  if (type === "number") {
+    if (!Number.isFinite(val)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `Invalid numeric value (NaN or Infinity) at ${path}`
+      );
+    }
+    return;
+  }
+
+  if (type === "string" || type === "boolean") return;
+
+  if (type === "function" || type === "symbol" || type === "bigint") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      `Unsupported data type (${type}) at ${path}`
+    );
+  }
+
+  if (typeof val === "object") {
+    if (seen.has(val)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `Circular reference detected at ${path}`
+      );
+    }
+    seen.add(val);
+
+    if (!Array.isArray(val)) {
+      const proto = Object.getPrototypeOf(val);
+      if (proto !== null && proto !== Object.prototype) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Unsupported object prototype detected at ${path}`
+        );
+      }
+    }
+
+    if (Array.isArray(val)) {
+      val.forEach((item, idx) => validateJsonSerializable(item, `${path}[${idx}]`, seen));
+      return;
+    }
+
+    for (const key of Object.keys(val)) {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Invalid object key (${key}) detected at ${path}`
+        );
+      }
+      validateJsonSerializable(val[key], `${path}.${key}`, seen);
+    }
+    return;
+  }
+
+  throw new functions.https.HttpsError("invalid-argument", `Unserializable input at ${path}`);
+}
+
+/**
+ * Deterministically sorts object keys while strictly preserving array order and native types.
+ */
+function canonicalize(val) {
+  if (val === null || typeof val !== "object") {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map(canonicalize);
+  }
+  const sorted = {};
+  const keys = Object.keys(val).sort();
+  for (const k of keys) {
+    if (val[k] !== undefined) {
+      sorted[k] = canonicalize(val[k]);
+    }
+  }
+  return sorted;
+}
+
+function canonicalStringify(val) {
+  return JSON.stringify(canonicalize(val));
+}
+
+/**
+ * Verifies all persisted customer-controlled fields and computes SHA-256 digest.
+ */
+function computeBookingPayloadHash(quoteInput, bookingDetails) {
+  validateJsonSerializable(quoteInput, "quoteInput");
+  validateJsonSerializable(bookingDetails, "bookingDetails");
+
+  const customerPayload = {
+    quoteInput: quoteInput || null,
+
+    customerName: bookingDetails.customerName ?? null,
+    phone:        bookingDetails.phone ?? null,
+    altPhone:     bookingDetails.altPhone ?? null,
+    email:        bookingDetails.email ?? null,
+
+    pickup:         bookingDetails.pickup ?? null,
+    drop:           bookingDetails.drop ?? null,
+    date:           bookingDetails.date ?? null,
+    shiftTime:      bookingDetails.shiftTime ?? null,
+    shiftTimeLabel: bookingDetails.shiftTimeLabel ?? null,
+    moveType:       bookingDetails.moveType ?? null,
+    isIntercity:    bookingDetails.isIntercity ?? null,
+
+    house:         bookingDetails.house ?? null,
+    vehicle:       bookingDetails.vehicle ?? null,
+    furniture:     bookingDetails.furniture ?? null,
+    pickupFloor:   bookingDetails.pickupFloor ?? null,
+    dropFloor:     bookingDetails.dropFloor ?? null,
+    liftAvailable: bookingDetails.liftAvailable ?? null,
+
+    packingService:   bookingDetails.packingService ?? null,
+    unpackingService: bookingDetails.unpackingService ?? null,
+    dismantling:      bookingDetails.dismantling ?? null,
+    assembly:         bookingDetails.assembly ?? null,
+    storageNeeded:    bookingDetails.storageNeeded ?? null,
+    storageDays:      bookingDetails.storageDays ?? null,
+
+    fragileItems: bookingDetails.fragileItems ?? null,
+    specialItems: bookingDetails.specialItems ?? null,
+    remarks:      bookingDetails.remarks ?? null,
+    photos:       Array.isArray(bookingDetails.photos) ? bookingDetails.photos : null,
+
+    paymentType: "pay_later",
+    source:      bookingDetails.source ?? null
+  };
+
+  const canonicalJson = canonicalStringify(customerPayload);
+  return crypto.createHash("sha256").update(canonicalJson).digest("hex");
+}
+
 exports.createBooking = functions
   .region("asia-south1")
   .runWith({ secrets: [GOOGLE_MAPS_KEY] })
@@ -326,20 +469,62 @@ exports.createBooking = functions
     ], functions.logger);
     if (!rl.ok) throw new functions.https.HttpsError("resource-exhausted", "Too many bookings in a short time. Please wait a few minutes.");
 
-    const { quoteInput, bookingDetails } = data;
+    const rawRequestId = data && data.requestId;
+    const isRequestIdSupplied = (rawRequestId !== undefined && rawRequestId !== null);
+
+    let requestId = null;
+    if (isRequestIdSupplied) {
+      if (!validRequestId(rawRequestId)) {
+        // Malformed value supplied: REJECT immediately. Do NOT fall back to legacy.
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Invalid requestId format. Must match regex /^[A-Za-z0-9_-]{8,64}$/ (alphanumeric, underscore, or hyphen, 8 to 64 characters)."
+        );
+      }
+      requestId = rawRequestId;
+    }
+
+    const { quoteInput, bookingDetails } = data || {};
     if (!quoteInput || !bookingDetails || !bookingDetails.pickup || !bookingDetails.drop) {
       throw new functions.https.HttpsError("invalid-argument", "Missing required booking input.");
     }
 
-    if (bookingDetails.bookingRef) {
+    // Legacy Client Handling (requestId is completely omitted)
+    if (!requestId) {
+      const legacyRef = bookingDetails && bookingDetails.bookingRef;
+      if (!legacyRef || typeof legacyRef !== "string" || !legacyRef.startsWith("PKZ-")) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing booking reference. Please refresh and try again."
+        );
+      }
+
+      // Preserve existing bookingRef / customerUid duplicate protection
       const existingSnap = await admin.firestore().collection("bookings")
-        .where("bookingRef", "==", bookingDetails.bookingRef)
+        .where("bookingRef", "==", legacyRef)
         .where("customerUid", "==", context.auth.uid)
         .limit(1).get();
+
       if (!existingSnap.empty) {
-        return { docId: existingSnap.docs[0].id, duplicate: true };
+        const existing = existingSnap.docs[0].data();
+        return {
+          docId: existingSnap.docs[0].id,
+          bookingRef: existing.bookingRef,
+          total: existing.total,
+          duplicate: true
+        };
       }
+
+      functions.logger.warn("LEGACY_CLIENT_BOOKING_PROCESSED", {
+        uid: context.auth.uid,
+        bookingRef: legacyRef
+      });
     }
+
+    // Deep Payload Validation before pricing/hashing
+    validateJsonSerializable(quoteInput, "quoteInput");
+    validateJsonSerializable(bookingDetails, "bookingDetails");
+    const payloadHash = computeBookingPayloadHash(quoteInput, bookingDetails);
 
     let quote;
     try {
@@ -362,24 +547,79 @@ exports.createBooking = functions
       if (bookingDetails[key] !== undefined) finalPayload[key] = bookingDetails[key];
     }
 
-      finalPayload.customerUid = context.auth.uid;
+    finalPayload.customerUid = context.auth.uid;
     finalPayload.total = quote.finalTotal;
     finalPayload.distance = quote.km;
     finalPayload.originalTotal = quote.finalTotal;
     finalPayload.quoteBreakdown = quote.breakdown;
-    finalPayload.pricedInput = pricingGuard.pricedInputSnapshot(quoteInput, quote); // what the total was actually computed from
-    finalPayload.promoCode = quote.promo ? quote.promo.code : null;       // server-validated
-    finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;   // server-computed
+    finalPayload.pricedInput = pricingGuard.pricedInputSnapshot(quoteInput, quote);
+    finalPayload.promoCode = quote.promo ? quote.promo.code : null;
+    finalPayload.promoDiscount = quote.promo ? quote.promo.applied : 0;
     finalPayload.createdAt = admin.firestore.FieldValue.serverTimestamp();
-    finalPayload.status = "confirmed"; // Enforce safe initial status
-    finalPayload.paymentType = "pay_later"; // this callable only creates pay-later bookings; never trust the client label
-    finalPayload.paid = 0; // this function is only ever used for the pay-later flow — nothing has been collected yet
+    finalPayload.status = "confirmed";
+    finalPayload.paymentType = "pay_later";
+    finalPayload.paid = 0;
     finalPayload.balanceDue = quote.finalTotal;
     finalPayload.paymentStatus = "unpaid";
     finalPayload.currency = "INR";
+    if (requestId) {
+      finalPayload.requestId = requestId;
+    }
 
-    const docRef = await admin.firestore().collection("bookings").add(finalPayload);
-    return { docId: docRef.id, total: quote.finalTotal };
+    const db = admin.firestore();
+
+    // Legacy client write path (no requestId)
+    if (!requestId) {
+      const docRef = await db.collection("bookings").add(finalPayload);
+      return { docId: docRef.id, total: quote.finalTotal, duplicate: false };
+    }
+
+    // Modern idempotent client: Atomic transaction on bookingIdempotency/{uid}_{requestId}
+    const idemDocId = `${context.auth.uid}_${requestId}`;
+    const idemRef = db.collection("bookingIdempotency").doc(idemDocId);
+    const newBookingRef = db.collection("bookings").doc();
+
+    const result = await db.runTransaction(async (tx) => {
+      const idemSnap = await tx.get(idemRef);
+      if (idemSnap.exists) {
+        const existing = idemSnap.data();
+        if (existing.payloadHash !== payloadHash) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "Idempotency conflict: requestId was previously submitted with different booking parameters."
+          );
+        }
+        return {
+          docId: existing.bookingId,
+          total: existing.total,
+          bookingRef: existing.bookingRef,
+          duplicate: true
+        };
+      }
+
+      // Write idempotency record and booking atomically
+      tx.set(idemRef, {
+        requestId,
+        customerUid: context.auth.uid,
+        bookingId: newBookingRef.id,
+        bookingRef: finalPayload.bookingRef || null,
+        payloadHash,
+        total: quote.finalTotal,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+
+      tx.set(newBookingRef, finalPayload);
+
+      return {
+        docId: newBookingRef.id,
+        total: quote.finalTotal,
+        bookingRef: finalPayload.bookingRef,
+        duplicate: false
+      };
+    });
+
+    return result;
   });
 
 /* ── Advisor / staff manual booking ("phone booking") ──────────────────────────
@@ -821,3 +1061,57 @@ exports.intentRadarSweep = functions.region("asia-south1").pubsub.schedule("ever
 // Website virtual assistant (grounded answers + human handoff)
 const { _assistant, ...assistantExports } = require("./assistant-functions");
 Object.assign(exports, assistantExports);
+
+/**
+ * Scheduled Cloud Function (cron: every 30 minutes)
+ * Reconciles failed or expired operational alerts without resending customer emails.
+ * Mandatory safeguards included:
+ * 1. Recovers expired 'sending' alert claims (> 5 min) as well as 'pending' and 'failed'.
+ * 2. Uses attemptOperationalAlertClaim which enforces alertClaimId ownership tracking.
+ */
+exports.reconcileDeadLetterAlerts = functions.region("asia-south1")
+  .pubsub.schedule("every 30 minutes")
+  .timeZone("Asia/Kolkata")
+  .onRun(async () => {
+    const db = admin.firestore();
+    const { attemptOperationalAlertClaim, MAX_ALERT_ATTEMPTS, ALERT_CLAIM_LEASE_MS } = require("./notification-service");
+
+    const snap = await db.collection("emailOutbox")
+      .where("status", "==", "failed")
+      .where("alertStatus", "in", ["pending", "sending", "failed"])
+      .limit(50).get();
+
+    const now = Date.now();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+
+      // If in sending state, check if claim lease is expired (> 5 min)
+      if (data.alertStatus === "sending") {
+        const isExpired = (now - (data.alertClaimedAt || 0)) > (ALERT_CLAIM_LEASE_MS || 5 * 60 * 1000);
+        if (!isExpired) {
+          continue; // Currently being handled by an active worker
+        }
+      }
+
+      if ((data.alertAttempts || 0) < (MAX_ALERT_ATTEMPTS || 5)) {
+        await attemptOperationalAlertClaim(doc.ref, {
+          outboxId: doc.id,
+          bookingId: data.bookingId,
+          bookingRef: data.bookingRef,
+          templateKey: data.templateKey,
+          recipient: data.recipient,
+          attempts: data.attempts,
+          reason: data.lastError || "scheduled_reconciliation"
+        });
+      }
+    }
+    return null;
+  });
+
+// Idempotency helpers export for testing & validation
+exports._idempotency = {
+  validateJsonSerializable,
+  canonicalize,
+  canonicalStringify,
+  computeBookingPayloadHash
+};

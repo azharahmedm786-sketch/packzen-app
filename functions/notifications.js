@@ -22,40 +22,93 @@ const { defineSecret } = require("firebase-functions/params");
 const rateLimit = require("./rate-limit");
 const completionOtp = require("./completion-otp");
 const COMPLETION_OTP_PEPPER = defineSecret("COMPLETION_OTP_PEPPER");
+function normalizeRecipient(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits || String(phone || "unknown").replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
 /* ────────────────────────────────────────────────────────────
    HELPERS: queue SMS and WhatsApp messages directly to Firestore
    ──────────────────────────────────────────────────────────── */
-async function queueSMS(phone, message, bookingRef, kind) {
+async function queueSMS(phone, message, bookingId, event = "info", kind = "info") {
   if (!phone) return;
-  try {
-    await admin.firestore().collection("smsQueue").add({
-      mobile: phone,
-      message,
-      bookingRef: bookingRef || null,
-      kind: kind || "info",          // only kind "otp" is actually sent (OTP-only SMS policy)
-      status: "pending",
-      retries: 0,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (e) {
-    console.error(`Error queueing SMS for ${bookingRef}: ${e.message}`);
+  if (!bookingId || typeof bookingId !== "string") {
+    throw new Error("queueSMS strictly requires an immutable booking document ID.");
   }
+
+  let effectiveEvent = event;
+  let effectiveKind = kind;
+  if (event === "otp") {
+    effectiveEvent = "completion_otp";
+    effectiveKind = "otp";
+  }
+
+  const cleanPhone = normalizeRecipient(phone);
+  const docId = `sms_${bookingId}_${cleanPhone}_${effectiveEvent}`;
+  const docRef = admin.firestore().collection("smsQueue").doc(docId);
+
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    if (!snap.exists) {
+      const record = {
+        mobile: phone,
+        message,
+        bookingId,
+        event: effectiveEvent,
+        kind: effectiveKind,
+        status: "pending",
+        retries: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      if (typeof tx.set === "function") {
+        tx.set(docRef, record);
+      } else {
+        const directDoc = admin.firestore().collection("smsQueue").doc(docId);
+        if (typeof directDoc.set === "function") {
+          await directDoc.set(record);
+        } else if (admin.firestore().collection("smsQueue").add) {
+          await admin.firestore().collection("smsQueue").add(record);
+        }
+      }
+    }
+  });
 }
 
-async function queueWhatsApp(phone, message, bookingRef) {
+async function queueWhatsApp(phone, message, bookingId, event = "created") {
   if (!phone) return;
-  try {
-    await admin.firestore().collection("whatsappQueue").add({
-      mobile: phone,
-      message,
-      bookingRef: bookingRef || null,
-      status: "pending",
-      retries: 0,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (e) {
-    console.error(`Error queueing WhatsApp for ${bookingRef}: ${e.message}`);
+  if (!bookingId || typeof bookingId !== "string") {
+    throw new Error("queueWhatsApp strictly requires an immutable booking document ID.");
   }
+
+  const cleanPhone = normalizeRecipient(phone);
+  const docId = `wa_${bookingId}_${cleanPhone}_${event}`;
+  const docRef = admin.firestore().collection("whatsappQueue").doc(docId);
+
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    if (!snap.exists) {
+      const record = {
+        mobile: phone,
+        message,
+        bookingId,
+        event,
+        status: "pending",
+        retries: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+      if (typeof tx.set === "function") {
+        tx.set(docRef, record);
+      } else {
+        const directDoc = admin.firestore().collection("whatsappQueue").doc(docId);
+        if (typeof directDoc.set === "function") {
+          await directDoc.set(record);
+        } else if (admin.firestore().collection("whatsappQueue").add) {
+          await admin.firestore().collection("whatsappQueue").add(record);
+        }
+      }
+    }
+  });
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -125,8 +178,8 @@ exports.onBookingCreatedNotify = functions
       }
 
       const msgCustomer = `Hi ${b.customerName}, your PackZen booking (${b.bookingRef}) is confirmed for ${b.date}! Pickup: ${b.pickup}. Est. cost: Rs.${b.total || 0}. Track: packzenblr.in. Queries: 9945095453`;
-      await queueSMS(b.phone, msgCustomer, b.bookingRef);
-      await queueWhatsApp(b.phone, msgCustomer, b.bookingRef);
+      await queueSMS(b.phone, msgCustomer, snap.id, "booking_created");
+      await queueWhatsApp(b.phone, msgCustomer, snap.id, "booking_created");
 
       await sendAdminEmail("New Booking Received", [
         ["Booking Ref", b.bookingRef],
@@ -157,6 +210,7 @@ exports.onBookingUpdatedNotify = functions
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
+    const bookingId = (change.after && change.after.id) || (context && context.params && context.params.bookingId);
 
     try {
       const email = await getCustomerEmail(after);
@@ -173,12 +227,12 @@ exports.onBookingUpdatedNotify = functions
         if (email) await sendCustomerEmail("driver_assigned", email, data);
 
         const msgCustomer = `Hi ${after.customerName}, your PackZen driver ${after.driverName} (${after.driverPhone}) is assigned for booking ${after.bookingRef}. Track live on packzenblr.in. Queries: 9945095453`;
-        await queueSMS(after.phone, msgCustomer, after.bookingRef);
-        await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+        await queueSMS(after.phone, msgCustomer, bookingId, "driver_assigned");
+        await queueWhatsApp(after.phone, msgCustomer, bookingId, "driver_assigned");
 
         const msgDriver = `New Booking Assigned: ${after.bookingRef} on ${after.date}. Pickup: ${after.pickup}. Drop: ${after.drop}. Customer: ${after.customerName} (${after.phone}). Log in to PackZen partner app to start.`;
-        await queueSMS(after.driverPhone, msgDriver, after.bookingRef);
-        await queueWhatsApp(after.driverPhone, msgDriver, after.bookingRef);
+        await queueSMS(after.driverPhone, msgDriver, bookingId, "job_assigned");
+        await queueWhatsApp(after.driverPhone, msgDriver, bookingId, "job_assigned");
 
         await sendAdminEmail("Driver Assigned to Booking", [
           ["Booking Ref", after.bookingRef],
@@ -192,13 +246,13 @@ exports.onBookingUpdatedNotify = functions
       const driverReassigned = !!before.driverUid && !!after.driverUid && before.driverUid !== after.driverUid;
       if (driverReassigned) {
         const msgCustomer = `Hi ${after.customerName}, your PackZen driver for booking ${after.bookingRef} has changed to ${after.driverName} (${after.driverPhone}). Queries: 9945095453`;
-        await queueSMS(after.phone, msgCustomer, after.bookingRef);
-        await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+        await queueSMS(after.phone, msgCustomer, bookingId, "driver_reassigned");
+        await queueWhatsApp(after.phone, msgCustomer, bookingId, "driver_reassigned");
         const msgNew = `New Booking Assigned: ${after.bookingRef} on ${after.date}. Pickup: ${after.pickup}. Drop: ${after.drop}. Customer: ${after.customerName} (${after.phone}). Log in to PackZen partner app to start.`;
-        await queueSMS(after.driverPhone, msgNew, after.bookingRef);
-        await queueWhatsApp(after.driverPhone, msgNew, after.bookingRef);
+        await queueSMS(after.driverPhone, msgNew, bookingId, "job_assigned");
+        await queueWhatsApp(after.driverPhone, msgNew, bookingId, "job_assigned");
         if (before.driverPhone && before.driverPhone !== after.driverPhone) {
-          await queueSMS(before.driverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been reassigned to another driver. You no longer need to attend this job.`, after.bookingRef);
+          await queueSMS(before.driverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been reassigned to another driver. You no longer need to attend this job.`, bookingId, "job_unassigned");
         }
         await sendAdminEmail("Driver Reassigned", [
           ["Booking Ref", after.bookingRef], ["Customer", after.customerName],
@@ -211,8 +265,8 @@ exports.onBookingUpdatedNotify = functions
         if (email) await sendCustomerEmail("driver_arriving", email, data);
 
         const msgCustomer = `Hi ${after.customerName}, your goods are now in transit for booking ${after.bookingRef}. Track your driver live on packzenblr.in.`;
-        await queueSMS(after.phone, msgCustomer, after.bookingRef);
-        await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+        await queueSMS(after.phone, msgCustomer, bookingId, "driver_arriving");
+        await queueWhatsApp(after.phone, msgCustomer, bookingId, "driver_arriving");
 
         // Prevent duplicate driver arriving notifications
         await change.after.ref.update({ driverArrivingNotified: true });
@@ -243,7 +297,7 @@ exports.onBookingUpdatedNotify = functions
       if (statusChanged && after.status === "transit") {
         try {
           await completionOtp.sendCompletionOtpSms({ db: admin.firestore(), now: () => Date.now(), pepper: COMPLETION_OTP_PEPPER.value(),
-            queueSms: (m, t, r, k) => queueSMS(m, t, r, k) }, context.params.bookingId, after);
+            queueSms: (m, t, _r, k) => queueSMS(m, t, bookingId, "completion_otp", k || "otp") }, bookingId, after);
         } catch (e) { functions.logger.warn("completion_otp_sms_failed", { bookingId: context.params.bookingId }); }
       }
 
@@ -262,10 +316,10 @@ exports.onBookingUpdatedNotify = functions
           const msgCustomer = isParcel
             ? `Hi ${after.customerName}, your PackZen parcel ${after.bookingRef} has been delivered to ${after.receiverName || "the receiver"}. Thank you for choosing PackZen!`
             : `Hi ${after.customerName}, your PackZen move ${after.bookingRef} is complete! Please rate your driver on packzenblr.in. Thank you for choosing PackZen!`;
-          await queueSMS(after.phone, msgCustomer, after.bookingRef);
-          await queueWhatsApp(after.phone, msgCustomer, after.bookingRef);
+          await queueSMS(after.phone, msgCustomer, bookingId, "booking_completed");
+          await queueWhatsApp(after.phone, msgCustomer, bookingId, "booking_completed");
           if (isParcel && after.receiverPhone && after.receiverPhone !== after.phone) {
-            await queueSMS(after.receiverPhone, `PackZen: parcel ${after.bookingRef} has been delivered to you. Thank you!`, after.bookingRef);
+            await queueSMS(after.receiverPhone, `PackZen: parcel ${after.bookingRef} has been delivered to you. Thank you!`, bookingId, "parcel_delivered");
           }
         }
 
@@ -273,11 +327,11 @@ exports.onBookingUpdatedNotify = functions
         if (after.status === "cancelled") {
           if (email) await sendCustomerEmail("booking_cancelled", email, data);
           const msgCancel = `Hi ${after.customerName}, your PackZen booking ${after.bookingRef} has been cancelled. Refund (if any) in 5-7 business days. Queries: 9945095453`;
-          await queueSMS(after.phone, msgCancel, after.bookingRef);
-          await queueWhatsApp(after.phone, msgCancel, after.bookingRef);
+          await queueSMS(after.phone, msgCancel, bookingId, "booking_cancelled");
+          await queueWhatsApp(after.phone, msgCancel, bookingId, "booking_cancelled");
           const cancelledDriverPhone = after.driverPhone || before.driverPhone;
           if (cancelledDriverPhone) {
-            await queueSMS(cancelledDriverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been cancelled. Please do not attend this job.`, after.bookingRef);
+            await queueSMS(cancelledDriverPhone, `PackZen: booking ${after.bookingRef} on ${after.date} has been cancelled. Please do not attend this job.`, bookingId, "job_cancelled");
           }
           await sendAdminEmail("Booking Cancelled", [
             ["Booking Ref", after.bookingRef],
@@ -293,9 +347,9 @@ exports.onBookingUpdatedNotify = functions
         before.rescheduledAt.toMillis?.() !== after.rescheduledAt.toMillis?.());
       if (rescheduled) {
         if (email) await sendCustomerEmail("booking_rescheduled", email, data);
-        await queueSMS(after.phone, `Hi ${after.customerName}, your PackZen booking ${after.bookingRef} has been rescheduled to ${after.date}. Queries: 9945095453`, after.bookingRef);
+        await queueSMS(after.phone, `Hi ${after.customerName}, your PackZen booking ${after.bookingRef} has been rescheduled to ${after.date}. Queries: 9945095453`, bookingId, "booking_rescheduled");
         if (after.driverPhone) {
-          await queueSMS(after.driverPhone, `PackZen: booking ${after.bookingRef} has moved from ${before.date} to ${after.date}. Check the partner app for details.`, after.bookingRef);
+          await queueSMS(after.driverPhone, `PackZen: booking ${after.bookingRef} has moved from ${before.date} to ${after.date}. Check the partner app for details.`, bookingId, "job_rescheduled");
         }
       }
 
@@ -448,4 +502,8 @@ exports.onSupportTicketCreatedNotify = functions
     ], context.params.ticketId).catch(() => {});
     return null;
   });
+
+exports.queueSMS = queueSMS;
+exports.queueWhatsApp = queueWhatsApp;
+exports.normalizeRecipient = normalizeRecipient;
 

@@ -140,4 +140,29 @@ async function runOpsDigest(deps) {
   return { found: issues.length, notified: toSend.length };
 }
 
-module.exports = { runOpsDigest, collectIssues, recordFailure, istDate };
+/**
+ * Sends an urgent operational alert (records in opsAlerts + sends admin alert email).
+ */
+async function sendAlert(db, message, details = {}) {
+  try {
+    const alertDoc = {
+      type: "dead_letter",
+      summary: message,
+      details,
+      createdAt: (typeof admin !== "undefined" && admin.firestore && admin.firestore.FieldValue)
+        ? admin.firestore.FieldValue.serverTimestamp()
+        : Date.now()
+    };
+    if (db && db.collection) {
+      await db.collection("opsAlerts").add(alertDoc);
+    }
+    const { sendAdminEmail } = require("./notification-service");
+    if (typeof sendAdminEmail === "function") {
+      await sendAdminEmail("URGENT OPS ALERT", [["Alert", message]], null).catch(() => {});
+    }
+  } catch (err) {
+    console.error("opsAlerts.sendAlert failed:", err.message);
+  }
+}
+
+module.exports = { runOpsDigest, collectIssues, recordFailure, istDate, sendAlert };
