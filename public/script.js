@@ -2270,6 +2270,8 @@ function handleBookingSuccess(result, attemptedRequestId, originalBookingDetails
 }
 
 function handleBookingError(err, attemptedRequestId) {
+  if (window.pzFallback) window.pzFallback("booking", err && (err.code || err.message));
+
   if (isDefinitiveServerError(err)) {
     // Attempt scoped cleanup: only proceeds if attemptedRequestId matches active attempt
     const wasActive = PackZenIdempotency.clearPendingAfterDefinitiveRejection(attemptedRequestId);
