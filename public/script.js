@@ -1989,51 +1989,438 @@ function bookWithoutPayment() {
     photos: uploadedPhotos.slice(0, 3)
   };
 
-  window._firebase.functions.httpsCallable("createBooking")({
-    quoteInput: window._lastQuoteRawInput,
-    bookingDetails
-  }).then((result) => {
-    const docId = result?.data?.docId;
-    currentBookingId = docId;
-    if (docId) localStorage.setItem("packzen_active_booking", docId);
+  confirmPayLater(bookingDetails, window._lastQuoteRawInput);
+}
 
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "📋 Confirm Booking · Pay on Delivery";
+// ── PackZen Form Lock State Manager ───────────────────────────────────────
+function setBookingFormLocked(locked) {
+  if (typeof document === "undefined") return;
+  const form = document.getElementById("bookingForm");
+  const quoteContainer = document.querySelector(".quote-container");
+  const btn = document.querySelector(".btn-pay");
+
+  const elements = (form || quoteContainer)
+    ? (form || quoteContainer).querySelectorAll("input, select, textarea, button:not(.btn-retry-pending):not(.btn-abandon)")
+    : [];
+
+  elements.forEach(el => {
+    if (locked) {
+      el.setAttribute("disabled", "true");
+    } else {
+      el.removeAttribute("disabled");
     }
+  });
 
-    // Server-computed total (from the same pricing engine + Distance
-    // Matrix call the server just ran) — this is what's actually stored,
-    // so it's what we show back to the customer, not the client guess.
-    const serverTotal = result?.data?.total ?? _getDiscountedTotal();
+  if (btn) {
+    btn.disabled = locked;
+  }
+}
 
+// ── PackZen Request ID Lifecycle & Page Reload Restoration Manager ─────────
+const PackZenIdempotency = (function() {
+  const STORAGE_KEY = "packzen_active_booking_request_id";
+  const PENDING_PAYLOAD_KEY = "packzen_pending_payload";
+  const UNRESOLVED_STATE_KEY = "packzen_unresolved_outcome";
+
+  function getStorage() {
+    if (typeof sessionStorage !== "undefined") return sessionStorage;
+    if (typeof globalThis !== "undefined" && globalThis.sessionStorage) return globalThis.sessionStorage;
+    return null;
+  }
+
+  function generateSecureId() {
+    if (typeof crypto !== "undefined") {
+      if (typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID().replace(/-/g, "");
+      }
+      if (typeof crypto.getRandomValues === "function") {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      }
+    }
+    try {
+      const nodeCrypto = require("crypto");
+      if (nodeCrypto.randomUUID) return nodeCrypto.randomUUID().replace(/-/g, "");
+    } catch (_) {}
+    throw new Error("Cryptographically secure random number generator unavailable.");
+  }
+
+  return {
+    getOrCreateRequestId: function() {
+      const storage = getStorage();
+      let id = storage ? storage.getItem(STORAGE_KEY) : null;
+      if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+        id = generateSecureId();
+        if (storage) storage.setItem(STORAGE_KEY, id);
+      }
+      return id;
+    },
+
+    getActiveRequestId: function() {
+      const storage = getStorage();
+      return storage ? storage.getItem(STORAGE_KEY) : null;
+    },
+
+    savePendingPayload: function(payload) {
+      const storage = getStorage();
+      if (storage) storage.setItem(PENDING_PAYLOAD_KEY, JSON.stringify(payload));
+    },
+
+    getPendingPayload: function() {
+      try {
+        const storage = getStorage();
+        const d = storage ? storage.getItem(PENDING_PAYLOAD_KEY) : null;
+        return d ? JSON.parse(d) : null;
+      } catch (e) { return null; }
+    },
+
+    setUnresolvedOutcome: function(val) {
+      const storage = getStorage();
+      if (!storage) return;
+      if (val) {
+        storage.setItem(UNRESOLVED_STATE_KEY, "true");
+      } else {
+        storage.removeItem(UNRESOLVED_STATE_KEY);
+      }
+    },
+
+    isUnresolvedOutcome: function() {
+      const storage = getStorage();
+      return storage ? storage.getItem(UNRESOLVED_STATE_KEY) === "true" : false;
+    },
+
+    invalidateRequestId: function() {
+      if (this.isUnresolvedOutcome()) return;
+      const storage = getStorage();
+      if (storage) {
+        storage.removeItem(STORAGE_KEY);
+        storage.removeItem(PENDING_PAYLOAD_KEY);
+      }
+    },
+
+    clearRequestId: function(completedId) {
+      const storage = getStorage();
+      if (!storage) return;
+      const current = storage.getItem(STORAGE_KEY);
+      if (current && current === completedId) {
+        storage.removeItem(STORAGE_KEY);
+        storage.removeItem(PENDING_PAYLOAD_KEY);
+        storage.removeItem(UNRESOLVED_STATE_KEY);
+      }
+    },
+
+    // Scoped cleanup: returns boolean indicating whether the rejected ID matched active attempt
+    clearPendingAfterDefinitiveRejection: function(rejectedRequestId) {
+      const storage = getStorage();
+      if (!storage) return false;
+      const current = storage.getItem(STORAGE_KEY);
+      if (current && current === rejectedRequestId) {
+        storage.removeItem(STORAGE_KEY);
+        storage.removeItem(PENDING_PAYLOAD_KEY);
+        storage.removeItem(UNRESOLVED_STATE_KEY);
+        return true;
+      }
+      return false;
+    },
+
+    forceAbandonUnresolved: function() {
+      const storage = getStorage();
+      if (storage) {
+        storage.removeItem(STORAGE_KEY);
+        storage.removeItem(PENDING_PAYLOAD_KEY);
+        storage.removeItem(UNRESOLVED_STATE_KEY);
+      }
+      setBookingFormLocked(false);
+    }
+  };
+})();
+
+function restoreCompleteBookingForm(b, quoteInput) {
+  if (!b || typeof document === "undefined") return;
+
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null) el.value = val; };
+  const setCheck = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null) el.checked = Boolean(val); };
+  const setSelectByText = (id, text) => {
+    const el = document.getElementById(id);
+    if (!el || !text) return;
+    for (let i = 0; i < el.options.length; i++) {
+      if (el.options[i].text === text || el.options[i].value === text) {
+        el.selectedIndex = i; break;
+      }
+    }
+  };
+
+  // Contacts & Scheduling
+  setVal("custName", b.customerName);
+  setVal("custPhone", b.phone);
+  setVal("custAltPhone", b.altPhone);
+  setVal("custEmail", b.email);
+  setVal("pickup", b.pickup);
+  setVal("drop", b.drop);
+  setVal("shiftDate", b.date);
+  setVal("shiftTime", b.shiftTime);
+  setVal("shiftTimeLabel", b.shiftTimeLabel);
+
+  // Property & Move Size Dropdowns
+  setSelectByText("house", b.house);
+  setSelectByText("vehicle", b.vehicle);
+  setSelectByText("pickupFloor", b.pickupFloor);
+  setSelectByText("dropFloor", b.dropFloor);
+
+  // Add-on Checkboxes
+  setCheck("liftAvailable", b.liftAvailable);
+  setCheck("packingService", b.packingService);
+  setCheck("unpackingService", b.unpackingService);
+  setCheck("dismantlingService", b.dismantling);
+  setCheck("assemblyService", b.assembly);
+  setCheck("storageService", b.storageNeeded);
+  setVal("storageDays", b.storageDays);
+
+  // Special Items & Remarks
+  setVal("custFragileItems", b.fragileItems);
+  setVal("custSpecialItems", b.specialItems);
+  setVal("custRemarks", b.remarks);
+
+  // Global State Variables
+  if (typeof selectedMoveType !== "undefined" && b.moveType) selectedMoveType = b.moveType;
+  if (typeof isIntercityMove !== "undefined" && b.isIntercity !== undefined) isIntercityMove = Boolean(b.isIntercity);
+  if (Array.isArray(b.photos) && typeof uploadedPhotos !== "undefined") uploadedPhotos = b.photos.slice();
+  if (quoteInput && typeof window !== "undefined") window._lastQuoteRawInput = quoteInput;
+}
+
+function normalizeFirebaseErrorCode(err) {
+  if (!err) return "";
+  let code = err.code || "";
+  if (typeof code === "string") {
+    if (code.startsWith("functions/")) {
+      code = code.slice("functions/".length);
+    }
+  }
+  return code.toLowerCase().trim();
+}
+
+function isDefinitiveServerError(err) {
+  if (!err) return false;
+  const normalized = normalizeFirebaseErrorCode(err);
+  const DEFINITIVE_CODES = [
+    "unauthenticated",
+    "permission-denied",
+    "invalid-argument",
+    "failed-precondition",
+    "resource-exhausted"
+  ];
+  return DEFINITIVE_CODES.includes(normalized);
+}
+
+function handleBookingSuccess(result, attemptedRequestId, originalBookingDetails) {
+  // STALE RESPONSE GUARD: Reject response if activeId !== attemptedRequestId, including when activeId is null
+  const activeId = PackZenIdempotency.getActiveRequestId();
+  if (!activeId || activeId !== attemptedRequestId) {
+    console.warn("Ignored stale booking success for inactive/abandoned request:", attemptedRequestId);
+    return; // Abandoned or superseded request MUST NEVER alter form state or display confirmation!
+  }
+
+  const docId = result?.data?.docId;
+  if (!docId || typeof docId !== "string" || docId.length === 0) {
+    console.error("Malformed server response missing docId:", result);
+    PackZenIdempotency.setUnresolvedOutcome(true);
+    renderUnresolvedBanner();
+    if (typeof showToast === "function") showToast("⚠️ Server response incomplete. Please click 'Retry / Check Status' to reconcile.");
+    return;
+  }
+
+  setBookingFormLocked(false);
+  PackZenIdempotency.setUnresolvedOutcome(false);
+
+  const serverTotal = result?.data?.total ?? (typeof _getDiscountedTotal === "function" ? _getDiscountedTotal() : 0);
+  const confirmedRef = result?.data?.bookingRef || (originalBookingDetails && originalBookingDetails.bookingRef) || "";
+
+  if (typeof currentBookingId !== "undefined") currentBookingId = docId;
+  if (typeof localStorage !== "undefined") localStorage.setItem("packzen_active_booking", docId);
+  PackZenIdempotency.clearRequestId(attemptedRequestId);
+
+  if (typeof document !== "undefined") {
+    const banner = document.getElementById("pzUnresolvedBanner");
+    if (banner) banner.remove();
+
+    const btn = document.querySelector(".btn-pay");
+    if (btn) btn.textContent = "📋 Confirm Booking · Pay on Delivery";
+  }
+
+  if (typeof showConfirmationCard === "function" && originalBookingDetails) {
     showConfirmationCard({
-      bookingRef,
-      name,
-      phone: "+91 " + phone,
-      pickup: pickupVal,
-      drop: dropVal,
-      date,
-      house: houseEl?.options[houseEl?.selectedIndex]?.text || "—",
-      vehicle: vehicleEl?.options[vehicleEl?.selectedIndex]?.text || "—",
+      bookingRef: confirmedRef,
+      name: originalBookingDetails.customerName,
+      phone: "+91 " + originalBookingDetails.phone,
+      pickup: originalBookingDetails.pickup,
+      drop: originalBookingDetails.drop,
+      date: originalBookingDetails.date,
+      house: originalBookingDetails.house || "—",
+      vehicle: originalBookingDetails.vehicle || "—",
       total: serverTotal,
       paymentLabel: "Cash on moving day",
       paymentNote: "Pay full amount to driver on moving day",
       source: "direct",
       showInvoice: false
     });
+  }
 
-    showToast("✅ Booking saved! ID: " + bookingRef);
-  })
-  .catch((err) => {
-    console.error("BOOKING SAVE FAILED:", err);
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "📋 Confirm Booking · Pay on Delivery";
+  if (typeof showToast === "function") showToast("✅ Booking saved! ID: " + confirmedRef);
+}
+
+function handleBookingError(err, attemptedRequestId) {
+  if (isDefinitiveServerError(err)) {
+    // Attempt scoped cleanup: only proceeds if attemptedRequestId matches active attempt
+    const wasActive = PackZenIdempotency.clearPendingAfterDefinitiveRejection(attemptedRequestId);
+    if (!wasActive) {
+      console.warn("Ignored stale definitive rejection for superseded/abandoned request:", attemptedRequestId);
+      return; // Do NOT unlock form or mutate UI for superseded attempts
     }
-    showToast("❌ Booking failed: " + (err.message || "Please try again."));
-    if (window.pzFallback) window.pzFallback("booking", err && (err.code || err.message));
-  });
+
+    // Active definitive rejection: server guaranteed no booking committed
+    setBookingFormLocked(false);
+
+    if (typeof document !== "undefined") {
+      const banner = document.getElementById("pzUnresolvedBanner");
+      if (banner) banner.remove();
+
+      const btn = document.querySelector(".btn-pay");
+      if (btn) {
+        btn.style.display = "";
+        btn.disabled = false;
+        btn.textContent = "📋 Confirm Booking · Pay on Delivery";
+      }
+    }
+
+    if (typeof showToast === "function") showToast("❌ Booking rejected: " + (err.message || "Please correct inputs and try again."));
+    return;
+  }
+
+  // AMBIGUOUS NETWORK OUTCOME:
+  const activeId = PackZenIdempotency.getActiveRequestId();
+  if (!activeId || activeId !== attemptedRequestId) {
+    console.warn("Ignored stale ambiguous error for superseded/abandoned request:", attemptedRequestId);
+    return;
+  }
+
+  PackZenIdempotency.setUnresolvedOutcome(true);
+  renderUnresolvedBanner();
+  if (typeof showToast === "function") showToast("⚠️ Network issue. Please click 'Retry / Check Status' to reconcile.");
+}
+
+function confirmPayLater(customDetails, customQuoteInput) {
+  const currentRequestId = PackZenIdempotency.getOrCreateRequestId();
+  const activeDetails = customDetails || (typeof bookingDetails !== "undefined" ? bookingDetails : null);
+  const activeQuoteInput = customQuoteInput || (typeof window !== "undefined" ? window._lastQuoteRawInput : null);
+
+  const submissionPayload = {
+    quoteInput: activeQuoteInput,
+    bookingDetails: activeDetails,
+    requestId: currentRequestId
+  };
+
+  // STEP 1: Save payload and set unresolved outcome BEFORE dispatching request!
+  PackZenIdempotency.savePendingPayload(submissionPayload);
+  PackZenIdempotency.setUnresolvedOutcome(true);
+
+  // STEP 2: Lock form controls
+  setBookingFormLocked(true);
+  if (typeof document !== "undefined") {
+    const btn = document.querySelector(".btn-pay");
+    if (btn) btn.textContent = "⏳ Saving your booking...";
+  }
+
+  // STEP 3: Dispatch callable
+  if (typeof window !== "undefined" && window._firebase && window._firebase.functions) {
+    window._firebase.functions.httpsCallable("createBooking")(submissionPayload)
+      .then((res) => handleBookingSuccess(res, currentRequestId, activeDetails))
+      .catch((err) => handleBookingError(err, currentRequestId));
+  }
+}
+
+function retryPendingBookingSubmission() {
+  const pending = PackZenIdempotency.getPendingPayload();
+  if (!pending || !pending.requestId || !pending.bookingDetails || !pending.quoteInput) {
+    if (typeof showToast === "function") showToast("No pending booking found to retry. Please start a new quote.");
+    PackZenIdempotency.forceAbandonUnresolved();
+    return;
+  }
+
+  const exactPayload = {
+    quoteInput: pending.quoteInput,
+    bookingDetails: pending.bookingDetails,
+    requestId: pending.requestId
+  };
+
+  setBookingFormLocked(true);
+  if (typeof document !== "undefined") {
+    const retryBtn = document.querySelector(".btn-retry-pending");
+    if (retryBtn) {
+      retryBtn.disabled = true;
+      retryBtn.textContent = "⏳ Reconciling with server...";
+    }
+  }
+
+  if (typeof window !== "undefined" && window._firebase && window._firebase.functions) {
+    window._firebase.functions.httpsCallable("createBooking")(exactPayload)
+      .then((res) => handleBookingSuccess(res, pending.requestId, pending.bookingDetails))
+      .catch((err) => handleBookingError(err, pending.requestId));
+  }
+}
+
+function renderUnresolvedBanner() {
+  if (typeof document === "undefined") return;
+  let banner = document.getElementById("pzUnresolvedBanner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "pzUnresolvedBanner";
+    banner.className = "alert alert-warning";
+    banner.style.marginTop = "15px";
+    banner.style.padding = "12px";
+    banner.style.background = "#fff3cd";
+    banner.style.border = "1px solid #ffeeba";
+    banner.style.borderRadius = "8px";
+    banner.style.color = "#856404";
+    banner.innerHTML = `
+      <p style="margin: 0 0 8px 0; font-size: 13px;">
+        <strong>Connection Interrupted:</strong> We could not confirm if your booking completed.
+        Form edits are locked to prevent duplicates.
+      </p>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-sm btn-primary btn-retry-pending" style="font-size: 12px; padding: 4px 10px; background: #ea580c; border: none; color: white; border-radius: 4px; cursor: pointer;">
+          🔄 Retry / Check Status
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-abandon" style="font-size: 12px; padding: 4px 10px; background: transparent; border: 1px solid #856404; color: #856404; border-radius: 4px; cursor: pointer;">
+          Abandon attempt & edit details
+        </button>
+      </div>
+    `;
+
+    const btnPay = document.querySelector(".btn-pay");
+    if (btnPay && btnPay.parentNode) {
+      btnPay.parentNode.insertBefore(banner, btnPay.nextSibling);
+      btnPay.style.display = "none";
+    }
+
+    const retryBtn = banner.querySelector(".btn-retry-pending");
+    if (retryBtn) retryBtn.addEventListener("click", retryPendingBookingSubmission);
+
+    const abandonBtn = banner.querySelector(".btn-abandon");
+    if (abandonBtn) {
+      abandonBtn.addEventListener("click", () => {
+        const ok = confirm("If your previous booking completed, it will appear in My Bookings. Starting over will create a separate booking. Continue?");
+        if (ok) {
+          PackZenIdempotency.forceAbandonUnresolved();
+          banner.remove();
+          if (btnPay) {
+            btnPay.style.display = "";
+            btnPay.textContent = "📋 Confirm Booking · Pay on Delivery";
+          }
+        }
+      });
+    }
+  }
 }
 
 function toggleConfirmDetails() {
@@ -4315,6 +4702,23 @@ PAGE LOAD
 ============================================ */
 document.addEventListener("DOMContentLoaded", () => {
   handleFirebaseActionCode();
+
+  // Pay-Later Booking Idempotency: Restore in-flight or unresolved submission on reload
+  try {
+    if (typeof PackZenIdempotency !== "undefined" && PackZenIdempotency.isUnresolvedOutcome()) {
+      const pending = PackZenIdempotency.getPendingPayload();
+      if (pending && pending.requestId && pending.bookingDetails && pending.quoteInput) {
+        setBookingFormLocked(true);
+        restoreCompleteBookingForm(pending.bookingDetails, pending.quoteInput);
+        renderUnresolvedBanner();
+        console.warn("⚠️ In-flight or unresolved booking attempt detected. Restored exact pending payload.");
+      } else {
+        PackZenIdempotency.forceAbandonUnresolved();
+      }
+    }
+  } catch (err) {
+    console.error("Idempotency restoration error on DOMContentLoaded:", err);
+  }
  setTimeout(() => {
     initGeolocationFeature();
 }, 1000);
@@ -4688,3 +5092,31 @@ window.addEventListener("load", function () {
     });
   }, 250);
 })();
+
+if (typeof window !== "undefined") {
+  window.PackZenIdempotency = PackZenIdempotency;
+  window.setBookingFormLocked = setBookingFormLocked;
+  window.restoreCompleteBookingForm = restoreCompleteBookingForm;
+  window.normalizeFirebaseErrorCode = normalizeFirebaseErrorCode;
+  window.isDefinitiveServerError = isDefinitiveServerError;
+  window.handleBookingSuccess = handleBookingSuccess;
+  window.handleBookingError = handleBookingError;
+  window.confirmPayLater = confirmPayLater;
+  window.retryPendingBookingSubmission = retryPendingBookingSubmission;
+  window.renderUnresolvedBanner = renderUnresolvedBanner;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    PackZenIdempotency,
+    setBookingFormLocked,
+    restoreCompleteBookingForm,
+    normalizeFirebaseErrorCode,
+    isDefinitiveServerError,
+    handleBookingSuccess,
+    handleBookingError,
+    confirmPayLater,
+    retryPendingBookingSubmission,
+    renderUnresolvedBanner
+  };
+}

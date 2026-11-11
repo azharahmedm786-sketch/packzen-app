@@ -11,6 +11,12 @@
 const admin = require("firebase-admin"); 
 const { sendBrevoEmail } = require("./brevo-client");
 const { TEMPLATES } = require("./email-templates");
+const opsAlerts = require("./ops-alerts");
+
+const STALE_CLAIM_MS = 5 * 60 * 1000; // 5 minutes for email claim
+const ALERT_CLAIM_LEASE_MS = 5 * 60 * 1000; // 5 minutes for alert lease
+const MAX_EMAIL_ATTEMPTS = 3;
+const MAX_ALERT_ATTEMPTS = 5;
 
 const MAX_RETRIES = 3;
 
@@ -205,11 +211,277 @@ const result = await sendBrevoEmail({
   return { retried };
 }
 
+/**
+ * Transactionally claims and sends an email via Brevo, offering best-effort deduplication
+ * under at-least-once Cloud Function trigger execution.
+ *
+ * RULE: opsAlerts.sendAlert() is NEVER executed inside a transaction callback.
+ * Outbox transactions update alertStatus and return a boolean flag; alerts dispatch post-commit.
+ */
+async function sendCustomerEmailWithOutbox(templateKey, toEmail, data, bookingId) {
+  if (!bookingId || typeof bookingId !== "string") {
+    throw new Error("sendCustomerEmailWithOutbox strictly requires an immutable booking document ID.");
+  }
+
+  const bookingRef = data?.bookingRef || null;
+  const outboxId = `email_bk_${bookingId}_${templateKey}`;
+  const outboxRef = admin.firestore().collection("emailOutbox").doc(outboxId);
+  const emailClaimId = "email_claim_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+
+  // 1. Transactional Claim Phase for Customer Email
+  const claimResult = await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(outboxRef);
+    const now = Date.now();
+
+    if (!snap.exists) {
+      tx.set(outboxRef, {
+        bookingId,
+        bookingRef,
+        templateKey,
+        recipient: toEmail,
+        status: "processing",
+        emailClaimId,
+        attempts: 1,
+        claimedAt: now,
+        alertStatus: "none",
+        alertAttempts: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return { proceed: true, attempt: 1, shouldAlert: false };
+    }
+
+    const state = snap.data();
+    if (state.status === "sent") {
+      return { proceed: false, reason: "already_sent", shouldAlert: false };
+    }
+
+    if (state.status === "processing") {
+      const isStale = (now - (state.claimedAt || 0)) > STALE_CLAIM_MS;
+      if (!isStale) {
+        return { proceed: false, reason: "in_progress", shouldAlert: false };
+      }
+
+      // STALE CLAIM DETECTED: Check MAX_EMAIL_ATTEMPTS ceiling
+      const currentAttempts = state.attempts || 1;
+      if (currentAttempts >= MAX_EMAIL_ATTEMPTS) {
+        tx.update(outboxRef, {
+          status: "failed",
+          lastError: "STALE_CLAIM_MAX_ATTEMPTS_EXCEEDED",
+          alertStatus: "pending",
+          failedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        return { proceed: false, shouldAlert: true, reason: "stale_max_attempts_exceeded", attempts: currentAttempts };
+      }
+
+      // Reclaim stale worker
+      tx.update(outboxRef, {
+        status: "processing",
+        emailClaimId,
+        attempts: currentAttempts + 1,
+        claimedAt: now,
+        reclaimedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return { proceed: true, attempt: currentAttempts + 1, shouldAlert: false };
+    }
+
+    if (state.status === "failed") {
+      const currentAttempts = state.attempts || 0;
+      if (currentAttempts >= MAX_EMAIL_ATTEMPTS) {
+        return { proceed: false, shouldAlert: state.alertStatus === "pending", reason: "max_attempts_exceeded", attempts: currentAttempts };
+      }
+      tx.update(outboxRef, {
+        status: "processing",
+        emailClaimId,
+        attempts: currentAttempts + 1,
+        claimedAt: now
+      });
+      return { proceed: true, attempt: currentAttempts + 1, shouldAlert: false };
+    }
+
+    return { proceed: false, reason: "unknown_state", shouldAlert: false };
+  });
+
+  // POST-COMMIT ALERT DISPATCH (Strictly outside transaction)
+  if (!claimResult.proceed) {
+    if (claimResult.shouldAlert) {
+      await attemptOperationalAlertClaim(outboxRef, {
+        outboxId,
+        bookingId,
+        bookingRef,
+        templateKey,
+        recipient: toEmail,
+        attempts: claimResult.attempts,
+        reason: claimResult.reason
+      });
+    }
+    return { success: true, skipped: true, reason: claimResult.reason };
+  }
+
+  // 2. Dispatch Phase
+  const sendResult = await sendCustomerEmail(templateKey, toEmail, data);
+
+  // 3. Finalize Outbox State with Claim Ownership Verification
+  let shouldAlertFailure = false;
+  let failureAttempts = 1;
+
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(outboxRef);
+    if (!snap.exists) return;
+    const s = snap.data();
+
+    // OWNERSHIP CHECK: Stale worker must not overwrite a newer worker's state
+    if (s.emailClaimId !== emailClaimId) {
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("Email claim ownership lost before dispatch finalization for claim:", emailClaimId);
+      }
+      return;
+    }
+
+    if (sendResult.success) {
+      tx.update(outboxRef, {
+        status: "sent",
+        response: sendResult.response || null,
+        sentAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      failureAttempts = s.attempts || 1;
+      const reachedCeiling = failureAttempts >= MAX_EMAIL_ATTEMPTS;
+
+      tx.update(outboxRef, {
+        status: "failed",
+        lastError: sendResult.error || "Send failed",
+        alertStatus: reachedCeiling ? "pending" : (s.alertStatus || "none"),
+        failedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      shouldAlertFailure = reachedCeiling;
+    }
+  });
+
+  if (shouldAlertFailure) {
+    await attemptOperationalAlertClaim(outboxRef, {
+      outboxId,
+      bookingId,
+      bookingRef,
+      templateKey,
+      recipient: toEmail,
+      attempts: failureAttempts,
+      reason: sendResult.error
+    });
+  }
+
+  return sendResult;
+}
+
+/**
+ * Transactional Alert Claim Lease Machine:
+ * Guarantees that concurrent workers cannot send duplicate alerts.
+ * Retries failed or expired claims up to MAX_ALERT_ATTEMPTS (5).
+ * Uses alertClaimId ownership tracking to prevent expired workers from overwriting newer worker outcomes.
+ */
+async function attemptOperationalAlertClaim(outboxRef, details) {
+  const claimId = "claim_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+
+  const claimAlert = await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(outboxRef);
+    if (!snap.exists) return { proceed: false };
+    const s = snap.data();
+    const now = Date.now();
+
+    if (s.alertStatus === "dispatched") {
+      return { proceed: false, reason: "already_dispatched" };
+    }
+
+    if (s.alertStatus === "sending") {
+      const isExpired = (now - (s.alertClaimedAt || 0)) > ALERT_CLAIM_LEASE_MS;
+      if (!isExpired) {
+        return { proceed: false, reason: "in_flight" };
+      }
+    }
+
+    const attempts = s.alertAttempts || 0;
+    if (attempts >= MAX_ALERT_ATTEMPTS) {
+      if (s.alertStatus !== "failed") {
+        tx.update(outboxRef, { alertStatus: "failed", lastAlertError: "MAX_ALERT_ATTEMPTS_EXCEEDED" });
+      }
+      return { proceed: false, reason: "max_attempts_exceeded" };
+    }
+
+    tx.update(outboxRef, {
+      alertStatus: "sending",
+      alertClaimId: claimId,
+      alertClaimedAt: now,
+      alertAttempts: attempts + 1
+    });
+
+    return { proceed: true, attempt: attempts + 1, claimId };
+  });
+
+  if (!claimAlert.proceed) {
+    return;
+  }
+
+  // Dispatch alert outside transaction
+  try {
+    if (typeof console !== "undefined" && console.error) {
+      console.error("EMAIL_OUTBOX_DEAD_LETTER", details);
+    }
+
+    await opsAlerts.sendAlert(
+      admin.firestore(),
+      `🚨 DEAD LETTER: Customer email (${details.templateKey}) for booking ${details.bookingRef || details.bookingId} permanently failed on attempt ${details.attempts} (${details.reason}). Manual intervention required.`
+    );
+
+    // Atomically finalize if this worker still holds the claim lease
+    await admin.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(outboxRef);
+      if (!snap.exists) return;
+      const s = snap.data();
+      if (s.alertClaimId === claimId) {
+        tx.update(outboxRef, {
+          alertStatus: "dispatched",
+          alertedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Alert claim ownership lost before dispatch completion for claim:", claimId);
+        }
+      }
+    });
+  } catch (alertErr) {
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn("Ops alert network dispatch failed:", alertErr.message);
+    }
+    await admin.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(outboxRef);
+      if (!snap.exists) return;
+      const s = snap.data();
+      if (s.alertClaimId === claimId) {
+        tx.update(outboxRef, {
+          alertStatus: "failed",
+          lastAlertError: alertErr.message,
+          alertFailedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }).catch(e => {
+      if (typeof console !== "undefined" && console.error) {
+        console.error("Failed to record alert error:", e.message);
+      }
+    });
+  }
+}
+
 module.exports = {
   escapeHtml,
   renderAdminValue,
   logNotification,
   sendCustomerEmail,
   sendAdminEmail,
-  retryFailedNotifications
+  retryFailedNotifications,
+  sendCustomerEmailWithOutbox,
+  attemptOperationalAlertClaim,
+  STALE_CLAIM_MS,
+  ALERT_CLAIM_LEASE_MS,
+  MAX_EMAIL_ATTEMPTS,
+  MAX_ALERT_ATTEMPTS
 };
