@@ -176,6 +176,39 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
   <link rel="stylesheet" href="pz-premium.css?v=15d">
+  <style>
+    @media (min-width: 768px) {
+      .hero-premium-title {
+        max-width: 28ch !important;
+      }
+      .hero-premium-desc {
+        max-width: 65ch !important;
+      }
+      .svc-sticky-cta {
+        display: none !important;
+      }
+      body {
+        padding-bottom: 0 !important;
+      }
+    }
+    @media (min-width: 1024px) {
+      .hero-premium-section {
+        display: block !important;
+        max-width: 960px !important;
+        margin: 0 auto !important;
+      }
+    }
+    body.pz-footer-visible #pzCbFab,
+    body.pz-footer-visible .pz-cb-fab,
+    body.pz-footer-visible #pzToggleBtn,
+    body.pz-footer-visible .pz-chat-toggle,
+    body.pz-footer-visible #pz-chat-root:not(.pz-open) {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+  </style>
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "name": "Furniture Dismantling and Assembly Services in Bangalore | PackZen", "url": "https://packzenblr.in/furniture-dismantling-assembly-bangalore.html", "dateModified": "2026-11-14", "isPartOf": {"@type": "WebSite", "name": "PackZen", "url": "https://packzenblr.in/"}, "about": {"@type": "MovingCompany", "name": "PackZen Packers & Movers", "url": "https://packzenblr.in/", "telephone": "+91-9945095453"}, "speakable": {"@type": "SpeakableSpecification", "cssSelector": [".pz-quick-answer", ".pz-facts"]}}</script>
 </head>
 
@@ -486,6 +519,17 @@
     const isOpen = item.classList.contains("open");
     document.querySelectorAll(".faq-item.open").forEach(i => i.classList.remove("open"));
     if (!isOpen) item.classList.add("open");
+  }
+  if (typeof IntersectionObserver === "function") {
+    var footer = document.querySelector(".app-footer");
+    if (footer) {
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          document.body.classList.toggle("pz-footer-visible", entry.isIntersecting);
+        });
+      }, { threshold: 0 });
+      obs.observe(footer);
+    }
   }
 </script>
 <script src="/pz-stability.js?v=3" defer></script>
