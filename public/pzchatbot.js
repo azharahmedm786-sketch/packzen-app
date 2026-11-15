@@ -62,6 +62,7 @@
       { label: "🧭 Book in chat", flow: "book" },
       { label: "🔁 Reschedule / cancel", flow: "manage" },
       { label: "📸 Price from photos", flow: "photo" },
+      { label: "🖼️ Work Gallery", intent: "gallery_photos" },
       { label: "💰 Pricing & Rates", intent: "pricing" },
       { label: "🏠 Shifting price", ask: "How much does house shifting cost?" },
       { label: "❄️ AC & home services", ask: "What home services do you offer and what are the prices?" },
@@ -73,6 +74,36 @@
     ],
 
     intents: {
+      gallery_photos: {
+        keywords: [
+          "gallery", "photos", "photo", "pictures", "images", "truck photos",
+          "real photos", "fleet photos", "completed work", "past moves",
+          "previous moves", "proof of work", "work gallery",
+        ],
+        reply:
+          "🖼️ PackZen Work Gallery\n\n" +
+          "Explore genuine photos of our closed-container moving trucks, residential packing setups, and commercial office moves across Bangalore neighbourhoods.\n\n" +
+          "Every relocation is handled by trained, polite crews with GPS tracking and damage protection up to ₹10,000.",
+        cta: { type: "link", label: "Explore Work Gallery →", href: "/gallery/" },
+        followUp: ["pricing", "booking_steps", "human"],
+      },
+
+      multi_service: {
+        keywords: [
+          "both", "together", "combined", "shift and ac", "shifting and ac",
+          "move and ac", "moving and ac", "appliance with move", "package with move",
+          "multi service", "multiple services", "bundle", "bundled",
+        ],
+        reply:
+          "📦 Shifting + Home Services Together\n\n" +
+          "Yes! You can bundle moving with home services:\n" +
+          "• In the shifting booking form, simply check add-ons for AC uninstallation / installation or appliance disconnects.\n" +
+          "• Alternatively, you can book AC servicing, washing machine repair, or fridge repair as standalone services with fixed server prices.\n\n" +
+          "All bookings come with clear, server-calculated prices and no hidden charges.",
+        cta: { type: "book", label: "Start Moving Quote" },
+        followUp: ["pricing", "gallery_photos", "human"],
+      },
+
       pricing: {
         keywords: [
           "price", "pricing", "cost", "rate", "rates", "charge", "charges",
@@ -650,6 +681,8 @@
   function handleCta(cta) {
     if (cta.type === "book") {
       goToBookingForm();
+    } else if (cta.type === "link" && cta.href) {
+      window.location.href = cta.href;
     }
   }
 

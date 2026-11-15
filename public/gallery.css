@@ -1,0 +1,421 @@
+/**
+ * PackZen — Work Gallery Styles (Phase 2)
+ * High-performance, responsive, accessible styles for Work Gallery & Lightbox
+ */
+
+/* ── Filter Bar ── */
+.pz-gallery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0 32px;
+  justify-content: center;
+}
+
+.pz-gallery-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pz-gallery-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.pz-gallery-filter-btn:focus-visible {
+  outline: 2px solid #a855f7;
+  outline-offset: 3px;
+}
+
+.pz-gallery-filter-btn.active,
+.pz-gallery-filter-btn[aria-selected="true"] {
+  background: #6b21a8;
+  background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);
+  border-color: #a855f7;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+
+/* ── Gallery Grid ── */
+.pz-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin: 0 auto 48px;
+  max-width: 1200px;
+}
+
+/* ── Semantic Gallery Card ── */
+.pz-gallery-card {
+  margin: 0;
+  background: #111827;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+}
+
+.pz-gallery-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.pz-gallery-media-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #0f172a;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.pz-gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.pz-gallery-media-wrap:hover .pz-gallery-img {
+  transform: scale(1.04);
+}
+
+.pz-gallery-expand-hint {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* ── Figcaption & Info ── */
+.pz-gallery-caption {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 12px;
+}
+
+.pz-gallery-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.pz-gallery-category-badge {
+  background: rgba(124, 58, 237, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.pz-gallery-locality-badge {
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.pz-gallery-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.35;
+}
+
+.pz-gallery-desc {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+.pz-gallery-cta-btn {
+  margin-top: 6px;
+  background: #6b21a8;
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pz-gallery-cta-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.pz-gallery-cta-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* ── Empty State / Consent Curation Card ── */
+.pz-gallery-curation-notice {
+  grid-column: 1 / -1;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 36px 24px;
+  text-align: center;
+  margin: 12px 0 24px;
+}
+
+.pz-gallery-curation-notice h3 {
+  margin: 0 0 8px;
+  color: #f1f5f9;
+  font-size: 1.2rem;
+}
+
+.pz-gallery-curation-notice p {
+  margin: 0 auto 16px;
+  color: #94a3b8;
+  font-size: 0.94rem;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* ── Accessible Lightbox Modal ── */
+.pz-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 10, 18, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.pz-lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.pz-lightbox-container {
+  position: relative;
+  max-width: 960px;
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  transform: scale(0.96);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pz-lightbox-overlay.active .pz-lightbox-container {
+  transform: scale(1);
+}
+
+.pz-lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #1f2937;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pz-lightbox-counter {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.pz-lightbox-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pz-lightbox-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.pz-lightbox-close-btn:focus-visible {
+  outline: 2px solid #a855f7;
+  outline-offset: 2px;
+}
+
+.pz-lightbox-body {
+  position: relative;
+  background: #0b0f19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 58vh;
+  overflow: hidden;
+}
+
+.pz-lightbox-img {
+  max-width: 100%;
+  max-height: 58vh;
+  object-fit: contain;
+  display: block;
+}
+
+.pz-lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.pz-lightbox-nav-btn:hover {
+  background: rgba(124, 58, 237, 0.85);
+  border-color: #c084fc;
+}
+
+.pz-lightbox-nav-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.pz-lightbox-prev { left: 16px; }
+.pz-lightbox-next { right: 16px; }
+
+.pz-lightbox-footer {
+  padding: 18px 24px 20px;
+  background: #111827;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pz-lightbox-info {
+  flex: 1 1 300px;
+}
+
+.pz-lightbox-title {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.pz-lightbox-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pz-lightbox-actions {
+  flex-shrink: 0;
+}
+
+/* ── Mobile Breakpoints ── */
+@media (max-width: 768px) {
+  .pz-gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .pz-lightbox-body {
+    max-height: 48vh;
+  }
+  .pz-lightbox-img {
+    max-height: 48vh;
+  }
+  .pz-lightbox-nav-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
+  }
+  .pz-lightbox-prev { left: 8px; }
+  .pz-lightbox-next { right: 8px; }
+  .pz-lightbox-footer {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+  .pz-lightbox-actions .pz-gallery-cta-btn {
+    width: 100%;
+  }
+}
