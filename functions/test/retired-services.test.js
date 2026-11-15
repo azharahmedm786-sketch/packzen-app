@@ -31,17 +31,17 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
 
   // --- customer-facing: nothing offers the retired services
   for (const f of ["parcel.html", "parcel-tracking.html", "parcel-delivery-bangalore.html", "join-parcel-delivery-rider-bangalore.html", "electrician-plumber-carpenter-bangalore.html",
-    "join-electrician-plumber-carpenter-bangalore.html", "furniture-dismantling-assembly-bangalore.html", "parcel-booking.js", "tv-wall-mounting-bangalore.html", "painting-services-bangalore.html"])
+    "join-electrician-plumber-carpenter-bangalore.html", "parcel-booking.js", "tv-wall-mounting-bangalore.html", "painting-services-bangalore.html"])
     assert.ok(!fs.existsSync(path.join(root, "public", f)), f);
   const pages = fs.readdirSync(path.join(root, "public")).filter((f) => /\.html$/.test(f) && !/^(admin|advisor|driver)\.html$/.test(f));
   for (const f of pages) {
     const h = pub(f).replace(/<!--[\s\S]*?-->/g, "");
     assert.ok(!/two-wheeler parcel|parcel delivery from|parcels from ₹49|href="\/?parcel\.html"/i.test(h.replace(/no longer offer[^<]*/gi, "")), f + " still offers parcels");
-    assert.ok(!/electrician-plumber-carpenter|join-parcel-delivery-rider|furniture-dismantling-assembly|tv-wall-mounting-bangalore|painting-services-bangalore|tvMountCount/.test(h), f + " links a retired page/option");
+    assert.ok(!/electrician-plumber-carpenter|join-parcel-delivery-rider|tv-wall-mounting-bangalore|painting-services-bangalore|tvMountCount/.test(h), f + " links a retired page/option");
     assert.ok(!/painting|TV (wall )?mounting/i.test(h.replace(/<script[\s\S]*?<\/script>/g, "").replace(/registration or painting/g, "")), f + " still offers painting / TV mounting");
   }
   const sm = pub("sitemap.xml");
-  assert.ok(!/parcel-delivery-bangalore|electrician-plumber-carpenter|furniture-dismantling|join-parcel|join-electrician/.test(sm));
+  assert.ok(!/parcel-delivery-bangalore|electrician-plumber-carpenter|join-parcel|join-electrician/.test(sm));
   const leads = pub("pz-leads.js"), mk = pub("marketplace.js"), chat = pub("pzchatbot.js"), reg = pub("partner-register.html");
   assert.ok(!/\["parcel", "Parcel delivery"\]|\["electrician", "Electrician"\]|id: "parcel"|id: "home", icon/.test(leads));
   assert.ok(!/Two-wheeler parcel|"Electrical"|"Plumbing"|"Carpentry"/.test(mk));
@@ -51,7 +51,9 @@ let pass = 0; const ok = (m) => { pass++; console.log("  PASS  " + m); };
 
   // --- kept on purpose: moving-day dismantling / disconnection add-ons are part of a move
   assert.ok(/needCarpenter/.test(pub("index.html")) && /needElectrician/.test(pub("index.html")) && !/tvMountCount/.test(pub("index.html")));
-  ok("kept: moving-day dismantling / disconnection add-ons; TV remount add-on removed from the booking form");
+  assert.ok(fs.existsSync(path.join(root, "public", "furniture-dismantling-assembly-bangalore.html")), "furniture dismantling landing page exists");
+  assert.ok(pub("sitemap.xml").includes("furniture-dismantling-assembly-bangalore.html"), "furniture dismantling in sitemap");
+  ok("kept: moving-day dismantling / disconnection add-ons & furniture dismantling landing page; TV remount add-on removed from the booking form");
 
   // --- homepage: two clear division entry points; moving stays the main CTA
   const idx = pub("index.html");
