@@ -1,0 +1,31 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "public/**"
+      - "firebase.json"
+      - ".github/workflows/firebase-hosting.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  deploy:
+    name: Deploy public/ to Firebase Hosting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PACKZEN_E7539 }}
+          channelId: live
+          projectId: packzen-e7539
