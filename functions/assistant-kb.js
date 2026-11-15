@@ -131,6 +131,14 @@ const ENTRIES = [
   { id: "human", phrases: ["talk to human", "real person", "speak to someone", "talk to someone", "customer support", "call me back", "callback", "agent"], words: ["human", "agent", "executive", "manager", "complaint", "complain", "callback"],
     answer: () => "I'll get a person from our team to help. Leave your name and number and what it's about, and we'll call you back during working hours (" + CONTACT.hours + "). For something urgent today, call " + CONTACT.phone + ".",
     actions: [{ type: "escalate", label: "Request a callback" }] },
+  { id: "gallery_photos", phrases: ["work gallery", "see photos", "view photos", "truck photos", "real photos", "fleet photos", "completed work", "past moves", "previous moves", "proof of work", "show me photos", "look at photos"], words: ["gallery", "portfolio", "photos"],
+    answer: () => "You can view genuine photos of our closed container fleet, residential packing in HSR Layout, and office moves in Whitefield in our Work Gallery:\nhttps://packzenblr.in/gallery/\nEvery move is carried out by trained, polite crews with live tracking and damage protection up to ₹10,000.",
+    actions: [{ type: "link", label: "View Work Gallery", href: "/gallery/" }] },
+
+  { id: "multi_service", phrases: ["house shifting and ac", "shifting and ac", "shift and ac", "moving and ac", "both move and ac", "shift with ac", "combined service", "bundle service", "appliance with move", "shift and install ac", "can you shift and install ac"], words: ["bundle", "bundled", "together", "combined"],
+    answer: () => "Yes! You can combine moving with home services:\n• In the moving booking form, simply check add-ons for AC uninstallation / installation or appliance disconnects.\n• You can also book standalone AC servicing, washing machine repair, or fridge repair on our Services page.\nAll prices are calculated on our servers with no hidden costs.",
+    actions: [{ type: "link", label: "View all services", href: "/services.html" }, { type: "book", label: "Get Moving Quote" }] },
+
 ];
 
 module.exports = { ENTRIES, MOVE_PRICES, CONTACT, inr };
