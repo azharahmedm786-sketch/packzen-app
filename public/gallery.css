@@ -3,6 +3,14 @@
  * High-performance, responsive, accessible styles for Work Gallery & Lightbox
  */
 
+/* ── Active Desktop Nav Link ── */
+.app-bar .desktop-nav-links a.active,
+.app-bar .desktop-nav-links a[aria-current="page"] {
+  color: #10251b !important;
+  font-weight: 700 !important;
+  background: rgba(16, 37, 27, 0.08) !important;
+}
+
 /* ── Filter Bar ── */
 .pz-gallery-filters {
   display: flex;
@@ -13,38 +21,41 @@
 }
 
 .pz-gallery-filter-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #e2e8f0;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
   padding: 10px 20px;
   border-radius: 9999px;
   font-family: inherit;
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .pz-gallery-filter-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #020617;
   transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
 }
 
 .pz-gallery-filter-btn:focus-visible {
-  outline: 2px solid #a855f7;
+  outline: 2px solid #7c3aed;
   outline-offset: 3px;
 }
 
 .pz-gallery-filter-btn.active,
 .pz-gallery-filter-btn[aria-selected="true"] {
-  background: #6b21a8;
-  background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);
-  border-color: #a855f7;
-  color: #ffffff;
+  background: #6b21a8 !important;
+  background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%) !important;
+  border-color: #6d28d9 !important;
+  color: #ffffff !important;
   box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
 }
 
@@ -152,27 +163,43 @@
   font-weight: 500;
 }
 
+.pz-gallery-card .pz-gallery-title,
+h2.pz-gallery-title,
 .pz-gallery-title {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f8fafc;
-  line-height: 1.35;
+  margin: 0 0 6px 0;
+  font-family: var(--nb-display, 'Bricolage Grotesque', sans-serif) !important;
+  font-size: 1.18rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.015em !important;
 }
 
+.pz-gallery-card .pz-gallery-desc,
+p.pz-gallery-desc,
 .pz-gallery-desc {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.88rem;
-  line-height: 1.5;
+  margin: 0 0 10px 0;
+  color: #cbd5e1 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.55 !important;
   flex-grow: 1;
+}
+
+.pz-gallery-card .pz-gallery-category-badge {
+  background: rgba(124, 58, 237, 0.25) !important;
+  color: #d8b4fe !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+}
+
+.pz-gallery-card .pz-gallery-locality-badge {
+  color: #94a3b8 !important;
 }
 
 .pz-gallery-cta-btn {
   margin-top: 6px;
   background: #6b21a8;
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  color: #ffffff;
+  color: #ffffff !important;
   border: none;
   border-radius: 10px;
   padding: 10px 16px;
@@ -192,7 +219,7 @@
 .pz-gallery-cta-btn:hover {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   transform: translateY(-1px);
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .pz-gallery-cta-btn:focus-visible {
@@ -203,8 +230,8 @@
 /* ── Empty State / Consent Curation Card ── */
 .pz-gallery-curation-notice {
   grid-column: 1 / -1;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
   border-radius: 16px;
   padding: 36px 24px;
   text-align: center;
@@ -213,14 +240,15 @@
 
 .pz-gallery-curation-notice h3 {
   margin: 0 0 8px;
-  color: #f1f5f9;
-  font-size: 1.2rem;
+  color: #0f172a !important;
+  font-size: 1.2rem !important;
+  font-family: var(--nb-display, inherit) !important;
 }
 
 .pz-gallery-curation-notice p {
   margin: 0 auto 16px;
-  color: #94a3b8;
-  font-size: 0.94rem;
+  color: #475569 !important;
+  font-size: 0.94rem !important;
   max-width: 600px;
   line-height: 1.5;
 }
@@ -371,17 +399,21 @@
   flex: 1 1 300px;
 }
 
+.pz-lightbox-container .pz-lightbox-title,
 .pz-lightbox-title {
   margin: 0 0 6px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #f8fafc;
+  font-family: var(--nb-display, 'Bricolage Grotesque', sans-serif) !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  letter-spacing: -0.015em !important;
 }
 
+.pz-lightbox-container .pz-lightbox-meta,
 .pz-lightbox-meta {
   margin: 0;
-  font-size: 0.9rem;
-  color: #94a3b8;
+  font-size: 0.9rem !important;
+  color: #cbd5e1 !important;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
