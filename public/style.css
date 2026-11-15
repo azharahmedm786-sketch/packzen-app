@@ -765,7 +765,7 @@ img { max-width: 100%; height: auto; display: block; }
   padding: 0 1.25rem;
 }
 .faq-item.open .faq-arrow { transform: rotate(180deg); }
-.faq-item.open .faq-a     { max-height: 200px; padding: 4px 1.25rem 1rem; }
+.faq-item.open .faq-a     { max-height: 800px; padding: 4px 1.25rem 1rem; }
 .faq-item.open .faq-q     { background: var(--green-50) !important; color: var(--green-600) !important; }
 
 /* Areas */
