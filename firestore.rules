@@ -503,6 +503,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // IDEMPOTENCY & EMAIL OUTBOX — Server-only via Admin SDK
+    match /bookingIdempotency/{docId} {
+      allow read, write: if false;
+    }
+    match /emailOutbox/{docId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

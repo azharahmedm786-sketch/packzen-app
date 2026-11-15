@@ -27,6 +27,30 @@ on top of v9.6.1 already loaded in HTML, causing conflicts)
       console.log("✅ Firebase initialized with Auth API key");
     }
 
+    // ── Firebase App Check (Monitoring Mode Only) ──────────────────────────────
+    try {
+      if (window.firebase && firebase.appCheck && window.ENV && window.ENV.APPCHECK_RECAPTCHA_V3_SITE_KEY) {
+        // Local development auto-debug token generation (localhost only)
+        const isLocalhost = (
+          location.hostname === "localhost" ||
+          location.hostname === "127.0.0.1"
+        );
+        if (isLocalhost && typeof self.FIREBASE_APPCHECK_DEBUG_TOKEN === "undefined") {
+          self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+        }
+
+        const provider = new firebase.appCheck.ReCaptchaV3Provider(window.ENV.APPCHECK_RECAPTCHA_V3_SITE_KEY);
+
+        firebase.appCheck().activate(
+          provider,
+          /* isTokenAutoRefreshEnabled */ true
+        );
+        console.log("✅ App Check activated in monitoring mode (reCAPTCHA v3)");
+      }
+    } catch (err) {
+      console.warn("⚠️ App Check initialization skipped or failed:", err);
+    }
+
  const auth = firebase.auth();
     const db = firebase.firestore();
     const storage = firebase.storage ? firebase.storage() : null;
