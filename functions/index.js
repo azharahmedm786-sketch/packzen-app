@@ -27,6 +27,7 @@ const opsAlerts = require("./ops-alerts");
 const completionOtp = require("./completion-otp");
 const { claimPending } = require("./queue-claim");
 const { validRequestId } = require("./catalog-pricing");
+const { isCallerAdmin, staffRoleOf } = require("./staff-customer");
 /* ============================================================
    SEND SMS VIA MSG91
    Triggered whenever a new doc is added to /smsQueue
@@ -806,11 +807,7 @@ exports.adminRefundPayment = functions
   .https.onCall(async (data, context) => {
     const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID.value(), key_secret: RAZORPAY_KEY_SECRET.value() });
     return paymentRefund.handleRefund(data, context, movePaymentDeps({
-      isAdmin: async (ctx) => {
-        if (!ctx || !ctx.auth || !ctx.auth.token || ctx.auth.token.email_verified !== true) return false;
-        const u = await admin.firestore().collection("users").doc(ctx.auth.uid).get();
-        return u.exists && u.data().role === "admin";
-      },
+      isAdmin: async (ctx) => isCallerAdmin(admin, ctx),
       createRefund: (paymentId, opts) => razorpay.payments.refund(paymentId, opts),
       toClientError: (code, message) => new functions.https.HttpsError(code, message),
     }));
@@ -818,9 +815,7 @@ exports.adminRefundPayment = functions
 
 /* === Phase 1 automation: completion OTP + exception alerting === */
 async function staffRole(context) {
-  if (!context || !context.auth) return null;
-  const u = await admin.firestore().collection("users").doc(context.auth.uid).get();
-  return u.exists ? u.data().role || null : null;
+  return staffRoleOf(admin, context);
 }
 function completionOtpDeps() {
   const { sendCustomerEmail } = require("./notification-service");
@@ -832,7 +827,7 @@ function completionOtpDeps() {
     logger: functions.logger,
     sendCustomerEmail,
     queueSms: (mobile, message, bookingRef, kind) => admin.firestore().collection("smsQueue").add({ mobile, message, bookingRef: bookingRef || null, kind: kind || "info", status: "pending", retries: 0, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
-    isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
+    isAdmin: async (ctx) => isCallerAdmin(admin, ctx),
     isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
     rateLimit: (scope, subject) => rateLimit.consume(admin.firestore(), Object.assign({ scope, subject }, rateLimit.LIMITS[scope])),
   };
@@ -860,7 +855,7 @@ function staffDeps() {
   return {
     db: admin.firestore(), now: () => Date.now(), logger: functions.logger,
     serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
-    isAdmin: async (ctx) => !!(ctx.auth && ctx.auth.token && ctx.auth.token.email_verified === true && (await staffRole(ctx)) === "admin"),
+    isAdmin: async (ctx) => isCallerAdmin(admin, ctx),
     isAdvisor: async (ctx) => (await staffRole(ctx)) === "advisor",
     isDriver: async (ctx) => (await staffRole(ctx)) === "driver",
     alert: (subject, rows) => require("./notification-service").sendAdminEmail(subject, rows, null),

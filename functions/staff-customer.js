@@ -9,12 +9,23 @@
 const OWNER_EMAILS = ["azharahmedm786@gmail.com", "azharahmednaz@gmail.com", "moveeasyblr@gmail.com"]; // = firestore.rules isAdmin
 const STAFF_ROLES = ["admin", "manager", "advisor"];
 
+async function isCallerAdmin(admin, context) {
+  if (!context || !context.auth || !context.auth.token) return false;
+  const t = context.auth.token;
+  if (t.email_verified !== true) return false;
+  const email = String(t.email || "").toLowerCase();
+  return OWNER_EMAILS.includes(email);
+}
+
 async function staffRoleOf(admin, context) {
   if (!context || !context.auth) return null;
   const t = context.auth.token || {};
   if (OWNER_EMAILS.includes(String(t.email || "").toLowerCase()) && t.email_verified === true) return "admin";
   const u = await admin.firestore().collection("users").doc(context.auth.uid).get();
-  return u.exists ? (u.data() || {}).role || null : null;
+  const r = u.exists ? (u.data() || {}).role || null : null;
+  // Non-owner account can NEVER have admin privileges in PackZen
+  if (r === "admin") return null;
+  return r;
 }
 
 class StaffCustomerError extends Error { constructor(code, msg) { super(msg); this.code = code; this.publicMessage = msg; } }
@@ -47,4 +58,4 @@ function cleanContact(d) {
   };
 }
 
-module.exports = { staffRoleOf, resolveCustomer, cleanContact, StaffCustomerError, STAFF_ROLES, OWNER_EMAILS };
+module.exports = { staffRoleOf, isCallerAdmin, resolveCustomer, cleanContact, StaffCustomerError, STAFF_ROLES, OWNER_EMAILS };

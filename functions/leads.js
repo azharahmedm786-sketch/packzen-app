@@ -76,9 +76,15 @@ function validateLead(data, now) {
   const when = ["this_week", "two_weeks", "this_month", "later", "just_checking"].includes(d.when) ? d.when : "";
   const homeSize = ["1rk", "1bhk", "2bhk", "3bhk", "4bhk", "villa", "office"].includes(d.homeSize) ? d.homeSize : "";
   const page = str(d.page, 200);
-  // PackZen Digital fields (website / e-commerce / SEO / maintenance enquiries)
+  // PackZen 3-Division Architecture: logistics, home_services, digital
   const DIGITAL = ["website", "ecommerce", "seo", "maintenance"];
-  const division = DIGITAL.includes(service) ? "digital" : "logistics";
+  const HOME_SERVICES = ["ac", "appliance", "electrician", "plumber", "carpenter", "tv", "painting"];
+  let division = "logistics";
+  if (d.division === "digital" || DIGITAL.includes(service)) {
+    division = "digital";
+  } else if (d.division === "home_services" || (HOME_SERVICES.includes(service) && d.division !== "logistics")) {
+    division = "home_services";
+  }
   const emailRaw = str(d.email, 120).toLowerCase();
   const email = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw) ? emailRaw : "";
   if (emailRaw && !email) errors.push("Please enter a valid email address.");

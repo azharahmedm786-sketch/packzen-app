@@ -385,7 +385,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /prospects/{placeId} {
-      allow create: if false;
+      allow create: if isAdmin();
       allow read, update: if isAdmin() || isAdvisor();   // owner + sales/ops staff (PackZen Leads app)
       allow delete: if isAdmin();
     }
@@ -479,6 +479,35 @@ service cloud.firestore {
     match /parcelTransactions/{txId} {
       allow read: if isAuth() && (resource.data.customerUid == request.auth.uid || isAdmin());
       allow create, update, delete: if isAdmin();
+    }
+
+    // PACKZEN DIGITAL PROJECTS — Admin-only management
+    match /projects/{projectId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.businessName is string && request.resource.data.businessName.size() >= 2 && request.resource.data.businessName.size() <= 120
+        && request.resource.data.amount is number && request.resource.data.amount >= 0 && request.resource.data.amount <= 10000000
+        && request.resource.data.advancePaid is number && request.resource.data.advancePaid >= 0
+        && request.resource.data.balanceDue is number && request.resource.data.balanceDue >= 0
+        && request.resource.data.status in ['discovery', 'in_progress', 'client_review', 'completed', 'care_plan_active'];
+      allow delete: if isAdmin();
+    }
+
+    // FINANCIAL LEDGER — Categorized financial transactions (Admin-only)
+    // Integrity: Collections - Direct Costs = Contribution; Contribution - Opex = Net Operating Profit
+    match /ledger/{entryId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.division in ['logistics', 'home_services', 'digital', 'overhead']
+        && request.resource.data.type in ['collection', 'direct_cost', 'shared_opex', 'refund', 'discount']
+        && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount <= 10000000
+        && request.resource.data.desc is string && request.resource.data.desc.size() >= 2 && request.resource.data.desc.size() <= 300
+        && request.resource.data.date is string && request.resource.data.date.size() <= 20;
+      allow delete: if isAdmin();
+    }
+
+    match /settings/scenario {
+      allow read, write: if isAdmin();
     }
 
     // SERVICE CATALOG — public read (the website lists services/prices

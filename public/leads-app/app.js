@@ -6,7 +6,12 @@
   var $ = function (id) { return document.getElementById(id); };
   var leads = [], tier = "open", firstLoad = true, soundOn = localStorage.getItem("pzl_sound") !== "off", unsub = null;
   var BUDGET = { under_10k: "< ₹10k", "10k_20k": "₹10–20k", "20k_50k": "₹20–50k", "50k_plus": "₹50k+", not_sure: "budget not sure" };
-  function divisionOf(l) { return l.division || (["website", "ecommerce", "seo", "maintenance"].indexOf(l.service) >= 0 ? "digital" : "logistics"); }
+  function divisionOf(l) {
+  if (l.division) return l.division;
+  if (["website", "ecommerce", "seo", "maintenance"].indexOf(l.service) >= 0) return "digital";
+  if (["ac", "appliance", "refrigerator", "washing_machine", "electrician", "plumber", "carpenter", "tv", "painting"].indexOf(l.service) >= 0) return "home_services";
+  return "logistics";
+}
   var SVC = { website: "Website", ecommerce: "E-commerce", seo: "SEO", maintenance: "Website care", appliance: "Appliance", painting: "Painting", move: "Shifting", vehicle: "Vehicle", parcel: "Parcel", ac: "AC", electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter", tv: "TV mount", business: "Business", estimate: "Photo quote", other: "Other" };
   var WHEN = { this_week: "This week", two_weeks: "≤ 2 weeks", this_month: "This month", later: "Later", just_checking: "Just checking" };
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
@@ -86,7 +91,7 @@
     return '<article class="lead t-' + t + '" data-id="' + l.id + '">' +
       '<div class="lead-top"><span class="badge b-' + t + '">' + (t === "hot" ? "🔥 HOT" : t.toUpperCase()) + (l.score != null ? " · " + l.score : "") + '</span>' +
       '<span class="age' + (late ? " late" : "") + '">' + (late ? "waiting " : "") + ago(l.createdAtMs) + '</span></div>' +
-      '<div class="lead-name">' + esc(l.name || "—") + ' <span class="svc">' + esc(SVC[l.service] || l.serviceLabel || "") + (l.homeSize ? " · " + esc(l.homeSize.toUpperCase()) : "") + '</span>' + (divisionOf(l) === "digital" ? ' <span class="badge b-digital">DIGITAL</span>' : "") + '</div>' +
+      '<div class="lead-name">' + esc(l.name || "—") + ' <span class="svc">' + esc(SVC[l.service] || l.serviceLabel || "") + (l.homeSize ? " · " + esc(l.homeSize.toUpperCase()) : "") + '</span>' + (divisionOf(l) === "digital" ? ' <span class="badge b-digital">DIGITAL</span>' : (divisionOf(l) === "home_services" ? ' <span class="badge b-home-services">HOME SERVICES</span>' : "")) + '</div>' +
       (divisionOf(l) === "digital" ? '<div class="lead-meta">' + esc(l.business || "No business name") + (l.budget ? " · " + esc(BUDGET[l.budget] || l.budget) : "") + (l.contactPref ? " · prefers " + esc(l.contactPref) : "") + (l.email ? " · " + esc(l.email) : "") + '</div>' : "") +
       '<div class="lead-meta">' + esc(l.area || "No area") + ' · ' + esc(WHEN[l.when] || l.date || "No date") + ' · ' + esc(l.channel || l.source || "direct") + '</div>' +
       '<div class="lead-status">Status: <b>' + esc(l.status || "new") + '</b>' + (l.followUpAt ? ' · follow-up ' + new Date(l.followUpAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "") + '</div>' +

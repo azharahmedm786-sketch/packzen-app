@@ -292,9 +292,35 @@ await t("K3", "Customer posts a review", true, () => addDoc(collection(cust, "re
 await t("K4", "Customer saves a quote", true, () => addDoc(collection(cust, "quotes"), { uid: "cust1", total: 3000 }));
 await t("K5", "Unauthenticated account-deletion request", true, () => addDoc(collection(anon, "accountDeletionRequests"), { requestId: "r1", firstName: "a", lastName: "b", email: "a@example.com", phone: "1", status: "Pending", createdAt: 1 }));
 await t("K6", "Customer posts a chat message on own booking", true, () => addDoc(collection(cust, "chats/c_read/messages"), { text: "hi", senderUid: "cust1" }));
-await t("K7", "Partner registration creates a pending partner doc", true, () => setDoc(doc(fs("ptrNew", "pn@example.com", false), "partners/ptrNew"), { verificationStatus: "pending", walletBalance: 0, pendingEarnings: 0, totalEarnings: 0 }));
+await t("K7", "Partner registration creates a pending partner doc", true, () => setDoc(doc(fs("ptrNew", "pn@example.com", false), "partners/ptrNew"), { verificationStatus: "pending", agreementAccepted: true, walletBalance: 0, pendingEarnings: 0, totalEarnings: 0 }));
+await t("K7b", "Partner registration without agreementAccepted is denied", false, () => setDoc(doc(fs("ptrNew2", "pn2@example.com", false), "partners/ptrNew2"), { verificationStatus: "pending", walletBalance: 0, pendingEarnings: 0, totalEarnings: 0 }));
 await t("K8", "Partner self-approves KYC", false, () => updateDoc(doc(fs("ptrPending", "pp@example.com"), "partners/ptrPending"), { verificationStatus: "approved" }));
 await t("K9", "Customer creates a driverRating", true, () => addDoc(collection(cust, "driverRatings"), { customerUid: "cust1", driverUid: "drv1", rating: 5 }));
+
+/* ── Business Ecosystem (Projects, Ledger, Prospects, Scenario) ───── */
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const f = ctx.firestore();
+  await setDoc(doc(f, "projects/proj_test"), { businessName: "Acme Corp", amount: 14999, advancePaid: 7500, balanceDue: 7499, status: "in_progress" });
+  await setDoc(doc(f, "ledger/led_test"), { division: "digital", type: "collection", amount: 7500, desc: "Advance Acme", date: "2026-11-16" });
+  await setDoc(doc(f, "settings/scenario"), { targetRevenue: 500000 });
+  await setDoc(doc(f, "prospects/ChIJtest123"), { name: "Bangalore Cafe", status: "new" });
+});
+
+await t("ECO1", "Verified admin reads projects", true, () => getDoc(doc(admin, "projects/proj_test")));
+await t("ECO2", "Normal customer reads projects", false, () => getDoc(doc(cust, "projects/proj_test")));
+await t("ECO3", "Unauthenticated visitor reads projects", false, () => getDoc(doc(anon, "projects/proj_test")));
+await t("ECO4", "Verified admin creates valid project", true, () => setDoc(doc(admin, "projects/proj_new"), { businessName: "Beta LLC", amount: 29999, advancePaid: 15000, balanceDue: 14999, status: "discovery" }));
+await t("ECO5", "Normal customer creates project", false, () => setDoc(doc(cust, "projects/proj_fake"), { businessName: "Hack", amount: 0, advancePaid: 0, balanceDue: 0, status: "discovery" }));
+await t("ECO6", "Verified admin reads ledger", true, () => getDoc(doc(admin, "ledger/led_test")));
+await t("ECO7", "Normal customer reads ledger", false, () => getDoc(doc(cust, "ledger/led_test")));
+await t("ECO8", "Unauthenticated visitor reads ledger", false, () => getDoc(doc(anon, "ledger/led_test")));
+await t("ECO9", "Verified admin creates valid ledger transaction", true, () => setDoc(doc(admin, "ledger/led_new"), { division: "logistics", type: "collection", amount: 4500, desc: "Move payment", date: "2026-11-16" }));
+await t("ECO10", "Normal customer creates ledger transaction", false, () => setDoc(doc(cust, "ledger/led_fake"), { division: "overhead", type: "direct_cost", amount: 100, desc: "Fake", date: "2026-11-16" }));
+await t("ECO11", "Verified admin reads scenario settings", true, () => getDoc(doc(admin, "settings/scenario")));
+await t("ECO12", "Normal customer reads scenario settings", false, () => getDoc(doc(cust, "settings/scenario")));
+await t("ECO13", "Verified admin creates prospect", true, () => setDoc(doc(admin, "prospects/ChIJnewPlace"), { name: "New Shop", status: "new" }));
+await t("ECO14", "Normal customer creates prospect", false, () => setDoc(doc(cust, "prospects/ChIJfakePlace"), { name: "Fake Shop", status: "new" }));
+await t("ECO15", "Unauthenticated visitor creates prospect", false, () => setDoc(doc(anon, "prospects/ChIJanonPlace"), { name: "Anon Shop", status: "new" }));
 
 /* ── Known open — scheduled for later releases (assert current behaviour) ── */
 await t("O1", "Approved partner reads booking assigned to them (I-15)", false, () => getDoc(doc(ptr, "bookings/partnerJob")), { knownOpen: true });

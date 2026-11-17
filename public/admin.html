@@ -154,6 +154,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Geist:wght@400..700&display=swap">
   <link rel="stylesheet" href="pz-ops-premium.css?v=5s">
+  <link rel="stylesheet" href="admin-ecosystem.css?v=1">
 
 <style id="pz-admin-uat">
 /* filters + period summary */
@@ -240,14 +241,11 @@
 
 <script>
 /* ================================================================
-   ✅ SECURITY CONSTANTS
+   ✅ SECURITY & ACCESS CONTROL
+   Admin authorization is enforced directly by Firestore Security Rules
+   via live permission probe on settings/scenario (isAdmin() gate).
+   Personal email addresses are never exposed in client assets.
    ================================================================ */
-// Must match isAdmin() in firestore.rules (UI gate only — the rules decide).
-const ADMIN_EMAILS = [
-  "azharahmedm786@gmail.com",
-  "azharahmednaz@gmail.com",
-  "moveeasyblr@gmail.com"
-];
 
 /* ✅ FIX 3: Brute-force rate limiter
    Max 3 failed attempts → 30s lockout, stored in sessionStorage
@@ -353,33 +351,30 @@ function waitFB(cb, n=0) {
 
 /* ================================================================
    AUTO-LOGIN GUARD (checks if already signed in as admin on load)
+   Probes Firestore rules permission directly via settings/scenario.
    ================================================================ */
 document.addEventListener("DOMContentLoaded", () => {
   waitFB(() => {
     const { auth, db } = window._firebase;
     auth.onAuthStateChanged(async (user) => {
-      if (!user) return; // Not logged in — show login form, nothing else
-      const userEmail = (user.email || "").toLowerCase();
+      if (!user) return; // Not logged in — show login form
+      if (!user.emailVerified) return; // Unverified emails denied
       try {
-        const snap = await db.collection("users").doc(user.uid).get();
-        const data = snap.data() || {};
-        if (data.role === "admin" || ADMIN_EMAILS.includes(userEmail)) {
-          adminUser = user;
-          showShell(data.name || user.displayName || "Admin");
-        }
-        // If not admin role — do nothing (don't redirect, just show login)
-      } catch(e) {
-        if (ADMIN_EMAILS.includes(userEmail)) {
-          adminUser = user;
-          showShell(user.displayName || "Admin");
-        }
+        // Direct authorization probe: settings/scenario is admin-only in firestore.rules
+        await db.collection("settings").doc("scenario").get();
+        adminUser = user;
+        const snap = await db.collection("users").doc(user.uid).get().catch(() => null);
+        const data = snap && snap.exists ? snap.data() : {};
+        showShell(data.name || user.displayName || "Admin");
+      } catch (e) {
+        // Not authorized by Firestore rules — do not show shell
       }
     });
   });
 });
 
 /* ================================================================
-   LOGIN — WITH RATE LIMITING
+   LOGIN — WITH RATE LIMITING & LIVE FIRESTORE AUTHORIZATION PROBE
    ================================================================ */
 function adminLogin() {
   // ✅ Block if locked out
@@ -398,46 +393,43 @@ function adminLogin() {
   waitFB(() => {
     const { auth, db } = window._firebase;
     auth.signInWithEmailAndPassword(email, pass)
-      .then(cred => {
-        adminUser = cred.user;
-        const userEmail = cred.user.email?.toLowerCase() || "";
-        db.collection("users").doc(cred.user.uid).get()
-          .then(async doc => {
-            const role = doc.exists ? doc.data()?.role : null;
-            const name = doc.exists ? (doc.data()?.name || "Admin") : "Admin";
-            if (role === "admin" || ADMIN_EMAILS.includes(userEmail)) {
-              // Auto-fix missing role in Firestore
-              if (ADMIN_EMAILS.includes(userEmail) && role !== "admin") {
-                try {
-                  if (doc.exists) {
-                    await db.collection("users").doc(cred.user.uid).update({ role: "admin" });
-                  } else {
-                    await db.collection("users").doc(cred.user.uid).set({
-                      name: cred.user.displayName || "Admin", email: userEmail,
-                      role: "admin", createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                  }
-                } catch(e) { console.warn("Could not set admin role:", e.message); }
-              }
-              clearAttempts(); // ✅ Reset attempts on successful login
-              showShell(name);
-            } else {
-              auth.signOut(); adminUser = null;
-              recordFailedAttempt(); // ✅ Count as failed — wrong role
-              err.textContent = "Access denied. Your account does not have admin permissions.";
+      .then(async (cred) => {
+        if (!cred.user.emailVerified) {
+          auth.signOut(); adminUser = null;
+          recordFailedAttempt();
+          btn.disabled = false; btn.textContent = "Login to Dashboard →";
+          err.textContent = "Please verify your email address before logging in to the admin dashboard.";
+          return;
+        }
+
+        try {
+          // Probe Firestore admin authorization (isAdmin() rule)
+          await db.collection("settings").doc("scenario").get();
+          // Authorized by Firestore rules!
+          adminUser = cred.user;
+          const userDoc = await db.collection("users").doc(cred.user.uid).get().catch(() => null);
+          const userData = userDoc && userDoc.exists ? userDoc.data() : {};
+          if (!userDoc || !userDoc.exists || userData.role !== "admin") {
+            try {
+              await db.collection("users").doc(cred.user.uid).set({
+                name: cred.user.displayName || "Admin",
+                email: cred.user.email.toLowerCase(),
+                role: "admin",
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            } catch (roleErr) {
+              console.warn("Could not sync admin role to profile:", roleErr.message);
             }
-          })
-          .catch(e => {
-            console.error('Admin Auth Firestore Error:', e.code, e.message);
-            if (ADMIN_EMAILS.includes(userEmail)) {
-              clearAttempts();
-              showShell(cred.user.displayName || "Admin");
-            } else {
-              auth.signOut(); adminUser = null;
-              recordFailedAttempt();
-              err.textContent = "Could not verify admin role. Please contact support.";
-            }
-          });
+          }
+          clearAttempts(); // ✅ Reset attempts on successful login
+          showShell(userData.name || cred.user.displayName || "Admin");
+        } catch (probeErr) {
+          console.warn("Admin authorization probe rejected:", probeErr.code || probeErr.message);
+          auth.signOut(); adminUser = null;
+          recordFailedAttempt();
+          btn.disabled = false; btn.textContent = "Login to Dashboard →";
+          err.textContent = "Access denied. Your account does not have administrator permissions.";
+        }
       })
       .catch(e => {
         console.error('Admin Auth Error:', e.code, e.message);
@@ -494,6 +486,13 @@ function buildShell(adminName) {
     <div class="nav-item" onclick="showSection('bookings',this)"><span class="ni">📦</span> Bookings</div>
     <div class="nav-item" onclick="showSection('parcel',this)"><span class="ni">🛵</span> Parcels (history)</div>
     <div class="nav-item" onclick="showSection('drivers',this)"><span class="ni">🚚</span> Drivers</div>
+    <div class="sb-role">Ecosystem</div>
+    <div class="nav-item" onclick="showSection('owner',this)"><span class="ni">⚡</span> Owner Console</div>
+    <div class="nav-item" onclick="showSection('pipeline',this)"><span class="ni">🧭</span> Unified Pipeline</div>
+    <div class="nav-item" onclick="showSection('homeservices',this)"><span class="ni">❄️</span> Home Services</div>
+    <div class="nav-item" onclick="showSection('digitalprojects',this)"><span class="ni">💻</span> Digital Projects</div>
+    <div class="nav-item" onclick="showSection('ledger',this)"><span class="ni">📑</span> Financial Ledger</div>
+    <div class="nav-item" onclick="showSection('prospects',this)"><span class="ni">🎯</span> Sales Outreach</div>
     <div class="sb-role">Manage</div>
     <div class="nav-item" onclick="showSection('customers',this)"><span class="ni">👥</span> Customers</div>
     <div class="nav-item" onclick="showSection('services',this)"><span class="ni">🧰</span> Services Catalog</div>
@@ -945,6 +944,14 @@ function buildShell(adminName) {
         <tbody id="broadcastTable"><tr class="empty-row"><td colspan="4">No broadcasts sent yet.</td></tr></tbody></table>
       </div>
     </div>
+
+    <!-- ECOSYSTEM 3-DIVISION SECTIONS -->
+    <div class="section" id="sectionOwner"></div>
+    <div class="section" id="sectionPipeline"></div>
+    <div class="section" id="sectionHomeservices"></div>
+    <div class="section" id="sectionDigitalprojects"></div>
+    <div class="section" id="sectionLedger"></div>
+    <div class="section" id="sectionProspects"></div>
   </main>
   <!-- ASSIGN MODAL -->
   <div class="assign-overlay" id="assignModal" style="display:none;">
@@ -1212,6 +1219,7 @@ function updateStats() {
   el("statRevenue").textContent = "₹" + (rev >= 100000 ? (rev/100000).toFixed(1)+"L" : rev.toLocaleString("en-IN"));
   const onlineDrivers = allDrivers.filter(d => d.isOnline).length;
   el("statDrivers").textContent = `${onlineDrivers}/${allDrivers.length}`;
+  if (window.pzEco && typeof window.pzEco.renderOverviewKPIs === "function") window.pzEco.renderOverviewKPIs();
 }
 
 /* ── CHARTS ── */
@@ -1707,10 +1715,16 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", bills:"Bills", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics" };
+  const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", bills:"Bills", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics", owner:"Owner Daily Console", pipeline:"Unified Pipeline", homeservices:"Home Services & Technicians", digitalprojects:"PackZen Digital Projects", ledger:"Financial Ledger & P&L", prospects:"Sales Outreach" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
-  if (name==="overview") { renderCharts(); if (typeof loadReadiness === "function") loadReadiness(); }
+  if (name==="overview") { renderCharts(); if (typeof loadReadiness === "function") loadReadiness(); if (window.pzEco) window.pzEco.renderOverviewKPIs(); }
+  if (name==="owner" && window.pzEco) window.pzEco.renderOwner();
+  if (name==="pipeline" && window.pzEco) window.pzEco.renderPipeline();
+  if (name==="homeservices" && window.pzEco) window.pzEco.renderHomeServices();
+  if (name==="digitalprojects" && window.pzEco) window.pzEco.renderDigitalProjects();
+  if (name==="ledger" && window.pzEco) window.pzEco.renderLedger();
+  if (name==="prospects" && window.pzEco) window.pzEco.renderProspects();
   if (name==="parcel")   loadParcelBookings();
   if (name==="leads")    loadLeads();
   if (name==="ops")      loadOps();
@@ -2735,6 +2749,7 @@ function resolveSupport(coll, id) {
 </script>
   <script src="admin-bills.js?v=2"></script>
   <script src="admin-services.js"></script>
+  <script src="admin-ecosystem.js?v=1"></script>
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
 </body>

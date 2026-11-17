@@ -1,0 +1,291 @@
+/* PackZen Business Ecosystem — Scoped Styles for Admin 3-Division Operating System */
+.eco-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.eco-badge-logistics { background: rgba(31, 157, 92, 0.15); color: #1F9D5C; border: 1px solid rgba(31, 157, 92, 0.3); }
+.eco-badge-home_services { background: rgba(14, 165, 233, 0.15); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.3); }
+.eco-badge-digital { background: rgba(99, 102, 241, 0.15); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+.eco-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.eco-pill-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  transition: all 0.2s ease;
+}
+body:not(.dark) .eco-pill-btn {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #374151;
+}
+.eco-pill-btn.active {
+  background: var(--primary, #1F9D5C);
+  color: #fff;
+  border-color: var(--primary, #1F9D5C);
+}
+
+.eco-alert-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #d97706;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+body.dark .eco-alert-banner {
+  color: #fbbf24;
+}
+
+.eco-pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  overflow-x: auto;
+}
+.eco-pipeline-col {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 220px;
+}
+body:not(.dark) .eco-pipeline-col {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+.eco-pipeline-col-hdr {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+body:not(.dark) .eco-pipeline-col-hdr {
+  border-bottom-color: #e5e7eb;
+}
+
+.eco-lead-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+body:not(.dark) .eco-lead-card {
+  background: #fff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.eco-lead-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary, #1F9D5C);
+}
+.eco-lead-card.is-overdue {
+  border-left: 4px solid #ef4444 !important;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.eco-time-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.eco-time-badge.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.eco-time-badge.due-today {
+  background: #fef3c7;
+  color: #b45309;
+}
+.eco-time-badge.upcoming {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.eco-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.eco-kpi-card {
+  background: var(--card-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  padding: 14px;
+}
+body:not(.dark) .eco-kpi-card {
+  background: #fff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.eco-kpi-lbl {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted, #6B7D74);
+  margin-bottom: 4px;
+}
+.eco-kpi-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: inherit;
+  letter-spacing: -0.5px;
+}
+.eco-kpi-sub {
+  font-size: 0.72rem;
+  color: var(--muted, #6B7D74);
+  margin-top: 4px;
+}
+
+.eco-profit-positive { color: #00c96e !important; }
+.eco-profit-caution { color: #f59e0b !important; }
+.eco-profit-negative { color: #ef4444 !important; }
+
+.eco-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.eco-modal-box {
+  background: #111827;
+  color: #f9fafb;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+}
+body:not(.dark) .eco-modal-box {
+  background: #ffffff;
+  color: #111827;
+  border-color: #e5e7eb;
+}
+
+.eco-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+body:not(.dark) .eco-modal-header {
+  border-bottom-color: #e5e7eb;
+}
+.eco-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.eco-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+}
+.eco-modal-close:hover { opacity: 1; }
+
+.eco-form-group {
+  margin-bottom: 12px;
+}
+.eco-form-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: inherit;
+}
+.eco-form-input, .eco-form-select, .eco-form-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-size: 0.85rem;
+}
+body:not(.dark) .eco-form-input, 
+body:not(.dark) .eco-form-select, 
+body:not(.dark) .eco-form-textarea {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.eco-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s ease;
+}
+.eco-btn-primary { background: #1F9D5C; color: #fff; }
+.eco-btn-secondary { background: rgba(255, 255, 255, 0.1); color: inherit; }
+body:not(.dark) .eco-btn-secondary { background: #e5e7eb; color: #374151; }
+.eco-btn-danger { background: #ef4444; color: #fff; }
+.eco-btn:hover { opacity: 0.9; }
+
+.eco-scenario-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.eco-scenario-table th, .eco-scenario-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+body:not(.dark) .eco-scenario-table th, 
+body:not(.dark) .eco-scenario-table td {
+  border-bottom-color: #e5e7eb;
+}
