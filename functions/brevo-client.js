@@ -27,12 +27,13 @@ function getBrevoConfig() {
 
 /**
  * Sends a transactional email via Brevo's REST API (v3/smtp/email).
- * Returns a Promise resolving to { success, response, error }.
+ * Returns a Promise resolving to { success, response, error, retryable, timedOut }.
  * Never throws — always resolves so callers can log the outcome.
  */
-function sendBrevoEmail({ toEmail, toName, subject, htmlContent, textContent }) {
+function sendBrevoEmail({ toEmail, toName, subject, htmlContent, textContent, headers, tags }, configOverride = null) {
   return new Promise((resolve) => {
-    const { apiKey, senderEmail, senderName } = getBrevoConfig();
+    const config = configOverride || getBrevoConfig();
+    const { apiKey, senderEmail, senderName } = config;
     if (!apiKey) {
       resolve({ success: false, response: null, error: "BREVO_API_KEY_NOT_CONFIGURED", retryable: false });
       return;
@@ -41,13 +42,16 @@ function sendBrevoEmail({ toEmail, toName, subject, htmlContent, textContent }) 
       resolve({ success: false, response: null, error: "MISSING_RECIPIENT_EMAIL", retryable: false });
       return;
     }
-    const payload = JSON.stringify({
+    const bodyObj = {
       sender: { name: senderName, email: senderEmail },
       to: [{ email: toEmail, name: toName || toEmail }],
       subject: subject,
-      htmlContent: htmlContent,
-      textContent: textContent || undefined
-    });
+      htmlContent: htmlContent
+    };
+    if (textContent) bodyObj.textContent = textContent;
+    if (headers && typeof headers === "object") bodyObj.headers = headers;
+    if (Array.isArray(tags) && tags.length > 0) bodyObj.tags = tags;
+    const payload = JSON.stringify(bodyObj);
 
     const options = {
       hostname: "api.brevo.com",
@@ -61,7 +65,7 @@ function sendBrevoEmail({ toEmail, toName, subject, htmlContent, textContent }) 
       }
     };
 
-const req = https.request(options, (res) => {
+    const req = https.request(options, (res) => {
       let body = "";
       res.on("data", (chunk) => { body += chunk; });
       res.on("end", () => {
@@ -79,15 +83,14 @@ const req = https.request(options, (res) => {
       });
     });
     req.on("error", (err) => {
-      resolve({ success: false, response: null, error: err.message, retryable: true });
+      resolve({ success: false, response: null, error: err.message, retryable: true, networkError: true });
     });
     req.setTimeout(10000, () => {
       req.destroy();
-      resolve({ success: false, response: null, error: "Brevo request timed out", retryable: true });
+      resolve({ success: false, response: null, error: "Brevo request timed out", retryable: true, timedOut: true });
     });
     req.write(payload);
     req.end();
-     
   });
 }
 
