@@ -581,3 +581,383 @@ html[data-theme="dark"] body, body.dark, body.dark-mode { background: #fff !impo
 .pz-service-directory-digital h3, .pz-service-directory-digital a { color: #e9e4ff; }
 @media (max-width: 760px) { .pz-service-directory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .pz-service-directory-grid { grid-template-columns: 1fr; } .pz-service-directory-group { padding: 15px; } }
+
+
+/* ── PackZen 3.0: Hero 5-Category Service Selector ── */
+.hero-service-selector {
+  margin: 20px 0 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--nb-line-2, rgba(10, 40, 28, 0.16));
+  border-radius: var(--nb-r-lg, 20px);
+  padding: 16px;
+  box-shadow: 0 4px 20px -8px rgba(12, 26, 20, 0.08);
+}
+.hss-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.hss-title {
+  font-family: var(--nb-display, system-ui);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--nb-text, #0C1A14);
+}
+.hss-sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--nb-muted, #6B7D74);
+}
+.hss-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.hss-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--nb-night-2, #F6F8F7);
+  border: 1px solid var(--nb-line, rgba(10, 40, 28, 0.09));
+  border-radius: var(--nb-r-md, 14px);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--nb-body, system-ui);
+  min-height: 52px;
+}
+.hss-card:hover {
+  background: #FFFFFF;
+  border-color: var(--nb-green, #1F9D5C);
+  box-shadow: 0 4px 12px -4px rgba(31, 157, 92, 0.2);
+  transform: translateY(-2px);
+}
+.hss-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.hss-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.hss-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--nb-text, #0C1A14);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hss-rate {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--nb-green-deep, #157A47);
+}
+.hss-arrow {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--nb-muted, #6B7D74);
+  transition: transform 0.2s ease;
+}
+.hss-card:hover .hss-arrow {
+  color: var(--nb-green-deep, #157A47);
+  transform: translateX(3px);
+}
+
+@media (max-width: 1024px) {
+  .hss-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .hss-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .hss-card {
+    padding: 12px 14px;
+  }
+}
+
+/* ── PackZen 3.0: Compact WhatsApp Quick Lead in Step 1 ── */
+.pz-wa-quick-lead-card {
+  margin: 16px 0 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(31, 157, 92, 0.03) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: var(--nb-r-md, 14px);
+}
+.pz-wa-ql-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.pz-wa-ql-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.pz-wa-ql-title {
+  font-family: var(--nb-display, system-ui);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #0c1a14;
+}
+.pz-wa-ql-sub {
+  font-size: 0.78rem;
+  color: #4b6357;
+  line-height: 1.35;
+}
+.pz-wa-ql-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pz-wa-ql-input, .pz-wa-ql-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  font-size: 0.86rem;
+  font-family: var(--nb-body, system-ui);
+  border: 1px solid var(--nb-line-2, rgba(10,40,28,0.18));
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: var(--nb-text, #0C1A14);
+}
+.pz-wa-ql-input:focus, .pz-wa-ql-select:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+.pz-wa-ql-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #22c55e;
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.pz-wa-ql-btn:hover {
+  background: #16a34a;
+}
+.pz-wa-ql-err {
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 580px) {
+  .pz-wa-ql-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── PackZen 3.0: Two-Step Appliance Booking Modal ── */
+.appliance-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: 92%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #FFFFFF;
+  border-radius: var(--nb-r-xl, 28px);
+  padding: 24px;
+  box-shadow: 0 20px 40px -10px rgba(12, 26, 20, 0.25);
+  z-index: 9999;
+  display: none;
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.appliance-modal.open {
+  display: block;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.app-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--nb-line, rgba(10, 40, 28, 0.08));
+  padding-bottom: 12px;
+}
+.app-modal-kicker {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nb-green-deep, #157A47);
+}
+.app-modal-title {
+  margin: 2px 0 0;
+  font-family: var(--nb-display, system-ui);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--nb-text, #0C1A14);
+}
+.app-modal-steps {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 8px;
+}
+.app-mstep-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--nb-muted, #6B7D74);
+}
+.app-mstep-indicator span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--nb-night-2, #F6F8F7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  border: 1px solid var(--nb-line, rgba(10, 40, 28, 0.12));
+}
+.app-mstep-indicator.active {
+  color: var(--nb-green-deep, #157A47);
+}
+.app-mstep-indicator.active span {
+  background: var(--nb-green, #1F9D5C);
+  color: #FFFFFF;
+  border-color: var(--nb-green, #1F9D5C);
+}
+.app-mstep-line {
+  flex: 1;
+  height: 2px;
+  background: var(--nb-line, rgba(10, 40, 28, 0.1));
+}
+.app-group {
+  margin-bottom: 14px;
+}
+.app-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--nb-text-2, #3E5248);
+  margin-bottom: 6px;
+}
+.app-cat-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.app-cat-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--nb-night-2, #F6F8F7);
+  border: 1px solid var(--nb-line, rgba(10, 40, 28, 0.1));
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--nb-text, #0C1A14);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.app-cat-tab:hover {
+  border-color: var(--nb-green, #1F9D5C);
+}
+.app-cat-tab.active {
+  background: #EAF7F0;
+  border-color: var(--nb-green, #1F9D5C);
+  color: var(--nb-green-deep, #157A47);
+}
+.app-cat-tab span {
+  font-size: 1.3rem;
+}
+.app-price-badge {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--nb-green-deep, #157A47);
+  background: #EAF7F0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.app-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.app-pay-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.app-pay-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--nb-line, rgba(10, 40, 28, 0.12));
+  border-radius: 10px;
+  cursor: pointer;
+  background: #FAFCFA;
+  transition: border-color 0.2s ease;
+}
+.app-pay-option:hover {
+  border-color: var(--nb-green, #1F9D5C);
+}
+.app-pay-option strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--nb-text, #0C1A14);
+}
+.app-pay-option small {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--nb-muted, #6B7D74);
+  line-height: 1.3;
+}
+.app-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.app-booking-ref-box {
+  background: var(--nb-night-2, #F6F8F7);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 1rem;
+  color: var(--nb-text, #0C1A14);
+  margin: 14px 0;
+}

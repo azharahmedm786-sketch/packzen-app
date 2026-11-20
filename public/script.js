@@ -5122,3 +5122,343 @@ if (typeof module !== "undefined" && module.exports) {
     renderUnresolvedBanner
   };
 }
+
+
+/* ==========================================================================
+   PACKZEN 3.0 — HERO SERVICE SELECTOR, WHATSAPP LEAD CAPTURE & APPLIANCE BOOKING
+   ========================================================================== */
+
+// ── WhatsApp Quick Lead Capture (Step 1) ───────────────────────────────────
+window.submitWhatsAppQuickLead = function() {
+  var nameEl = document.getElementById("waLeadName");
+  var phoneEl = document.getElementById("waLeadPhone");
+  var sizeEl = document.getElementById("waLeadSize");
+  var errEl = document.getElementById("waLeadErr");
+  var btnEl = document.getElementById("waLeadSubmitBtn");
+
+  if (!nameEl || !phoneEl || !errEl) return;
+  errEl.style.display = "none";
+  errEl.textContent = "";
+
+  var name = (nameEl.value || "").trim();
+  var phone = (phoneEl.value || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  var size = (sizeEl && sizeEl.value) || "2bhk";
+  var sizeLabel = (sizeEl && sizeEl.options[sizeEl.selectedIndex] ? sizeEl.options[sizeEl.selectedIndex].text : size);
+
+  if (name.length < 2) {
+    errEl.textContent = "Please enter your full name.";
+    errEl.style.display = "block";
+    nameEl.focus();
+    return;
+  }
+
+  if (!/^[6-9]\d{9}$/.test(phone)) {
+    errEl.textContent = "Please enter a valid 10-digit mobile number.";
+    errEl.style.display = "block";
+    phoneEl.focus();
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<span>Connecting to WhatsApp…</span>';
+  }
+
+  // Submit lead to server asynchronously (non-blocking)
+  var fnUrl = "https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead";
+  var payload = {
+    name: name,
+    phone: phone,
+    service: "move",
+    homeSize: size,
+    notes: "WhatsApp Quick Lead from quotation sheet Step 1 (Size: " + sizeLabel + ")",
+    when: "this_week",
+    page: location.pathname,
+    division: "logistics",
+    attribution: (typeof window.pzAttribution === "function" ? window.pzAttribution() : {})
+  };
+
+  try {
+    fetch(fnUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: payload })
+    }).catch(function(e) {
+      console.warn("WhatsApp lead sync note:", e);
+    });
+  } catch(e) {}
+
+  // Open WhatsApp with pre-filled message
+  var waMsg = "Hi PackZen! I'd like an instant moving quote.\n" +
+              "• Name: " + name + "\n" +
+              "• Phone: +91 " + phone + "\n" +
+              "• Move Size: " + sizeLabel + "\n" +
+              "• City: Bangalore";
+  var waUrl = "https://wa.me/919945095453?text=" + encodeURIComponent(waMsg);
+
+  setTimeout(function() {
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = '<span>✓ Opened in WhatsApp</span>';
+      setTimeout(function() {
+        btnEl.innerHTML = '<span>Get Quote on WhatsApp</span>';
+      }, 3000);
+    }
+  }, 350);
+};
+
+// ── Two-Step Appliance Booking Experience ──────────────────────────────────
+var _applianceState = {
+  currentCategory: "ac",
+  catalog: {
+    ac: [
+      { id: "ac-service-standard", name: "Standard AC Service", price: 429, desc: "₹429 · Indoor filter & coil clean, cooling check" },
+      { id: "ac-service-deep", name: "Deep Jet Cleaning", price: 849, desc: "₹849 · High-pressure jet pump wash (indoor + outdoor)" },
+      { id: "ac-gas-refill", name: "AC Gas Refill", price: 1800, desc: "₹1,800 · Leak test & complete refrigerant refill" },
+      { id: "ac-installation", name: "AC Installation", price: 1199, desc: "₹1,199 · Professional bracket mounting & piping" },
+      { id: "ac-uninstallation", name: "AC Uninstallation", price: 699, desc: "₹699 · Safe gas locking & dismounting" },
+      { id: "ac-diagnostic", name: "Not Cooling / Diagnostic Visit", price: 249, desc: "₹249 · On-site inspection & fault diagnosis" }
+    ],
+    refrigerator: [
+      { id: "fridge-visit", name: "General Inspection & Repair Visit", price: 249, desc: "₹249 · Complete inspection by expert technician" },
+      { id: "fridge-gas-single", name: "Single Door Gas Refill", price: 1750, desc: "₹1,750 · Leak check + genuine refrigerant top-up" },
+      { id: "fridge-gas-double", name: "Double Door / Frost-Free Gas Refill", price: 2200, desc: "₹2,200 · Full gas charging & cooling test" },
+      { id: "fridge-cooling", name: "Cooling Problem / Compressor Check", price: 249, desc: "₹249 · Relay, thermostat & compressor check" },
+      { id: "fridge-noise", name: "Water Leakage or Noise Repair", price: 249, desc: "₹249 · Drain line clear & fan inspection" }
+    ],
+    washing_machine: [
+      { id: "wm-visit", name: "General Inspection & Repair Visit", price: 249, desc: "₹249 · Full machine diagnosis & parts test" },
+      { id: "wm-drum", name: "Drum / Spinning Problem", price: 249, desc: "₹249 · Belt, bearing or suspension inspection" },
+      { id: "wm-drain", name: "Water Drainage / Inlet Issue", price: 249, desc: "₹249 · Pump cleaning, valve & pipe check" },
+      { id: "wm-install", name: "Installation & Setup", price: 399, desc: "₹399 · Tap connection, leveling & trial run" },
+      { id: "wm-motor", name: "Motor / PCB Electrical Issue", price: 249, desc: "₹249 · Circuit testing & wiring repair" }
+    ]
+  }
+};
+
+window.openApplianceModal = function(category) {
+  var modal = document.getElementById("applianceModal");
+  var overlay = document.getElementById("applianceModalOverlay");
+  if (!modal || !overlay) return;
+
+  var cat = category || "ac";
+  window.selectApplianceCategory(cat);
+
+  // Set default date to tomorrow
+  var dateInput = document.getElementById("appPreferredDate");
+  if (dateInput) {
+    var now = new Date();
+    var tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    var yyyy = tomorrow.getFullYear();
+    var mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    var dd = String(tomorrow.getDate()).padStart(2, "0");
+    var minDate = yyyy + "-" + mm + "-" + dd;
+    dateInput.min = minDate;
+    if (!dateInput.value) dateInput.value = minDate;
+  }
+
+  // Pre-fill user data if authenticated
+  if (window._firebase && window._firebase.auth && window._firebase.auth.currentUser) {
+    var u = window._firebase.auth.currentUser;
+    var nameField = document.getElementById("appCustName");
+    var phoneField = document.getElementById("appCustPhone");
+    if (nameField && !nameField.value && u.displayName) nameField.value = u.displayName;
+    if (phoneField && !phoneField.value && u.phoneNumber) phoneField.value = u.phoneNumber.replace(/\D/g, "").slice(-10);
+  }
+
+  // Reset to Step 1
+  window.backToApplianceStep1();
+
+  modal.classList.add("open");
+  overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+};
+
+window.closeApplianceModal = function() {
+  var modal = document.getElementById("applianceModal");
+  var overlay = document.getElementById("applianceModalOverlay");
+  if (modal) modal.classList.remove("open");
+  if (overlay) overlay.classList.remove("open");
+  document.body.style.overflow = "";
+};
+
+window.selectApplianceCategory = function(cat, btn) {
+  _applianceState.currentCategory = cat;
+
+  // Update tabs
+  var tabs = document.querySelectorAll(".app-cat-tab");
+  tabs.forEach(function(t) {
+    if (t.getAttribute("data-cat") === cat) t.classList.add("active");
+    else t.classList.remove("active");
+  });
+
+  // Populate options
+  var select = document.getElementById("appServiceIssue");
+  if (select) {
+    select.innerHTML = "";
+    var items = _applianceState.catalog[cat] || [];
+    items.forEach(function(it) {
+      var opt = document.createElement("option");
+      opt.value = it.id;
+      opt.textContent = it.desc;
+      opt.setAttribute("data-price", it.price);
+      opt.setAttribute("data-name", it.name);
+      select.appendChild(opt);
+    });
+  }
+
+  window.updateAppliancePriceDisplay();
+};
+
+window.updateAppliancePriceDisplay = function() {
+  var select = document.getElementById("appServiceIssue");
+  var priceBadge = document.getElementById("appPriceDisplay");
+  if (!select || !priceBadge) return;
+
+  var selectedOpt = select.options[select.selectedIndex];
+  if (selectedOpt) {
+    var price = selectedOpt.getAttribute("data-price");
+    var name = selectedOpt.getAttribute("data-name");
+    priceBadge.textContent = "₹" + Number(price).toLocaleString("en-IN") + " · " + name + " (Transparent price)";
+  }
+};
+
+window.goToApplianceStep2 = function() {
+  var errEl = document.getElementById("appStep1Err");
+  var dateEl = document.getElementById("appPreferredDate");
+  var slotEl = document.getElementById("appPreferredSlot");
+  if (errEl) errEl.style.display = "none";
+
+  if (!dateEl || !dateEl.value) {
+    if (errEl) { errEl.textContent = "Please select a preferred date for the technician visit."; errEl.style.display = "block"; }
+    if (dateEl) dateEl.focus();
+    return;
+  }
+
+  var step1 = document.getElementById("appModalStep1");
+  var step2 = document.getElementById("appModalStep2");
+  var ind1 = document.getElementById("appStepInd1");
+  var ind2 = document.getElementById("appStepInd2");
+
+  if (step1) step1.style.display = "none";
+  if (step2) step2.style.display = "block";
+  if (ind1) ind1.classList.remove("active");
+  if (ind2) ind2.classList.add("active");
+};
+
+window.backToApplianceStep1 = function() {
+  var step1 = document.getElementById("appModalStep1");
+  var step2 = document.getElementById("appModalStep2");
+  var successStep = document.getElementById("appModalSuccess");
+  var ind1 = document.getElementById("appStepInd1");
+  var ind2 = document.getElementById("appStepInd2");
+
+  if (step1) step1.style.display = "block";
+  if (step2) step2.style.display = "none";
+  if (successStep) successStep.style.display = "none";
+  if (ind1) ind1.classList.add("active");
+  if (ind2) ind2.classList.remove("active");
+};
+
+window.confirmApplianceBooking = function() {
+  var nameEl = document.getElementById("appCustName");
+  var phoneEl = document.getElementById("appCustPhone");
+  var locEl = document.getElementById("appCustLocality");
+  var errEl = document.getElementById("appStep2Err");
+  var btnEl = document.getElementById("appSubmitBtn");
+
+  if (errEl) errEl.style.display = "none";
+
+  var name = (nameEl && nameEl.value || "").trim();
+  var phone = (phoneEl && phoneEl.value || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  var locality = (locEl && locEl.value || "").trim();
+
+  if (name.length < 2) {
+    if (errEl) { errEl.textContent = "Please enter your name."; errEl.style.display = "block"; }
+    if (nameEl) nameEl.focus();
+    return;
+  }
+
+  if (!/^[6-9]\d{9}$/.test(phone)) {
+    if (errEl) { errEl.textContent = "Please enter a valid 10-digit mobile number."; errEl.style.display = "block"; }
+    if (phoneEl) phoneEl.focus();
+    return;
+  }
+
+  if (locality.length < 3) {
+    if (errEl) { errEl.textContent = "Please provide your Bangalore address or locality."; errEl.style.display = "block"; }
+    if (locEl) locEl.focus();
+    return;
+  }
+
+  var payChoiceEl = document.querySelector('input[name="appPayChoice"]:checked');
+  var payChoice = payChoiceEl ? payChoiceEl.value : "later";
+
+  var issueSelect = document.getElementById("appServiceIssue");
+  var selectedOpt = issueSelect ? issueSelect.options[issueSelect.selectedIndex] : null;
+  var issueId = selectedOpt ? selectedOpt.value : "service";
+  var issueName = selectedOpt ? selectedOpt.getAttribute("data-name") : "Appliance Service";
+  var issuePrice = selectedOpt ? Number(selectedOpt.getAttribute("data-price")) : 249;
+
+  var dateVal = document.getElementById("appPreferredDate") ? document.getElementById("appPreferredDate").value : "";
+  var slotVal = document.getElementById("appPreferredSlot") ? document.getElementById("appPreferredSlot").value : "morning";
+  var slotText = document.getElementById("appPreferredSlot") && document.getElementById("appPreferredSlot").selectedOptions[0]
+                 ? document.getElementById("appPreferredSlot").selectedOptions[0].text : slotVal;
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Booking appointment…";
+  }
+
+  var bookingRef = "PKZ-HS-" + Math.floor(10000 + Math.random() * 90000);
+
+  // Submit via submitLead / createServiceBooking
+  var payload = {
+    name: name,
+    phone: phone,
+    service: _applianceState.currentCategory === "ac" ? "ac" : "appliance",
+    area: locality,
+    date: dateVal,
+    notes: "[Service: " + issueName + " (₹" + issuePrice + ")] Slot: " + slotText + " | Payment: " + payChoice,
+    when: "this_week",
+    page: location.pathname,
+    division: "home_services",
+    attribution: (typeof window.pzAttribution === "function" ? window.pzAttribution() : {})
+  };
+
+  fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: payload })
+  }).catch(function(err) {
+    console.warn("Appliance lead submit notice:", err);
+  });
+
+  // Switch to success view
+  setTimeout(function() {
+    var step2 = document.getElementById("appModalStep2");
+    var successStep = document.getElementById("appModalSuccess");
+    var refEl = document.getElementById("appSuccessRef");
+    var waLink = document.getElementById("appWaDirectLink");
+
+    if (step2) step2.style.display = "none";
+    if (successStep) successStep.style.display = "block";
+    if (refEl) refEl.textContent = bookingRef;
+
+    var waMsg = "Hi PackZen! I've booked an appliance service.\n" +
+                "• Ref: " + bookingRef + "\n" +
+                "• Service: " + issueName + " (₹" + issuePrice + ")\n" +
+                "• Customer: " + name + " (" + phone + ")\n" +
+                "• Address: " + locality + ", Bangalore\n" +
+                "• Date & Slot: " + dateVal + " (" + slotText + ")";
+    if (waLink) {
+      waLink.href = "https://wa.me/919945095453?text=" + encodeURIComponent(waMsg);
+    }
+
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = "Confirm Appointment";
+    }
+  }, 400);
+};

@@ -1197,7 +1197,7 @@ function initSupportPage() {
       '<div class="support-quick-grid">' +
         '<a href="https://wa.me/919945095453" target="_blank" rel="noopener" class="support-quick-card"><div class="support-quick-icon">💬</div><div class="support-quick-label">WhatsApp</div></a>' +
         '<a href="tel:+919945095453" class="support-quick-card"><div class="support-quick-icon">📞</div><div class="support-quick-label">Call Us</div></a>' +
-        '<a href="mailto:moveeasyblr@gmail.com" class="support-quick-card"><div class="support-quick-icon">✉️</div><div class="support-quick-label">Email</div></a>' +
+        '<a href="mailto:support@packzenblr.in" class="support-quick-card"><div class="support-quick-icon">✉️</div><div class="support-quick-label">Email</div></a>' +
         '<a href="#supportForm" class="support-quick-card"><div class="support-quick-icon">📝</div><div class="support-quick-label">Raise Ticket</div></a>' +
       '</div>' +
       '<div class="pform-card">' +

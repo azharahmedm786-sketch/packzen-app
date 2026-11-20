@@ -8,7 +8,7 @@
  */
 "use strict";
 
-const CONTACT = { phone: "9945095453", whatsapp: "https://wa.me/919945095453", email: "moveeasyblr@gmail.com", hours: "Mon–Sun, 8:00 AM – 9:00 PM" };
+const CONTACT = { phone: "9945095453", whatsapp: "https://wa.me/919945095453", email: "support@packzenblr.in", hours: "Mon–Sun, 8:00 AM – 9:00 PM" };
 
 // Same figures as the homepage price table / chatbot guide (engine-derived).
 const MOVE_PRICES = {

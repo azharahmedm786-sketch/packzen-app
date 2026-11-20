@@ -35,7 +35,7 @@
 
     // Support contact details shown in the "Talk to Support" reply.
     supportPhone: "+91 99450 95453",
-    supportEmail: "moveeasyblr@gmail.com",
+    supportEmail: "support@packzenblr.in",
     supportHours: "Mon–Sun, 8:00 AM – 9:00 PM",
 
     // Set to true once you have added the Firestore rules in this guide
@@ -114,7 +114,7 @@
   "🏠 PackZen Pricing Guide\n\n" +
   "• 1 RK — ₹2,150 onwards\n" +
   "• 1 BHK — ₹4,200 onwards\n" +
-  "• 2 BHK — ₹6,450 onwards\n" +
+  "• 2 BHK — ₹6,500 onwards\n" +
   "• 3 BHK — ₹9,100 onwards\n" +
   "• 4 BHK — ₹11,000 onwards\n" +
   "• Villa — ₹14,000 onwards\n\n" +
