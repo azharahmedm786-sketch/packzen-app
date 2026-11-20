@@ -118,12 +118,32 @@ async function upsertLead(deps, value, meta) {
     return { id: same.id, merged: true };
   }
   const ref = deps.db.collection("leads").doc();
-  await ref.set(Object.assign({}, value, {
+  const leadDocData = Object.assign({}, value, {
     status: "new", source: meta.source, channel: channelOf(meta.attribution, meta.source === "website-callback" ? "direct" : meta.source),
     attribution: meta.attribution || {}, uid: meta.uid || null,
     touches: [touch], createdAt: deps.serverTimestamp(), createdAtMs: nowMs, lastTouchAtMs: nowMs,
     slaAlerted: false, history: [{ at: nowMs, status: "new", by: "system" }],
-  }));
+  });
+
+  // PackZen 3.0: Enqueue transactional outbox event atomically with the lead creation
+  const producers = require("./automation-producers");
+  if (typeof deps.db.runTransaction === "function") {
+    await deps.db.runTransaction(async (tx) => {
+      tx.set(ref, leadDocData);
+      try {
+        await producers.emitLeadCreatedTx(tx, deps.db, ref.id, leadDocData, nowMs);
+        if (leadDocData.division === "home_services") {
+          await producers.emitHomeServiceRequestedTx(tx, deps.db, ref.id, leadDocData, nowMs);
+        }
+      } catch (err) {
+        // Non-blocking for outbox formatting, but commits atomically with lead in transaction
+        console.warn("Outbox enqueue notice (lead.created):", err.message);
+      }
+    });
+  } else {
+    await ref.set(leadDocData);
+  }
+
   return { id: ref.id, merged: false };
 }
 

@@ -214,7 +214,32 @@ exports.advisorCreateServiceBooking = functions
       paid: 0, paymentType: "pay_later", paymentStatus: "unpaid", extra: { balanceDue: cart.estimatedTotal, currency: "INR" } });
     Object.assign(booking, { source: "advisor", createdByStaff: { uid: context.auth.uid, email: (context.auth.token || {}).email || null, role },
       createdByAdvisor: (context.auth.token || {}).email || context.auth.uid, leadSource: String(data.leadSource || "").slice(0, 40) || null });
-    const ref = await db.collection("bookings").add(booking);
+    const ref = db.collection("bookings").doc();
+
+    // PackZen 3.0: Enqueue booking.created & home_service.requested events atomically with booking
+    if (typeof db.runTransaction === "function") {
+      await db.runTransaction(async (tx) => {
+        tx.set(ref, booking);
+        try {
+          const producers = require("./automation-producers");
+          const nowMs = Date.now();
+          await producers.emitBookingCreatedTx(tx, db, ref.id, booking, nowMs);
+          await producers.emitHomeServiceRequestedTx(tx, db, ref.id, {
+            service: "home_services",
+            serviceLabel: "Home Services Booking",
+            name: booking.customerName,
+            phone: booking.phone,
+            area: booking.serviceAddress,
+            date: booking.date
+          }, nowMs);
+        } catch (err) {
+          functions.logger.warn("Outbox advisor service booking notice:", err.message);
+        }
+      });
+    } else {
+      await ref.set(booking);
+    }
+
     functions.logger.info("advisor_service_booking", { bookingId: ref.id, by: context.auth.uid });
     return { docId: ref.id, bookingRef: booking.bookingRef, status, total: booking.total, needsQuote: booking.needsQuote,
       customerLinked: !!who.customerUid, accountCreated: who.accountCreated, setPasswordLink: who.setPasswordLink };
@@ -333,6 +358,28 @@ async function verifyLegacyServicePayment(req, res, razorpay) {
       });
       tx.set(db.collection("bookings").doc(orderId), booking);
       tx.delete(pendingRef);
+
+      // PackZen 3.0: Enqueue booking.confirmed, payment.received & home_service.requested atomically
+      try {
+        const producers = require("./automation-producers");
+        const nowMs = Date.now();
+        await producers.emitBookingConfirmedTx(tx, db, orderId, booking, { paymentId, orderId, amount: p.amount }, nowMs);
+        await producers.emitPaymentReceivedTx(tx, db, paymentId, {
+          orderId,
+          bookingRef: booking.bookingRef || orderId,
+          amount: p.amount,
+          method: "razorpay_catalog",
+          division: "home_services"
+        }, nowMs);
+        await producers.emitHomeServiceRequestedTx(tx, db, orderId, {
+          service: "home_services",
+          serviceLabel: "Appliance Service Paid",
+          name: booking.customerName,
+          phone: booking.phone,
+          area: booking.serviceAddress,
+          date: booking.date
+        }, nowMs);
+      } catch (err) {}
       return { booking };
     });
     if (outcome.forbidden) return res.status(403).json({ success: false, error: "This payment belongs to another account." });

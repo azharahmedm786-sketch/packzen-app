@@ -444,6 +444,21 @@ async function finalizeCapture(deps, { orderId, paymentId, amountPaise, expected
 
       if (typeof tx.create === "function") tx.create(bookingRef, booking); else tx.set(bookingRef, booking);
       tx.update(pendingRef, { status: "consumed", bookingId: orderId, paymentId, consumedAt: deps.serverTimestamp() });
+
+      // PackZen 3.0: Enqueue booking.confirmed & payment.received events atomically
+      try {
+        const producers = require("./automation-producers");
+        const nowMs = Date.now();
+        await producers.emitBookingConfirmedTx(tx, db, orderId, booking, { paymentId, orderId, amount: amountPaise / 100 }, nowMs);
+        await producers.emitPaymentReceivedTx(tx, db, paymentId, {
+          orderId,
+          bookingRef: booking.bookingRef || orderId,
+          amount: amountPaise / 100,
+          method: "razorpay",
+          division: "logistics"
+        }, nowMs);
+      } catch (err) {}
+
       return { created: booking };
       });
 }

@@ -157,6 +157,13 @@ async function handleVerifyOtp(data, context, deps) {
     tx.update(bRef, { status: "delivered", deliveredAt: deps.serverTimestamp(), completionVerifiedAt: deps.serverTimestamp(),
                       completionMethod: "otp", completionVerifiedBy: isAdmin && b.driverUid !== uid ? "admin" : "driver",
                       reviewRequestPending: true }); // picked up by review-request.js (Phase 2F)
+
+    // PackZen 3.0: Enqueue booking.completed event atomically
+    try {
+      const producers = require("./automation-producers");
+      await producers.emitBookingCompletedTx(tx, db, bookingId, b, { method: "otp" }, now);
+    } catch (err) {}
+
     return { ok: true };
   });
   if (result.error) {
@@ -190,6 +197,13 @@ async function handleAdminOverride(data, context, deps) {
     if (!OVERRIDE_FROM.includes(b.status)) return { error: ["failed-precondition", "Only an active booking can be completed."] };
     tx.update(bRef, { status: "delivered", deliveredAt: deps.serverTimestamp(), completionMethod: "admin_override",
                       completionOverride: { by: uid, reason, at: deps.now(), fromStatus: b.status } });
+
+    // PackZen 3.0: Enqueue booking.completed event atomically on emergency completion
+    try {
+      const producers = require("./automation-producers");
+      await producers.emitBookingCompletedTx(tx, deps.db, bookingId, b, { method: "admin_override", reason, by: uid }, deps.now());
+    } catch (err) {}
+
     return { ok: true };
   });
   if (result.error) throw new OtpError(result.error[0], result.error[1]);

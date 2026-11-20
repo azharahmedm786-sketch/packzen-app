@@ -76,6 +76,19 @@ async function applyBalancePayment(deps, orderId, pay) {
     const upd = { paid, balanceDue, paymentStatus: balanceDue === 0 ? "paid" : "partially_paid", lastCollectionAt: deps.now() };
     if (over > 0) { upd.overpaidAmount = (Number(bd.overpaidAmount) || 0) + over; upd.needsRefundReview = true; }
     tx.update(bRef, upd);
+
+    // PackZen 3.0: Enqueue payment.received for balance settlement
+    try {
+      const producers = require("./automation-producers");
+      await producers.emitPaymentReceivedTx(tx, db, pay.id, {
+        orderId,
+        bookingRef: bd.bookingRef || od.bookingId,
+        amount: od.amount,
+        method: "razorpay_balance",
+        division: bd.division || "logistics"
+      }, deps.now());
+    } catch (err) {}
+
     return { result: "processed", balanceDue, overpaid: over, bookingId: od.bookingId };
   });
 }

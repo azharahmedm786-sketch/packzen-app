@@ -209,6 +209,17 @@ async function handleAssign(data, context, deps) {
     if (prevSRef && prevS && prevS.exists) { const j = Object.assign({}, (prevS.data() || {}).jobs || {}); delete j[bookingId]; tx.set(prevSRef, Object.assign({}, prevS.data(), { jobs: j, updatedAt: deps.now() })); }
     tx.update(uRef, { currentBooking: bookingId });
     if (prevU && prevU.exists && (prevU.data() || {}).currentBooking === bookingId) tx.update(prevURef, { currentBooking: null });
+
+    // PackZen 3.0: Enqueue booking.assigned & partner.assigned events atomically
+    try {
+      const producers = require("./automation-producers");
+      const dName = (u.data() || {}).name || "Driver";
+      const dPhone = (u.data() || {}).phone || "";
+      const nowMs = deps.now();
+      await producers.emitBookingAssignedTx(tx, db, bookingId, b, { driverUid, name: dName, phone: dPhone }, nowMs);
+      await producers.emitPartnerAssignedTx(tx, db, driverUid, b.bookingRef || bookingId, { name: dName, phone: dPhone, pickup: b.pickup, date }, nowMs);
+    } catch (err) {}
+
     return { ok: true, warnings, overridden: needsOverride };
   });
   if (result.error) throw new AssignError(result.error[0], result.error[1], result.detail);

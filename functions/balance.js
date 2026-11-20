@@ -43,6 +43,19 @@ async function handleRecordCollection(data, context, deps) {
     // cashCollected: money the crew physically holds (deducted from their payout)
     tx.update(bRef, { paid, balanceDue, paymentStatus: balanceDue === 0 ? "paid" : "partially_paid", lastCollectionAt: deps.now(),
       cashCollected: (Number(bd.cashCollected) || 0) + (method === "cash" ? amount : 0) });
+
+    // PackZen 3.0: Enqueue payment.received for recorded balance collection
+    try {
+      const producers = require("./automation-producers");
+      await producers.emitPaymentReceivedTx(tx, db, requestId, {
+        bookingRef: bd.bookingRef || bookingId,
+        amount,
+        method: "balance_" + method,
+        division: bd.division || "logistics",
+        source: "balance.handleRecordCollection"
+      }, deps.now());
+    } catch (err) {}
+
     return { ok: true, balanceDue };
   });
   if (out.error) throw new BalanceError(out.error[0], out.error[1]);

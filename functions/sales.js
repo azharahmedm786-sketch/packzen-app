@@ -63,8 +63,41 @@ async function createSentQuote(data, context, deps) {
     opens: 0, firstOpenedAtMs: null, lastOpenedAtMs: null, status: "sent",
     createdBy: context.auth.uid, createdAtMs: nowMs, expiresAtMs: nowMs + 7 * 86400e3, createdAt: deps.serverTimestamp(),
   };
-  await deps.db.collection("sentQuotes").doc(token).set(doc);
-  if (doc.leadId) await deps.db.collection("leads").doc(doc.leadId).update({ status: "quoted", quotedAmount: doc.total, quoteToken: token, quoteSentAtMs: nowMs, updatedAtMs: nowMs }).catch(() => {});
+  const quoteRef = deps.db.collection("sentQuotes").doc(token);
+  const leadRef = doc.leadId ? deps.db.collection("leads").doc(doc.leadId) : null;
+  const leadUpdate = {
+    status: "quoted",
+    quotedAmount: doc.total,
+    quoteToken: token,
+    quoteSentAtMs: nowMs,
+    updatedAtMs: nowMs
+  };
+
+  if (typeof deps.db.runTransaction === "function") {
+    await deps.db.runTransaction(async (tx) => {
+      tx.set(quoteRef, doc);
+      if (leadRef) {
+        tx.update(leadRef, leadUpdate);
+        try {
+          const producers = require("./automation-producers");
+          await producers.emitLeadQualifiedTx(tx, deps.db, doc.leadId, {
+            customerName: doc.customerName,
+            phone: doc.phone,
+            total: doc.total,
+            quoteToken: token,
+            serviceLabel: doc.sizeLabel
+          }, nowMs);
+        } catch (e) {
+          console.warn("Outbox enqueue notice (lead.qualified):", e.message);
+        }
+      }
+    });
+  } else {
+    await quoteRef.set(doc);
+    if (leadRef) {
+      await leadRef.update(leadUpdate).catch(() => {});
+    }
+  }
   const url = "https://packzenblr.in/quote.html?t=" + token;
   const first = det.name.split(" ")[0];
   const message = `Hi ${first}, here's your PackZen quote for your ${SIZE_LABEL[data.size]} move on ${det.date}: Rs.${doc.total.toLocaleString("en-IN")} all-inclusive, fixed. See what's included and book here: ${url}`;
