@@ -493,6 +493,7 @@ function buildShell(adminName) {
     <div class="nav-item" onclick="showSection('digitalprojects',this)"><span class="ni">💻</span> Digital Projects</div>
     <div class="nav-item" onclick="showSection('ledger',this)"><span class="ni">📑</span> Financial Ledger</div>
     <div class="nav-item" onclick="showSection('prospects',this)"><span class="ni">🎯</span> Sales Outreach</div>
+    <div class="nav-item" onclick="showSection('automation',this)"><span class="ni">🤖</span> Automation Center <span class="svc-count" id="automationAlertCount" style="margin-left:auto;display:none;"></span></div>
     <div class="sb-role">Manage</div>
     <div class="nav-item" onclick="showSection('customers',this)"><span class="ni">👥</span> Customers</div>
     <div class="nav-item" onclick="showSection('services',this)"><span class="ni">🧰</span> Services Catalog</div>
@@ -952,6 +953,7 @@ function buildShell(adminName) {
     <div class="section" id="sectionDigitalprojects"></div>
     <div class="section" id="sectionLedger"></div>
     <div class="section" id="sectionProspects"></div>
+    <div class="section" id="sectionAutomation"></div>
   </main>
   <!-- ASSIGN MODAL -->
   <div class="assign-overlay" id="assignModal" style="display:none;">
@@ -1715,7 +1717,7 @@ function showSection(name, el) {
   const sec = document.getElementById("section"+cap(name));
   if (sec) sec.classList.add("active");
   if (el) el.classList.add("active");
-  const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", bills:"Bills", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics", owner:"Owner Daily Console", pipeline:"Unified Pipeline", homeservices:"Home Services & Technicians", digitalprojects:"PackZen Digital Projects", ledger:"Financial Ledger & P&L", prospects:"Sales Outreach" };
+  const titles = { overview:"Overview", ops:"Operations board", team:"Team", support:"Support", bills:"Bills", partners:"Partners", leads:"Leads", bookings:"Bookings", parcel:"Parcel Management", drivers:"Drivers", customers:"Customers", reviews:"Reviews", cancels:"Cancellations", claims:"Damage Claims", promos:"Promo Codes", services:"Services Catalog", broadcast:"Broadcast", analytics:"Business Analytics", owner:"Owner Daily Console", pipeline:"Unified Pipeline", homeservices:"Home Services & Technicians", digitalprojects:"PackZen Digital Projects", ledger:"Financial Ledger & P&L", prospects:"Sales Outreach", automation:"Automation Control Center" };
   const titleEl = document.getElementById("sectionTitle");
   if (titleEl) titleEl.textContent = titles[name] || cap(name);
   if (name==="overview") { renderCharts(); if (typeof loadReadiness === "function") loadReadiness(); if (window.pzEco) window.pzEco.renderOverviewKPIs(); }
@@ -1725,6 +1727,7 @@ function showSection(name, el) {
   if (name==="digitalprojects" && window.pzEco) window.pzEco.renderDigitalProjects();
   if (name==="ledger" && window.pzEco) window.pzEco.renderLedger();
   if (name==="prospects" && window.pzEco) window.pzEco.renderProspects();
+  if (name==="automation" && window.pzAutomation) window.pzAutomation.render();
   if (name==="parcel")   loadParcelBookings();
   if (name==="leads")    loadLeads();
   if (name==="ops")      loadOps();
@@ -1735,7 +1738,7 @@ function showSection(name, el) {
   if (name==="cancels")  loadCancelRequests();
   if (name==="claims")   loadDamageClaims();
   if (name==="deletion") loadDeletionRequests();
-  if (name==="analytics") renderAnalytics();
+  if (name==="analytics") { renderAnalytics(); if (window.pzEco && typeof window.pzEco.renderAnalyticsBI === "function") window.pzEco.renderAnalyticsBI(); }
   if (name==="services" && typeof loadServicesCatalog === "function") loadServicesCatalog();
 }
 
@@ -2750,6 +2753,7 @@ function resolveSupport(coll, id) {
   <script src="admin-bills.js?v=2"></script>
   <script src="admin-services.js"></script>
   <script src="admin-ecosystem.js?v=1"></script>
+  <script src="admin-automation.js?v=1"></script>
   <script src="icon-init.js"></script>
 <script src="pz-a11y.js?v=1" defer></script>
 </body>

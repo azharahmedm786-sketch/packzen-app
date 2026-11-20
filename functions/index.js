@@ -612,6 +612,14 @@ exports.createBooking = functions
 
       tx.set(newBookingRef, finalPayload);
 
+      // PackZen 3.0: Enqueue transactional booking.created event
+      try {
+        const producers = require("./automation-producers");
+        await producers.emitBookingCreatedTx(tx, db, newBookingRef.id, finalPayload, Date.now());
+      } catch (err) {
+        functions.logger.warn("Outbox booking.created notice:", err.message);
+      }
+
       return {
         docId: newBookingRef.id,
         total: quote.finalTotal,
@@ -703,7 +711,22 @@ exports.advisorCreateBooking = functions.region("asia-south1").runWith({ secrets
       createdAt: admin.firestore.FieldValue.serverTimestamp(), status: "confirmed",
       paymentType: "pay_later", paid: 0, balanceDue: quote.finalTotal, paymentStatus: "unpaid", currency: "INR",
     });
-    const ref = await db.collection("bookings").add(b);
+    const ref = db.collection("bookings").doc();
+    // PackZen 3.0: Enqueue booking.created atomically with booking creation in transaction
+    if (typeof db.runTransaction === "function") {
+      await db.runTransaction(async (tx) => {
+        tx.set(ref, b);
+        try {
+          const producers = require("./automation-producers");
+          await producers.emitBookingCreatedTx(tx, db, ref.id, b, Date.now());
+        } catch (err) {
+          functions.logger.warn("Outbox advisor booking.created notice:", err.message);
+        }
+      });
+    } else {
+      await ref.set(b);
+    }
+
     functions.logger.info("advisor_booking", { bookingId: ref.id, by: context.auth.uid, accountCreated, guest: !customerUid });
     return { docId: ref.id, bookingRef: b.bookingRef, total: b.total, km: b.distance, customerLinked: !!customerUid, accountCreated, setPasswordLink };
   });
@@ -1102,6 +1125,343 @@ exports.reconcileDeadLetterAlerts = functions.region("asia-south1")
     }
     return null;
   });
+
+/**
+ * PackZen 3.0 — Priority One Automation Outbox Background Worker
+ * Scheduled every 1 minute. Consumes pending outbox events in bounded batches (max 10)
+ * with transactional lease locks and deterministic prioritization.
+ */
+const automationWorker = require("./automation-worker");
+const automationDispatcher = require("./automation-dispatcher");
+const {
+  WHATSAPP_SECRETS,
+  verifyWebhookSignature,
+  handleWebhookGet,
+  processWebhookBody,
+  getWhatsAppConfig
+} = require("./channel-whatsapp");
+const { N8N_SECRETS } = require("./channel-webhook");
+
+exports.processOutboxQueue = functions.region("asia-south1")
+  .runWith({ secrets: [...BREVO_SECRETS, ...WHATSAPP_SECRETS, ...N8N_SECRETS] })
+  .pubsub.schedule("every 1 minutes")
+  .timeZone("Asia/Kolkata")
+  .onRun(async (context) => {
+    const db = admin.firestore();
+    const dispatchers = automationDispatcher.createProductionDispatchers(db);
+    const stats = await automationWorker.runOutboxWorkerBatch(db, {
+      logger: functions.logger,
+      dispatchers
+    });
+    functions.logger.info("outbox_worker_batch_completed", stats);
+    return null;
+  });
+
+/**
+ * Meta WhatsApp Cloud API Webhook Endpoint
+ * Supports GET verification challenge and POST signed status/message callbacks.
+ */
+exports.whatsappWebhook = functions.region("asia-south1")
+  .runWith({ secrets: WHATSAPP_SECRETS })
+  .https.onRequest(async (req, res) => {
+    const config = getWhatsAppConfig();
+
+    if (req.method === "GET") {
+      const result = handleWebhookGet(req.query, config.verifyToken);
+      if (result.status === 200) {
+        return res.status(200).send(result.challenge);
+      }
+      return res.status(403).send("Forbidden");
+    }
+
+    if (req.method === "POST") {
+      const signatureHeader = req.headers["x-hub-signature-256"];
+      if (!signatureHeader) {
+        functions.logger.warn("whatsapp_webhook_missing_signature");
+        return res.status(401).send("Missing signature");
+      }
+
+      const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body));
+      const isValid = verifyWebhookSignature(rawBody, signatureHeader, config.appSecret);
+      if (!isValid) {
+        functions.logger.warn("whatsapp_webhook_invalid_signature");
+        return res.status(401).send("Invalid signature");
+      }
+
+      const db = admin.firestore();
+      const processResults = await processWebhookBody(req.body, { db });
+      functions.logger.info("whatsapp_webhook_processed", processResults);
+
+      return res.status(200).json({ status: "ok" });
+    }
+
+    return res.status(405).send("Method Not Allowed");
+  });
+
+/**
+ * PackZen 3.0 — Phase 2D: Automation Control Center Callables
+ * Strictly protected by isCallerAdmin verified owner check.
+ */
+const automationControl = require("./automation-control");
+
+exports.adminGetAutomationStats = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to access Automation Control Center.");
+  }
+  try {
+    const db = admin.firestore();
+    return await automationControl.getAutomationDashboardStats(db, data || {});
+  } catch (err) {
+    functions.logger.error("automation_stats_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminGetAutomationEventDetail = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to inspect automation events.");
+  }
+  try {
+    const db = admin.firestore();
+    return await automationControl.getAutomationEventDetail(db, data && data.eventId);
+  } catch (err) {
+    functions.logger.error("automation_detail_error", err.message);
+    if (err.message === "EVENT_NOT_FOUND") {
+      throw new functions.https.HttpsError("not-found", "Automation event not found.");
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminRetryOutboxEvent = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to retry automation events.");
+  }
+  try {
+    const db = admin.firestore();
+    return await automationControl.retryOutboxEvent(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("automation_retry_error", err.message);
+    if (err.message.startsWith("RATE_LIMITED")) {
+      throw new functions.https.HttpsError("resource-exhausted", err.message);
+    }
+    if (err.message.startsWith("INVALID_STATE_TRANSITION")) {
+      throw new functions.https.HttpsError("failed-precondition", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminReconcileOutbox = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required for outbox reconciliation.");
+  }
+  try {
+    const db = admin.firestore();
+    return await automationControl.reconcileOutboxEvents(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("automation_reconcile_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+/**
+ * PackZen 3.0 — Phase 3: Digital Projects Management Callables
+ * Strictly protected by isCallerAdmin verified owner check.
+ */
+const digitalProjects = require("./digital-projects");
+
+exports.createDigitalProject = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to create digital projects.");
+  }
+  try {
+    const db = admin.firestore();
+    return await digitalProjects.createDigitalProject(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("create_digital_project_error", err.message);
+    if (err.message.startsWith("INVALID_")) {
+      throw new functions.https.HttpsError("invalid-argument", err.message);
+    }
+    if (err.message.startsWith("PROJECT_ALREADY_EXISTS")) {
+      throw new functions.https.HttpsError("already-exists", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.updateDigitalProjectMilestone = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to update project milestones.");
+  }
+  try {
+    const db = admin.firestore();
+    return await digitalProjects.updateDigitalProjectMilestone(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("update_milestone_error", err.message);
+    if (err.message.startsWith("PROJECT_NOT_FOUND")) {
+      throw new functions.https.HttpsError("not-found", err.message);
+    }
+    if (err.message.startsWith("INVALID_") || err.message.startsWith("EXCESSIVE_PAYMENT_AMOUNT") || err.message.startsWith("PAYMENT_REQUEST_MISMATCH")) {
+      throw new functions.https.HttpsError("invalid-argument", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.updateDigitalProject = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to update digital projects.");
+  }
+  try {
+    const db = admin.firestore();
+    return await digitalProjects.updateDigitalProject(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("update_digital_project_error", err.message);
+    if (err.message.startsWith("PROJECT_NOT_FOUND")) {
+      throw new functions.https.HttpsError("not-found", err.message);
+    }
+    if (err.message.startsWith("INVALID_") || err.message.startsWith("EXCESSIVE_PAYMENT_AMOUNT") || err.message.startsWith("PAYMENT_REQUEST_MISMATCH")) {
+      throw new functions.https.HttpsError("invalid-argument", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+/**
+ * PackZen 3.0 — Phase 4B: Owner Command Center & Unified Profile Callables
+ * Strictly protected by isCallerAdmin verified owner check.
+ */
+const unifiedCommand = require("./unified-command");
+
+exports.adminGetExecutiveOverview = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to access Executive Overview.");
+  }
+  try {
+    const db = admin.firestore();
+    return await unifiedCommand.getExecutiveOverview(db, data || {});
+  } catch (err) {
+    functions.logger.error("executive_overview_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminGetCustomerUnifiedProfile = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Staff authorization required to inspect customer profiles.");
+  }
+  try {
+    const db = admin.firestore();
+    return await unifiedCommand.getUnifiedCustomerProfile(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("unified_customer_profile_error", err.message);
+    if (err.message.startsWith("INVALID_")) {
+      throw new functions.https.HttpsError("invalid-argument", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminGetOwnerActionStream = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to access Decision Action Stream.");
+  }
+  try {
+    const db = admin.firestore();
+    return await unifiedCommand.getOwnerActionStream(db, data || {});
+  } catch (err) {
+    functions.logger.error("owner_action_stream_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+/**
+ * PackZen 3.0 — Phase 4D: Workflow Orchestration Callables
+ */
+const workflowEngine = require("./workflow-engine");
+
+exports.adminTransitionWorkflowStage = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Authorized staff credentials required to transition workflow stages.");
+  }
+  try {
+    const db = admin.firestore();
+    return await workflowEngine.transitionWorkflowStage(db, data || {}, context);
+  } catch (err) {
+    functions.logger.error("transition_workflow_error", err.message);
+    if (err.message.startsWith("INVALID_") || err.message.startsWith("WORKFLOW_TRANSITION_REJECTED")) {
+      throw new functions.https.HttpsError("invalid-argument", err.message);
+    }
+    if (err.message.startsWith("PERMISSION_DENIED")) {
+      throw new functions.https.HttpsError("permission-denied", err.message);
+    }
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+exports.adminGetWorkflowHistory = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Authorized staff credentials required to view workflow history.");
+  }
+  try {
+    const db = admin.firestore();
+    return await workflowEngine.getWorkflowHistory(db, data || {});
+  } catch (err) {
+    functions.logger.error("workflow_history_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+/**
+ * PackZen 3.0 — Phase 4E: Advanced Analytics & Financial Intelligence
+ */
+const analyticsEngine = require("./analytics-engine");
+
+exports.adminGetAnalyticsReport = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to access Business Intelligence.");
+  }
+  try {
+    const db = admin.firestore();
+    return await analyticsEngine.generateAnalyticsReport(db, data || {});
+  } catch (err) {
+    functions.logger.error("analytics_report_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+/**
+ * PackZen 3.0 — Phase 4F: Health & Observability Telemetry
+ */
+const healthMonitor = require("./health-monitor");
+
+exports.adminGetSystemHealthReport = functions.region("asia-south1").https.onCall(async (data, context) => {
+  const isAdmin = await isCallerAdmin(admin, context);
+  if (!isAdmin) {
+    throw new functions.https.HttpsError("permission-denied", "Owner authorization required to access System Health Telemetry.");
+  }
+  try {
+    const db = admin.firestore();
+    return await healthMonitor.getSystemHealthReport(db, data || {});
+  } catch (err) {
+    functions.logger.error("health_report_error", err.message);
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
 
 // Idempotency helpers export for testing & validation
 exports._idempotency = {
