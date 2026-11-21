@@ -1589,7 +1589,16 @@ async function startPayment() {
   if (!phone || !/^\d{10}$/.test(phone)) { showToast("⚠️ Please enter a valid 10-digit phone number."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Please enter a valid email address."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
   if (lastCalculatedTotal === 0) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
-  if (!RAZORPAY_KEY) { showToast("⚠️ Payment not configured."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
+  const rzpValidation = window.PackZenEnv && typeof window.PackZenEnv.validateRazorpayCheckout === "function"
+    ? window.PackZenEnv.validateRazorpayCheckout()
+    : { ok: !!RAZORPAY_KEY, key: RAZORPAY_KEY, error: "⚠️ Payment not configured." };
+  if (!rzpValidation.ok || !rzpValidation.key) {
+    showToast(rzpValidation.error || "⚠️ Payment not configured.");
+    isProcessingPayment = false;
+    if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
+    return;
+  }
+  const effectiveRazorpayKey = rzpValidation.key;
 
   if (selectedPayment === "at_drop") { bookWithoutPayment(); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
@@ -1610,7 +1619,15 @@ async function startPayment() {
   if (!window._lastQuoteRawInput) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
 
   try {
-    const orderResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/createRazorpayOrder", {
+    const orderFnUrl = (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function" && window.PackZenEnv.getFunctionUrl("createRazorpayOrder")) ||
+      (window.ENV && typeof window.ENV.getFunctionUrl === "function" && window.ENV.getFunctionUrl("createRazorpayOrder")) || null;
+    if (!orderFnUrl) {
+      showToast("⚠️ Payment service unavailable in this environment.");
+      isProcessingPayment = false;
+      if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
+      return;
+    }
+    const orderResponse = await fetch(orderFnUrl, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         quoteInput: window._lastQuoteRawInput,
@@ -1628,12 +1645,15 @@ async function startPayment() {
     const serverTotal = orderData.serverCalculatedTotal;
 
     const rzp = new Razorpay({
-      key: RAZORPAY_KEY, amount: orderData.amount, currency: orderData.currency, order_id: orderData.orderId,
+      key: (typeof effectiveRazorpayKey !== "undefined" ? effectiveRazorpayKey : RAZORPAY_KEY), amount: orderData.amount, currency: orderData.currency, order_id: orderData.orderId,
       name: "PackZen Packers & Movers", description: selectedPayment === "full" ? "Full Payment" : "Advance Payment",
       prefill: { name, contact: phone }, theme: { color: "#ea580c" },
       handler: async function (response) {
         try {
-          const verifyResponse = await fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/verifyRazorpayPayment", {
+          const verifyFnUrl = (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function" && window.PackZenEnv.getFunctionUrl("verifyRazorpayPayment")) ||
+            (window.ENV && typeof window.ENV.getFunctionUrl === "function" && window.ENV.getFunctionUrl("verifyRazorpayPayment")) || null;
+          if (!verifyFnUrl) throw new Error("Payment verification service unavailable");
+          const verifyResponse = await fetch(verifyFnUrl, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,

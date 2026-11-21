@@ -383,7 +383,18 @@
       btn.disabled = true;
       btn.textContent = "Sending…";
 
-      fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead", {
+      var submitUrl = (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function" && window.PackZenEnv.getFunctionUrl("submitLead")) ||
+        (window.ENV && typeof window.ENV.getFunctionUrl === "function" && window.ENV.getFunctionUrl("submitLead")) || null;
+
+      if (!submitUrl) {
+        sending = false;
+        btn.disabled = false;
+        btn.textContent = "Send Message";
+        showToast("⚠️ Service temporarily unavailable in this environment.");
+        return;
+      }
+
+      fetch(submitUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -82,7 +82,16 @@
 <script>
 (function () {
   "use strict";
-  var FN = "https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead";
+  function _resolveSubmitLeadUrl() {
+    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function") {
+      return window.PackZenEnv.getFunctionUrl("submitLead");
+    }
+    if (window.ENV && typeof window.ENV.getFunctionUrl === "function") {
+      return window.ENV.getFunctionUrl("submitLead");
+    }
+    return null;
+  }
+  var FN = _resolveSubmitLeadUrl();
   var form = document.getElementById("pzForm"), err = document.getElementById("pzErr"), btn = document.getElementById("pzSubmit");
   var d = form.querySelector("[name=date]"); if (d) d.min = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
   form.addEventListener("submit", function (e) {
@@ -92,8 +101,14 @@
     if (f.name.length < 2) { err.textContent = "Please enter your name."; return; }
     if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Please enter a valid 10-digit mobile number."; return; }
     var notes = Object.keys(f).filter(function (k) { return ["name","phone","area","date","website"].indexOf(k) < 0 && f[k]; }).map(function (k) { return k + ": " + f[k]; }).join(" | ");
+    var submitEndpoint = FN || _resolveSubmitLeadUrl();
+    if (!submitEndpoint) {
+      btn.disabled = false; btn.textContent = "Continue";
+      err.textContent = "Service temporarily unavailable in this environment.";
+      return;
+    }
     btn.disabled = true; btn.textContent = "Sending…";
-    fetch(FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: {
+    fetch(submitEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: {
       name: f.name, phone: phone, service: "business", area: f.area || "", date: f.date || "", notes: notes.slice(0, 480), website: f.website,
       page: location.pathname, attribution: window.pzAttribution ? window.pzAttribution() : {} } }) })
       .then(function (r) { return r.json(); })
@@ -107,6 +122,7 @@
   });
 })();
 </script>
+<script src="/env-config.js"></script>
 <script src="/pz-stability.js?v=3" defer></script>
 <script src="pz-leads.js?v=13" defer></script>
 <link rel="stylesheet" href="pzchatbot.css?v=7">

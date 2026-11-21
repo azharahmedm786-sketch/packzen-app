@@ -1616,9 +1616,20 @@ async function startPayment() {
   if (!phone || !/^\d{10}$/.test(phone)) { showToast("⚠️ Please enter a valid 10-digit phone number."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Please enter a valid email address."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
   if (lastCalculatedTotal === 0) { showToast("⚠️ Price not calculated yet."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
-  if (!RAZORPAY_KEY) { showToast("⚠️ Payment not configured."); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
+  
 
   if (selectedPayment === "at_drop") { bookWithoutPayment(); isProcessingPayment = false; if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; } return; }
+
+  const rzpValidation = window.PackZenEnv && typeof window.PackZenEnv.validateRazorpayCheckout === "function"
+    ? window.PackZenEnv.validateRazorpayCheckout()
+    : { ok: !!RAZORPAY_KEY, key: RAZORPAY_KEY, error: "⚠️ Payment not configured." };
+  if (!rzpValidation.ok || !rzpValidation.key) {
+    showToast(rzpValidation.error || "⚠️ Payment not configured.");
+    isProcessingPayment = false;
+    if (payBtn) { payBtn.disabled = false; payBtn.innerText = "Pay Now"; }
+    return;
+  }
+  const effectiveRazorpayKey = rzpValidation.key;
 
   // Amount from v2 engine
   const payAmount = _getPayAmount();
@@ -1672,7 +1683,7 @@ async function startPayment() {
 
   try {
     const rzp = new Razorpay({
-      key: RAZORPAY_KEY, amount: order.amount, currency: order.currency, order_id: order.orderId,
+      key: (typeof effectiveRazorpayKey !== "undefined" ? effectiveRazorpayKey : RAZORPAY_KEY), amount: order.amount, currency: order.currency, order_id: order.orderId,
       name: "PackZen Packers & Movers", description: selectedPayment === "full" ? "Full Payment" : "Advance Payment",
       prefill: { name, contact: phone }, theme: { color: "#ea580c" },
       handler: async function (response) {
@@ -1736,7 +1747,16 @@ async function startPayment() {
 /* ============================================
 MOVE PAYMENT — AUTH + CONFIRMATION HELPERS (Phase 1)
 ============================================ */
-const MOVE_PAYMENT_API = "https://asia-south1-packzen-e7539.cloudfunctions.net";
+function _getMovePaymentApi() {
+  if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionsBaseUrl === "function") {
+    return window.PackZenEnv.getFunctionsBaseUrl() || "";
+  }
+  if (window.ENV && window.ENV.FUNCTIONS_BASE_URL) {
+    return window.ENV.FUNCTIONS_BASE_URL;
+  }
+  return "";
+}
+const MOVE_PAYMENT_API = _getMovePaymentApi();
 
 function _newPaymentRequestId() {
   try {
@@ -1774,7 +1794,11 @@ async function _authedPaymentPost(path, body) {
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), PAYMENT_REQUEST_TIMEOUT_MS) : null;
     try {
-      return await fetch(MOVE_PAYMENT_API + path, {
+      const base = MOVE_PAYMENT_API || _getMovePaymentApi();
+    if (!base) {
+      return { status: 503, data: { success: false, error: "Payment service unavailable in this environment" } };
+    }
+    return await fetch(base + path, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify(body),
@@ -5165,7 +5189,12 @@ window.submitWhatsAppQuickLead = function() {
   }
 
   // Submit lead to server asynchronously (non-blocking)
-  var fnUrl = "https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead";
+  var fnUrl = (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function" && window.PackZenEnv.getFunctionUrl("submitLead")) ||
+    (window.ENV && typeof window.ENV.getFunctionUrl === "function" && window.ENV.getFunctionUrl("submitLead")) || null;
+  if (!fnUrl) {
+    console.warn("⚠️ Lead submission disabled: unknown or unapproved environment.");
+    return;
+  }
   var payload = {
     name: name,
     phone: phone,
@@ -5427,14 +5456,20 @@ window.confirmApplianceBooking = function() {
     attribution: (typeof window.pzAttribution === "function" ? window.pzAttribution() : {})
   };
 
-  fetch("https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data: payload })
-  }).catch(function(err) {
-    console.warn("Appliance lead submit notice:", err);
-  });
+  var applianceLeadUrl = (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function" && window.PackZenEnv.getFunctionUrl("submitLead")) ||
+    (window.ENV && typeof window.ENV.getFunctionUrl === "function" && window.ENV.getFunctionUrl("submitLead")) || null;
 
+  if (applianceLeadUrl) {
+    fetch(applianceLeadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: payload })
+    }).catch(function(err) {
+      console.warn("Appliance lead submit notice:", err);
+    });
+  } else {
+    console.warn("⚠️ Appliance lead submit skipped: unknown or unapproved environment.");
+  }
   // Switch to success view
   setTimeout(function() {
     var step2 = document.getElementById("appModalStep2");

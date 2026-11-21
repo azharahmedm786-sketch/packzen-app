@@ -479,11 +479,24 @@
 
   /* Call a Cloud Function: Firebase SDK when the page has it (signed-in customers
      get booking status), otherwise the public HTTPS endpoint (guests, any page). */
-  var FN_BASE = "https://asia-south1-packzen-e7539.cloudfunctions.net/";
+  function _resolveChatbotFnBase() {
+    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionsBaseUrl === "function") {
+      var b = window.PackZenEnv.getFunctionsBaseUrl();
+      return b ? (b.endsWith("/") ? b : b + "/") : "";
+    }
+    if (window.ENV && window.ENV.FUNCTIONS_BASE_URL) {
+      var eb = window.ENV.FUNCTIONS_BASE_URL;
+      return eb.endsWith("/") ? eb : eb + "/";
+    }
+    return "";
+  }
+  var FN_BASE = _resolveChatbotFnBase();
   function callFn(name, payload) {
     var fb = window._firebase && window._firebase.functions;
     if (fb) return fb.httpsCallable(name)(payload).then(function (r) { return r && r.data || {}; });
-    return fetch(FN_BASE + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
+    var base = FN_BASE || _resolveChatbotFnBase();
+    if (!base) return Promise.reject(new Error("Chat service unavailable in this environment"));
+    return fetch(base + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
       .then(function (r) { return r.json(); }).then(function (j) { if (j && j.error) throw new Error(j.error.message || "error"); return (j && j.result) || {}; });
   }
   function pushHistory(role, text) { state.history.push({ role: role, text: String(text || "").slice(0, 600) }); if (state.history.length > 12) state.history = state.history.slice(-12); }

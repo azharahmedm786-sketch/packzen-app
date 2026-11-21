@@ -8,7 +8,16 @@
  *    told and offered the same help instead of seeing a wrong default price. */
 (function () {
   "use strict";
-  var ENDPOINT = "https://asia-south1-packzen-e7539.cloudfunctions.net/logClientError";
+  function _resolveLogClientErrorUrl() {
+    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function") {
+      return window.PackZenEnv.getFunctionUrl("logClientError");
+    }
+    if (window.ENV && typeof window.ENV.getFunctionUrl === "function") {
+      return window.ENV.getFunctionUrl("logClientError");
+    }
+    return null;
+  }
+  var ENDPOINT = _resolveLogClientErrorUrl();
   var sent = 0, seen = {};
   function report(kind, msg, src) {
     try {
@@ -16,9 +25,11 @@
       if (!msg || sent >= 5 || seen[msg + src]) return;
       if (/^Script error\.?$/i.test(msg) || /extension:/i.test(src)) return;
       seen[msg + src] = 1; sent++;
+      var ep = ENDPOINT || _resolveLogClientErrorUrl();
+      if (!ep) return;
       var body = JSON.stringify({ kind: kind, msg: msg, src: src, page: location.pathname, ua: navigator.userAgent.slice(0, 160) });
-      if (navigator.sendBeacon) navigator.sendBeacon(ENDPOINT, new Blob([body], { type: "text/plain" }));
-      else fetch(ENDPOINT, { method: "POST", body: body, keepalive: true, headers: { "Content-Type": "text/plain" } }).catch(function () {});
+      if (navigator.sendBeacon) navigator.sendBeacon(ep, new Blob([body], { type: "text/plain" }));
+      else fetch(ep, { method: "POST", body: body, keepalive: true, headers: { "Content-Type": "text/plain" } }).catch(function () {});
     } catch (e) {}
   }
   window.addEventListener("error", function (e) {

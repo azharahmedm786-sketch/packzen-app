@@ -1,7 +1,16 @@
 /* PackZen — the customer's quote link: fixed price, what's included, book & pay. */
 (function () {
   "use strict";
-  var API = "https://asia-south1-packzen-e7539.cloudfunctions.net";
+  function _resolveQuoteApi() {
+    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionsBaseUrl === "function") {
+      return window.PackZenEnv.getFunctionsBaseUrl() || "";
+    }
+    if (window.ENV && window.ENV.FUNCTIONS_BASE_URL) {
+      return window.ENV.FUNCTIONS_BASE_URL;
+    }
+    return "";
+  }
+  var API = _resolveQuoteApi();
   var box = document.getElementById("qBox"), Q = null, token = new URLSearchParams(location.search).get("t") || "";
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
   var inr = function (n) { return "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN"); };
@@ -36,7 +45,9 @@
   }
   function post(path, body) {
     return window._firebase.auth.currentUser.getIdToken().then(function (t) {
-      return fetch(API + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + t }, body: JSON.stringify(body) })
+      var base = API || _resolveQuoteApi();
+      if (!base) return Promise.reject(new Error("Quote service unavailable in this environment."));
+      return fetch(base + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + t }, body: JSON.stringify(body) })
         .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); });
     });
   }
@@ -44,7 +55,15 @@
 
   function book() {
     if (!window._firebase.auth.currentUser) return signInUI();
-    var b = document.getElementById("qBook"); b.disabled = true; b.textContent = "Starting secure payment…";
+    var b = document.getElementById("qBook");
+    var rzpValidation = window.PackZenEnv && typeof window.PackZenEnv.validateRazorpayCheckout === "function"
+      ? window.PackZenEnv.validateRazorpayCheckout()
+      : { ok: !!(window.ENV && window.ENV.RAZORPAY_KEY), key: rzpValidation.key, error: "Payment gateway unavailable." };
+    if (!rzpValidation.ok || !rzpValidation.key) {
+      alert(rzpValidation.error || "Payment gateway unavailable in this environment.");
+      return;
+    }
+    b.disabled = true; b.textContent = "Starting secure payment…";
     post("/createRazorpayOrder", { quoteInput: Q.quoteInput, paymentType: "advance", customerName: Q.customerName, phone: Q.phone, moveType: Q.sizeLabel + " (quote link)",
       pickup: Q.pickup, drop: Q.drop, date: Q.date, details: { timeSlot: Q.timeSlot || "", notes: "Booked from quote link" }, requestId: rid() })
       .then(function (r) {
