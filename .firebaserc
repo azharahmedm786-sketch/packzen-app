@@ -1,6 +1,8 @@
 {
   "projects": {
-    "default": "packzen-e7539"
+    "default": "packzen-e7539",
+    "production": "packzen-e7539",
+    "staging": "packzen-staging-3"
   },
   "targets": {},
   "etags": {}

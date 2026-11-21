@@ -1,6 +1,9 @@
 {
   "hosting": {
     "public": "public",
+    "predeploy": [
+      "node scripts/guard-staging-deploy.js"
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -60,13 +63,22 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs22"
+    "runtime": "nodejs22",
+    "predeploy": [
+      "node scripts/guard-staging-deploy.js"
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "indexes": "firestore.indexes.json",
+    "predeploy": [
+      "node scripts/guard-staging-deploy.js"
+    ]
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules",
+    "predeploy": [
+      "node scripts/guard-staging-deploy.js"
+    ]
   }
 }
