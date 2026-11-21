@@ -9,6 +9,7 @@
 const functions = require("firebase-functions/v1");
 const https = require("https");
 const { defineSecret } = require("firebase-functions/params");
+const stagingGuard = require("./staging-notification-guard");
 
 // Shared Brevo secrets — any exported Cloud Function that calls sendBrevoEmail(),
 // directly or indirectly, must add BREVO_SECRETS to its .runWith({ secrets: ... }).
@@ -32,6 +33,32 @@ function getBrevoConfig() {
  */
 function sendBrevoEmail({ toEmail, toName, subject, htmlContent, textContent, headers, tags }, configOverride = null) {
   return new Promise((resolve) => {
+    // Staging & Non-Production Notification Isolation Guard (Phase 2)
+    const guard = stagingGuard.evaluateOutboundTarget({
+      channel: "email",
+      recipient: toEmail,
+      metadata: { subject, tags }
+    });
+
+    if (!guard.allowed) {
+      const sim = stagingGuard.createSimulatedResponse({
+        channel: "email",
+        recipient: toEmail,
+        metadata: { subject, guardReason: guard.reason }
+      });
+      resolve({
+        success: true,
+        simulated: true,
+        status: "simulated_sent",
+        provider: "brevo_simulated",
+        messageId: sim.messageId,
+        guardReason: guard.reason,
+        response: sim.response,
+        error: null
+      });
+      return;
+    }
+
     const config = configOverride || getBrevoConfig();
     const { apiKey, senderEmail, senderName } = config;
     if (!apiKey) {

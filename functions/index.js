@@ -1,6 +1,7 @@
 const functions = require("firebase-functions/v1");
 const admin     = require("firebase-admin");
 const https     = require("https");
+const stagingGuard = require("./staging-notification-guard");
 
 admin.initializeApp();
 
@@ -60,6 +61,30 @@ exports.sendSMS = functions
       return null;
     }
 
+    // Staging & Non-Production Notification Isolation Guard (Phase 2)
+    const guard = stagingGuard.evaluateOutboundTarget({
+      channel: "sms",
+      recipient: mobile,
+      metadata: { docId: change.after.id, kind: data.kind }
+    });
+
+    if (!guard.allowed) {
+      const simulated = stagingGuard.createSimulatedResponse({
+        channel: "sms",
+        recipient: mobile,
+        metadata: { guardReason: guard.reason }
+      });
+      console.log(`🛡️  [STAGING NOTIFICATION GUARD] Intercepted SMS to ${stagingGuard.maskRecipient(mobile, "sms")} (${guard.reason}). Simulated Msg ID: ${simulated.msgid}`);
+      await docRef.update({
+        status: "simulated_sent",
+        simulated: true,
+        guardReason: guard.reason,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        response: JSON.stringify(simulated)
+      });
+      return null;
+    }
+
     // Get MSG91 auth key from Firebase environment config
     // Set it with: firebase functions:config:set msg91.authkey="YOUR_KEY" msg91.senderid="PKZNSM"
  // MSG91 auth key from Secret Manager (set via: firebase functions:secrets:set MSG91_AUTHKEY)
@@ -101,6 +126,22 @@ exports.sendSMS = functions
    Uses MSG91 Flow API (recommended for DLT-registered templates)
    ============================================================ */
 function sendMsg91SMS(authKey, senderId, mobile, message) {
+  // Staging & Non-Production Notification Isolation Guard (Phase 2 Defense-in-Depth)
+  const guard = stagingGuard.evaluateOutboundTarget({
+    channel: "sms",
+    recipient: mobile,
+    metadata: { senderId }
+  });
+
+  if (!guard.allowed) {
+    const sim = stagingGuard.createSimulatedResponse({
+      channel: "sms",
+      recipient: mobile,
+      metadata: { guardReason: guard.reason }
+    });
+    return Promise.resolve(sim);
+  }
+
   return new Promise((resolve, reject) => {
     // MSG91 Send SMS API (transactional route 4)
     const postData = JSON.stringify({

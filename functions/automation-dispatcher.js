@@ -508,15 +508,20 @@ async function dispatchEmail(claimedEvent, options = {}) {
         };
       }
 
+      const isSimulated = res.simulated === true;
       return {
         success: true,
+        simulated: isSimulated,
         provider: "brevo",
         result: {
-          provider: "brevo",
-          status: "delivered",
+          provider: isSimulated ? "brevo_simulated" : "brevo",
+          status: isSimulated ? "simulated_sent" : "delivered",
           messageId,
           durationMs,
-          deliveredAtMs: Date.now()
+          simulated: isSimulated,
+          guardReason: res.guardReason || null,
+          deliveredAtMs: isSimulated ? undefined : Date.now(),
+          sentAtMs: isSimulated ? Date.now() : undefined
         }
       };
     }
@@ -593,7 +598,8 @@ async function dispatchMultiChannel(claimedEvent, options = {}) {
 
   // Sub-channel 1: Email
   let emailOutcome = null;
-  if (!channelDeliveries.email || (channelDeliveries.email.status !== "delivered" && channelDeliveries.email.status !== "skipped")) {
+  const isEmailComplete = (status) => status === "delivered" || status === "skipped" || status === "simulated_sent";
+  if (!channelDeliveries.email || !isEmailComplete(channelDeliveries.email.status)) {
     emailOutcome = await dispatchEmail(claimedEvent, options);
     if (emailOutcome.success) {
       if (emailOutcome.skipped) {
@@ -608,7 +614,8 @@ async function dispatchMultiChannel(claimedEvent, options = {}) {
 
   // Sub-channel 2: WhatsApp
   let whatsAppOutcome = null;
-  if (!channelDeliveries.whatsapp || (channelDeliveries.whatsapp.status !== "delivered" && channelDeliveries.whatsapp.status !== "skipped")) {
+  const isWhatsAppComplete = (status) => status === "delivered" || status === "skipped" || status === "simulated_sent";
+  if (!channelDeliveries.whatsapp || !isWhatsAppComplete(channelDeliveries.whatsapp.status)) {
     whatsAppOutcome = await dispatchWhatsApp(claimedEvent, options);
     if (whatsAppOutcome.success) {
       if (whatsAppOutcome.skipped) {
@@ -624,8 +631,9 @@ async function dispatchMultiChannel(claimedEvent, options = {}) {
   // Sub-channel 3: Webhook (if enabled or specified in targetChannels)
   const includeWebhook = options.includeWebhook === true || (Array.isArray(claimedEvent.targetChannels) && claimedEvent.targetChannels.includes("webhook"));
   let webhookOutcome = null;
+  const isWebhookComplete = (status) => status === "delivered" || status === "skipped" || status === "simulated_sent";
   if (includeWebhook) {
-    if (!channelDeliveries.webhook || (channelDeliveries.webhook.status !== "delivered" && channelDeliveries.webhook.status !== "skipped")) {
+    if (!channelDeliveries.webhook || !isWebhookComplete(channelDeliveries.webhook.status)) {
       webhookOutcome = await dispatchWebhook(claimedEvent, options);
       if (webhookOutcome.success) {
         if (webhookOutcome.skipped) {
@@ -640,9 +648,9 @@ async function dispatchMultiChannel(claimedEvent, options = {}) {
   }
 
   // Evaluate combined delivery state
-  const isEmailDone = channelDeliveries.email && (channelDeliveries.email.status === "delivered" || channelDeliveries.email.status === "skipped");
-  const isWhatsAppDone = channelDeliveries.whatsapp && (channelDeliveries.whatsapp.status === "delivered" || channelDeliveries.whatsapp.status === "skipped");
-  const isWebhookDone = !includeWebhook || (channelDeliveries.webhook && (channelDeliveries.webhook.status === "delivered" || channelDeliveries.webhook.status === "skipped"));
+  const isEmailDone = channelDeliveries.email && isEmailComplete(channelDeliveries.email.status);
+  const isWhatsAppDone = channelDeliveries.whatsapp && isWhatsAppComplete(channelDeliveries.whatsapp.status);
+  const isWebhookDone = !includeWebhook || (channelDeliveries.webhook && isWebhookComplete(channelDeliveries.webhook.status));
 
   const isWhatsAppPending = whatsAppOutcome && whatsAppOutcome.isPendingAdapter === true;
   const isWebhookPending = includeWebhook && webhookOutcome && webhookOutcome.isPendingAdapter === true;

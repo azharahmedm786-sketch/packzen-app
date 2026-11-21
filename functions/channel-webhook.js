@@ -26,6 +26,7 @@ const https = require("https");
 const crypto = require("crypto");
 const { URL } = require("url");
 const { defineSecret } = require("firebase-functions/params");
+const stagingGuard = require("./staging-notification-guard");
 
 // Secrets managed via Google Cloud Secret Manager / Firebase Functions Params
 const N8N_WEBHOOK_URL    = defineSecret("N8N_WEBHOOK_URL");
@@ -62,10 +63,13 @@ const SUPPORTED_EVENTS = Object.freeze([
  */
 function getWebhookConfig(overrides = null) {
   if (overrides && typeof overrides === "object") {
-    return {
-      webhookUrl: overrides.webhookUrl || overrides.url || null,
-      webhookSecret: overrides.webhookSecret || overrides.secret || null
-    };
+    const hasWebhookKeys = overrides.webhookUrl !== undefined || overrides.webhookSecret !== undefined || overrides.url !== undefined || overrides.secret !== undefined;
+    if (hasWebhookKeys) {
+      return {
+        webhookUrl: overrides.webhookUrl || overrides.url || null,
+        webhookSecret: overrides.webhookSecret || overrides.secret || null
+      };
+    }
   }
   return {
     webhookUrl: (typeof N8N_WEBHOOK_URL.value === "function" ? N8N_WEBHOOK_URL.value() : process.env.N8N_WEBHOOK_URL) || null,
@@ -218,6 +222,42 @@ function sendWebhookRequest({
         isPendingAdapter: true,
         retryable: false,
         error: "N8N_WEBHOOK_SECRET_NOT_CONFIGURED"
+      });
+      return;
+    }
+
+    // Staging & Non-Production Notification Isolation Guard (Phase 2)
+    const guard = stagingGuard.evaluateOutboundTarget({
+      channel: "webhook",
+      recipient: webhookUrl,
+      metadata: { eventId: event && event.eventId, eventName: event && event.eventName }
+    });
+
+    if (!guard.allowed) {
+      const sim = stagingGuard.createSimulatedResponse({
+        channel: "webhook",
+        recipient: webhookUrl,
+        eventId: event && event.eventId,
+        metadata: { guardReason: guard.reason }
+      });
+      const deliveryInfo = {
+        channel: "webhook",
+        provider: "n8n_simulated",
+        status: "simulated_sent",
+        simulated: true,
+        guardReason: guard.reason,
+        durationMs: 0,
+        sentAtMs: Date.now()
+      };
+      resolve({
+        success: true,
+        simulated: true,
+        channel: "webhook",
+        provider: "n8n_simulated",
+        channelDeliveries: {
+          webhook: deliveryInfo
+        },
+        result: deliveryInfo
       });
       return;
     }
@@ -428,25 +468,33 @@ async function dispatchWebhookEvent(claimedEvent, options = {}) {
   const startTime = Date.now();
 
   try {
+    const effectiveConfig = options.configOverride || (options.webhookUrl ? options : null);
     const res = await webhookSender({
       event: claimedEvent,
       timeoutMs: options.timeoutMs || DEFAULT_REQUEST_TIMEOUT_MS,
       nowMs: startTime
-    }, options.configOverride || null);
+    }, effectiveConfig);
 
     const durationMs = Date.now() - startTime;
 
     if (res && res.success === true) {
+      const isSimulated = res.simulated === true;
       const deliveryInfo = {
-        provider: "n8n_webhook",
-        status: "delivered",
+        channel: "webhook",
+        provider: isSimulated ? "n8n_simulated" : "n8n_webhook",
+        status: isSimulated ? "simulated_sent" : "delivered",
         statusCode: res.statusCode || 200,
         durationMs,
-        deliveredAtMs: Date.now()
+        simulated: isSimulated,
+        guardReason: res.guardReason || null,
+        deliveredAtMs: isSimulated ? undefined : Date.now(),
+        sentAtMs: isSimulated ? Date.now() : undefined
       };
       return {
         success: true,
-        provider: "webhook",
+        simulated: isSimulated,
+        channel: "webhook",
+        provider: isSimulated ? "n8n_simulated" : "webhook",
         channelDeliveries: {
           webhook: deliveryInfo
         },

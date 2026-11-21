@@ -12,6 +12,7 @@ const admin = require("firebase-admin");
 const { sendBrevoEmail } = require("./brevo-client");
 const { TEMPLATES } = require("./email-templates");
 const opsAlerts = require("./ops-alerts");
+const stagingGuard = require("./staging-notification-guard");
 
 const STALE_CLAIM_MS = 5 * 60 * 1000; // 5 minutes for email claim
 const ALERT_CLAIM_LEASE_MS = 5 * 60 * 1000; // 5 minutes for alert lease
@@ -25,13 +26,16 @@ const MAX_RETRIES = 3;
  */
 async function logNotification({ bookingRef, channel, recipient, status, provider, response, error }) {
   try {
+    const isSimulated = (provider && provider.includes("simulated")) || (status && status.includes("simulated"));
+    const maskedRecipient = isSimulated ? stagingGuard.maskRecipient(recipient, channel) : recipient;
+
     await admin.firestore().collection("notificationLogs").add({
       bookingRef: bookingRef || null,
       channel: channel || "email",
-      recipient: recipient || null,
+      recipient: maskedRecipient || null,
       status: status || "unknown",
       provider: provider || "brevo",
-      response: response ? JSON.stringify(response).slice(0, 1000) : null,
+      response: response ? (typeof response === "string" ? response.slice(0, 1000) : JSON.stringify(response).slice(0, 1000)) : null,
       error: error || null,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -95,8 +99,8 @@ const result = await sendBrevoEmail({
     bookingRef,
     channel: "email",
     recipient: toEmail,
-    status: result.success ? "sent" : "failed",
-    provider: "brevo",
+    status: result.simulated ? "simulated_sent" : (result.success ? "sent" : "failed"),
+    provider: result.simulated ? "brevo_simulated" : "brevo",
     response: result.response,
     error: result.error
   });
@@ -155,8 +159,8 @@ const result = await sendBrevoEmail({
       bookingRef,
       channel: "admin_email",
       recipient: email,
-      status: result.success ? "sent" : "failed",
-      provider: "brevo",
+      status: result.simulated ? "simulated_sent" : (result.success ? "sent" : "failed"),
+      provider: result.simulated ? "brevo_simulated" : "brevo",
       response: result.response,
       error: result.error
     });

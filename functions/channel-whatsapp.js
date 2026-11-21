@@ -20,6 +20,7 @@ const https = require("https");
 const crypto = require("crypto");
 const { defineSecret } = require("firebase-functions/params");
 const templates = require("./whatsapp-templates");
+const stagingGuard = require("./staging-notification-guard");
 
 // Secrets managed via Google Cloud Secret Manager / Firebase Functions Params
 const WHATSAPP_ACCESS_TOKEN         = defineSecret("WHATSAPP_ACCESS_TOKEN");
@@ -41,13 +42,16 @@ const WHATSAPP_SECRETS = [
  */
 function getWhatsAppConfig(overrides = null) {
   if (overrides && typeof overrides === "object") {
-    return {
-      accessToken: overrides.accessToken || null,
-      phoneNumberId: overrides.phoneNumberId || null,
-      businessAccountId: overrides.businessAccountId || null,
-      verifyToken: overrides.verifyToken || null,
-      appSecret: overrides.appSecret || null
-    };
+    const hasWhatsAppKeys = overrides.accessToken !== undefined || overrides.phoneNumberId !== undefined;
+    if (hasWhatsAppKeys) {
+      return {
+        accessToken: overrides.accessToken || null,
+        phoneNumberId: overrides.phoneNumberId || null,
+        businessAccountId: overrides.businessAccountId || null,
+        verifyToken: overrides.verifyToken || null,
+        appSecret: overrides.appSecret || null
+      };
+    }
   }
   return {
     accessToken: (typeof WHATSAPP_ACCESS_TOKEN.value === "function" ? WHATSAPP_ACCESS_TOKEN.value() : process.env.WHATSAPP_ACCESS_TOKEN) || null,
@@ -160,6 +164,32 @@ function sendWhatsAppTemplateMessage({
         success: false,
         error: "MISSING_DESTINATION_PHONE",
         retryable: false
+      });
+      return;
+    }
+
+    // Staging & Non-Production Notification Isolation Guard (Phase 2)
+    const guard = stagingGuard.evaluateOutboundTarget({
+      channel: "whatsapp",
+      recipient: toPhone,
+      metadata: { templateName, eventId }
+    });
+
+    if (!guard.allowed) {
+      const sim = stagingGuard.createSimulatedResponse({
+        channel: "whatsapp",
+        recipient: toPhone,
+        eventId,
+        metadata: { templateName, guardReason: guard.reason }
+      });
+      resolve({
+        success: true,
+        simulated: true,
+        status: "simulated_sent",
+        messageId: sim.messageId,
+        guardReason: guard.reason,
+        response: sim.response,
+        error: null
       });
       return;
     }
@@ -367,17 +397,22 @@ async function dispatchWhatsAppEvent(claimedEvent, options = {}) {
     const durationMs = Date.now() - startTime;
 
     if (res && res.success === true && res.messageId) {
+      const isSimulated = res.simulated === true;
       const deliveryInfo = {
-        provider: "whatsapp",
-        status: "delivered",
+        provider: isSimulated ? "meta_whatsapp_simulated" : "whatsapp",
+        status: isSimulated ? "simulated_sent" : "delivered",
         messageId: res.messageId,
         template: templateConfig.templateName,
         recipient: normalizedPhone.slice(0, 4) + "******" + normalizedPhone.slice(-2),
         durationMs,
-        deliveredAtMs: Date.now()
+        simulated: isSimulated,
+        guardReason: res.guardReason || null,
+        deliveredAtMs: isSimulated ? undefined : Date.now(),
+        sentAtMs: isSimulated ? Date.now() : undefined
       };
       return {
         success: true,
+        simulated: isSimulated,
         provider: "whatsapp",
         channelDeliveries: {
           whatsapp: deliveryInfo
