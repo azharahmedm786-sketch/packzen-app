@@ -1183,8 +1183,12 @@ const {
 } = require("./channel-whatsapp");
 const { N8N_SECRETS } = require("./channel-webhook");
 
+// PackZen 3.0 Production Outbox Worker:
+// Active delivery via Brevo Email (BREVO_SECRETS).
+// WhatsApp and n8n secrets are deferred until genuine credentials are provisioned in Secret Manager.
+// Non-configured channels gracefully resolve to 'adapter_pending' without blocking queue execution.
 exports.processOutboxQueue = functions.region("asia-south1")
-  .runWith({ secrets: [...BREVO_SECRETS, ...WHATSAPP_SECRETS, ...N8N_SECRETS] })
+  .runWith({ secrets: [...BREVO_SECRETS] })
   .pubsub.schedule("every 1 minutes")
   .timeZone("Asia/Kolkata")
   .onRun(async (context) => {
@@ -1199,9 +1203,11 @@ exports.processOutboxQueue = functions.region("asia-south1")
   });
 
 /**
- * Meta WhatsApp Cloud API Webhook Endpoint
- * Supports GET verification challenge and POST signed status/message callbacks.
+ * Meta WhatsApp Cloud API Webhook Endpoint (Deferred)
+ * Excluded from active exports until genuine Meta WhatsApp credentials are provisioned.
+ * All adapter logic and HMAC signature verification in channel-whatsapp.js is fully preserved.
  */
+/*
 exports.whatsappWebhook = functions.region("asia-south1")
   .runWith({ secrets: WHATSAPP_SECRETS })
   .https.onRequest(async (req, res) => {
@@ -1238,6 +1244,7 @@ exports.whatsappWebhook = functions.region("asia-south1")
 
     return res.status(405).send("Method Not Allowed");
   });
+*/
 
 /**
  * PackZen 3.0 — Phase 2D: Automation Control Center Callables
