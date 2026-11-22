@@ -44,6 +44,46 @@ const { publicKey: testPublicKey, privateKey: testPrivateKey } = crypto.generate
 const testPublicKeyPem = testPublicKey.export({ type: "spki", format: "pem" });
 const testPrivateKeyPem = testPrivateKey.export({ type: "pkcs8", format: "pem" });
 
+/**
+ * Creates an isolated temporary workspace directory for hermetic testing.
+ * Sets up temporary rollback assets and copies public/ configuration so that
+ * tests run independently of untracked files on the host machine or in CI.
+ */
+function createFixtureWorkspace(options = {}) {
+  const withRollbackAssets = options.withRollbackAssets !== false;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pz-fixture-ws-"));
+
+  const cleanup = () => {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    }
+  };
+
+  try {
+    if (withRollbackAssets) {
+      fs.writeFileSync(path.join(tempDir, "firebase.rollback.json"), "{}");
+      fs.writeFileSync(path.join(tempDir, "firestore.rules.prod_backup"), "rules_version = '2';");
+      fs.mkdirSync(path.join(tempDir, "functions_prod_backup"), { recursive: true });
+    }
+
+    // Copy public directory from repoRoot to support verifyProductionConfiguration
+    const realPublic = path.join(repoRoot, "public");
+    if (fs.existsSync(realPublic)) {
+      fs.cpSync(realPublic, path.join(tempDir, "public"), { recursive: true });
+    }
+  } catch (setupErr) {
+    try {
+      cleanup();
+    } catch (_) {}
+    throw setupErr;
+  }
+
+  return {
+    dir: tempDir,
+    cleanup
+  };
+}
+
 describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => {
 
   describe("1. Direct Production Deployment Rejection (Guard Fails Closed)", () => {
@@ -493,11 +533,31 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
     });
 
     it("ACCEPTS clean tree with whitelisted untracked rollback assets, docs, and gcloudignore", () => {
-      const res = releaseOrchestrator.verifyGitWorkingTree({
-        repoRoot,
-        gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/\n?? functions/.gcloudignore"
-      });
-      assert.strictEqual(res.clean, true);
+      const ws = createFixtureWorkspace({ withRollbackAssets: true });
+      try {
+        const res = releaseOrchestrator.verifyGitWorkingTree({
+          repoRoot: ws.dir,
+          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/\n?? functions/.gcloudignore"
+        });
+        assert.strictEqual(res.clean, true);
+      } finally {
+        ws.cleanup();
+      }
+    });
+
+    it("REJECTS release when required rollback assets are missing (MISSING_ROLLBACK_ASSET)", () => {
+      const ws = createFixtureWorkspace({ withRollbackAssets: false });
+      try {
+        const res = releaseOrchestrator.verifyGitWorkingTree({
+          repoRoot: ws.dir,
+          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? functions/.gcloudignore"
+        });
+        assert.strictEqual(res.clean, false);
+        assert.ok(res.error.includes("MISSING_ROLLBACK_ASSET"));
+        assert.ok(res.error.includes("firebase.rollback.json"));
+      } finally {
+        ws.cleanup();
+      }
     });
 
     it("REJECTS release if remote origin URL is unauthorized (SEC-04)", () => {
@@ -626,70 +686,88 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
     });
 
     it("DRY-RUN mode validates all preflights without executing deployment", () => {
-      const res = releaseOrchestrator.executeRelease(
-        ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539", "--dry-run"],
-        {
-          repoRoot,
-          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
-          mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
-          mockSync: { ahead: 0, behind: 0 },
-          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          testRunner: () => ({ status: 0 })
-        }
-      );
-      assert.strictEqual(res.status, 0);
-      assert.strictEqual(res.executed, false);
-      assert.strictEqual(res.mode, "dry-run");
-      assert.deepStrictEqual(res.sanitizedArgs, ["deploy", "--only", "hosting", "--project", "packzen-e7539"]);
+      const ws = createFixtureWorkspace({ withRollbackAssets: true });
+      try {
+        const res = releaseOrchestrator.executeRelease(
+          ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539", "--dry-run"],
+          {
+            repoRoot: ws.dir,
+            branch: "firebase-hosting-migration",
+            gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
+            mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
+            mockSync: { ahead: 0, behind: 0 },
+            headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            testRunner: () => ({ status: 0 })
+          }
+        );
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.executed, false);
+        assert.strictEqual(res.mode, "dry-run");
+        assert.deepStrictEqual(res.sanitizedArgs, ["deploy", "--only", "hosting", "--project", "packzen-e7539"]);
+      } finally {
+        ws.cleanup();
+      }
     });
   });
 
   describe("7. Windows Execution & Subprocess Error Handling (SEC-02)", () => {
     it("RETURNS non-zero status when subprocess spawn fails (SEC-02)", () => {
-      const res = releaseOrchestrator.executeRelease(
-        ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
-        {
-          repoRoot,
-          privateKey: testPrivateKey,
-          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
-          mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
-          mockSync: { ahead: 0, behind: 0 },
-          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          testRunner: () => ({ status: 0 }),
-          executor: () => {
-            // Simulate spawn error (e.g. ENOENT)
-            return { status: 1, error: "spawnSync npx ENOENT", stage: "spawn" };
+      const ws = createFixtureWorkspace({ withRollbackAssets: true });
+      try {
+        const res = releaseOrchestrator.executeRelease(
+          ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
+          {
+            repoRoot: ws.dir,
+            branch: "firebase-hosting-migration",
+            privateKey: testPrivateKey,
+            gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
+            mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
+            mockSync: { ahead: 0, behind: 0 },
+            headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            testRunner: () => ({ status: 0 }),
+            executor: () => {
+              // Simulate spawn error (e.g. ENOENT)
+              return { status: 1, error: "spawnSync npx ENOENT", stage: "spawn" };
+            }
           }
-        }
-      );
+        );
 
-      assert.strictEqual(res.status, 1);
-      assert.ok(res.error.includes("ENOENT"));
+        assert.strictEqual(res.status, 1);
+        assert.ok(res.error.includes("ENOENT"));
+      } finally {
+        ws.cleanup();
+      }
     });
 
     it("PROPAGATES non-zero deployment exit code and never exits with 0 on failure (SEC-02)", () => {
-      const res = releaseOrchestrator.executeRelease(
-        ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
-        {
-          repoRoot,
-          privateKey: testPrivateKey,
-          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
-          mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
-          mockSync: { ahead: 0, behind: 0 },
-          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          testRunner: () => ({ status: 0 }),
-          executor: () => {
-            // Simulate Firebase CLI deployment failure with exit code 2
-            return { status: 2, error: "DEPLOYMENT_FAILED: Exit code 2", stage: "deploy" };
+      const ws = createFixtureWorkspace({ withRollbackAssets: true });
+      try {
+        const res = releaseOrchestrator.executeRelease(
+          ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
+          {
+            repoRoot: ws.dir,
+            branch: "firebase-hosting-migration",
+            privateKey: testPrivateKey,
+            gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
+            mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
+            mockSync: { ahead: 0, behind: 0 },
+            headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            testRunner: () => ({ status: 0 }),
+            executor: () => {
+              // Simulate Firebase CLI deployment failure with exit code 2
+              return { status: 2, error: "DEPLOYMENT_FAILED: Exit code 2", stage: "deploy" };
+            }
           }
-        }
-      );
+        );
 
-      assert.strictEqual(res.status, 2);
-      assert.ok(res.error.includes("DEPLOYMENT_FAILED"));
+        assert.strictEqual(res.status, 2);
+        assert.ok(res.error.includes("DEPLOYMENT_FAILED"));
+      } finally {
+        ws.cleanup();
+      }
     });
   });
 
@@ -814,29 +892,35 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
     });
 
     it("VERIFIES child process execution receives only PACKZEN_RELEASE_AUTH_TOKEN and never private key or public key env", () => {
-      let capturedEnv = null;
-      const res = releaseOrchestrator.executeRelease(
-        ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
-        {
-          repoRoot,
-          privateKey: testPrivateKey,
-          gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
-          mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
-          mockSync: { ahead: 0, behind: 0 },
-          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
-          testRunner: () => ({ status: 0 }),
-          executor: (args, envContext) => {
-            capturedEnv = envContext;
-            return { status: 0, executed: true };
+      const ws = createFixtureWorkspace({ withRollbackAssets: true });
+      try {
+        let capturedEnv = null;
+        const res = releaseOrchestrator.executeRelease(
+          ["deploy", "--only", "hosting", "--confirm-production-release=packzen-e7539"],
+          {
+            repoRoot: ws.dir,
+            branch: "firebase-hosting-migration",
+            privateKey: testPrivateKey,
+            gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
+            mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
+            mockSync: { ahead: 0, behind: 0 },
+            headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
+            testRunner: () => ({ status: 0 }),
+            executor: (args, envContext) => {
+              capturedEnv = envContext;
+              return { status: 0, executed: true };
+            }
           }
-        }
-      );
+        );
 
-      assert.strictEqual(res.status, 0);
-      assert.ok(capturedEnv.authToken);
-      assert.strictEqual(capturedEnv.publicKeyPem, undefined);
-      assert.strictEqual(capturedEnv.privateKey, undefined);
+        assert.strictEqual(res.status, 0);
+        assert.ok(capturedEnv.authToken);
+        assert.strictEqual(capturedEnv.publicKeyPem, undefined);
+        assert.strictEqual(capturedEnv.privateKey, undefined);
+      } finally {
+        ws.cleanup();
+      }
     });
   });
 });
