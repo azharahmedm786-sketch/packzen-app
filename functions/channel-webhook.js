@@ -25,12 +25,14 @@ const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 const { URL } = require("url");
-const { defineSecret } = require("firebase-functions/params");
 const stagingGuard = require("./staging-notification-guard");
 
-// Secrets managed via Google Cloud Secret Manager / Firebase Functions Params
-const N8N_WEBHOOK_URL    = defineSecret("N8N_WEBHOOK_URL");
-const N8N_WEBHOOK_SECRET = defineSecret("N8N_WEBHOOK_SECRET");
+// PackZen 3.0: Server-to-server n8n webhook integration is deferred until genuine credentials are configured.
+// Notice: Calling defineSecret() at top-level registers parameters into params.declaredParams globally,
+// which causes Firebase CLI deployment to halt and prompt for missing Secret Manager secrets.
+// While deferred, parameters are defined as safe runtime accessors so Secret Manager discovery is not blocked.
+const N8N_WEBHOOK_URL    = { name: "N8N_WEBHOOK_URL", value: () => process.env.N8N_WEBHOOK_URL || null };
+const N8N_WEBHOOK_SECRET = { name: "N8N_WEBHOOK_SECRET", value: () => process.env.N8N_WEBHOOK_SECRET || null };
 
 const N8N_SECRETS = [
   N8N_WEBHOOK_URL,

@@ -1174,14 +1174,6 @@ exports.reconcileDeadLetterAlerts = functions.region("asia-south1")
  */
 const automationWorker = require("./automation-worker");
 const automationDispatcher = require("./automation-dispatcher");
-const {
-  WHATSAPP_SECRETS,
-  verifyWebhookSignature,
-  handleWebhookGet,
-  processWebhookBody,
-  getWhatsAppConfig
-} = require("./channel-whatsapp");
-const { N8N_SECRETS } = require("./channel-webhook");
 
 // PackZen 3.0 Production Outbox Worker:
 // Active delivery via Brevo Email (BREVO_SECRETS).
@@ -1208,6 +1200,14 @@ exports.processOutboxQueue = functions.region("asia-south1")
  * All adapter logic and HMAC signature verification in channel-whatsapp.js is fully preserved.
  */
 /*
+const {
+  WHATSAPP_SECRETS,
+  verifyWebhookSignature,
+  handleWebhookGet,
+  processWebhookBody,
+  getWhatsAppConfig
+} = require("./channel-whatsapp");
+
 exports.whatsappWebhook = functions.region("asia-south1")
   .runWith({ secrets: WHATSAPP_SECRETS })
   .https.onRequest(async (req, res) => {

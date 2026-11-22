@@ -18,16 +18,18 @@
 
 const https = require("https");
 const crypto = require("crypto");
-const { defineSecret } = require("firebase-functions/params");
 const templates = require("./whatsapp-templates");
 const stagingGuard = require("./staging-notification-guard");
 
-// Secrets managed via Google Cloud Secret Manager / Firebase Functions Params
-const WHATSAPP_ACCESS_TOKEN         = defineSecret("WHATSAPP_ACCESS_TOKEN");
-const WHATSAPP_PHONE_NUMBER_ID      = defineSecret("WHATSAPP_PHONE_NUMBER_ID");
-const WHATSAPP_BUSINESS_ACCOUNT_ID  = defineSecret("WHATSAPP_BUSINESS_ACCOUNT_ID");
-const WHATSAPP_WEBHOOK_VERIFY_TOKEN = defineSecret("WHATSAPP_WEBHOOK_VERIFY_TOKEN");
-const WHATSAPP_APP_SECRET           = defineSecret("WHATSAPP_APP_SECRET");
+// PackZen 3.0: Meta WhatsApp Cloud API integration is deferred until genuine credentials are configured.
+// Notice: Calling defineSecret() at top-level registers parameters into params.declaredParams globally,
+// which causes Firebase CLI deployment to halt and prompt for missing Secret Manager secrets.
+// While deferred, parameters are defined as safe runtime accessors so Secret Manager discovery is not blocked.
+const WHATSAPP_ACCESS_TOKEN         = { name: "WHATSAPP_ACCESS_TOKEN", value: () => process.env.WHATSAPP_ACCESS_TOKEN || null };
+const WHATSAPP_PHONE_NUMBER_ID      = { name: "WHATSAPP_PHONE_NUMBER_ID", value: () => process.env.WHATSAPP_PHONE_NUMBER_ID || null };
+const WHATSAPP_BUSINESS_ACCOUNT_ID  = { name: "WHATSAPP_BUSINESS_ACCOUNT_ID", value: () => process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || null };
+const WHATSAPP_WEBHOOK_VERIFY_TOKEN = { name: "WHATSAPP_WEBHOOK_VERIFY_TOKEN", value: () => process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || null };
+const WHATSAPP_APP_SECRET           = { name: "WHATSAPP_APP_SECRET", value: () => process.env.WHATSAPP_APP_SECRET || null };
 
 const WHATSAPP_SECRETS = [
   WHATSAPP_ACCESS_TOKEN,
