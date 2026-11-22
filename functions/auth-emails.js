@@ -9,13 +9,13 @@
 const rateLimit = require("./rate-limit");
 const functions = require("firebase-functions/v1");
 const admin     = require("firebase-admin");
-const { defineString } = require("firebase-functions/params");
 const { sendBrevoEmail, BREVO_SECRETS } = require("./brevo-client");
 const { logNotification } = require("./notification-service");
 const crypto = require("crypto");
 
-const ACTION_URL       = defineString("PACKZEN_ACTION_URL", { default: "https://packzenblr.in/" });
-const PACKZEN_LOGO_URL = defineString("PACKZEN_LOGO_URL", { default: "https://packzenblr.in/assets/logo/packzen-logo.png" });
+// PackZen 3.0: Standard production branding URLs
+const ACTION_URL       = { value: () => process.env.PACKZEN_ACTION_URL || "https://packzenblr.in/" };
+const PACKZEN_LOGO_URL = { value: () => process.env.PACKZEN_LOGO_URL || "https://packzenblr.in/assets/logo/packzen-logo.png" };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\d{10}$/;
