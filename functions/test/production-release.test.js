@@ -53,13 +53,26 @@ function createFixtureWorkspace(options = {}) {
   const withRollbackAssets = options.withRollbackAssets !== false;
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pz-fixture-ws-"));
 
-  const cleanup = () => {
+  const cleanup = (stage = "initial") => {
+    if (stage === "initial" && options._simulateCleanupError) {
+      throw new Error(options._simulateCleanupError);
+    }
+    if (stage === "forced" && options._simulateForcedCleanupError) {
+      throw new Error(options._simulateForcedCleanupError);
+    }
+    if (stage === "emergency" && options._simulateEmergencyCleanupError) {
+      throw new Error(options._simulateEmergencyCleanupError);
+    }
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
     }
   };
 
   try {
+    if (options._simulateSetupError) {
+      throw new Error(options._simulateSetupError);
+    }
+
     if (withRollbackAssets) {
       fs.writeFileSync(path.join(tempDir, "firebase.rollback.json"), "{}");
       fs.writeFileSync(path.join(tempDir, "firestore.rules.prod_backup"), "rules_version = '2';");
@@ -73,8 +86,37 @@ function createFixtureWorkspace(options = {}) {
     }
   } catch (setupErr) {
     try {
-      cleanup();
-    } catch (_) {}
+      cleanup("initial");
+    } catch (cleanupErr) {
+      const allErrors = [setupErr, cleanupErr];
+      if (fs.existsSync(tempDir)) {
+        try {
+          cleanup("forced");
+        } catch (forcedCleanupErr) {
+          allErrors.push(forcedCleanupErr);
+          if (fs.existsSync(tempDir)) {
+            try {
+              cleanup("emergency");
+            } catch (emergencyCleanupErr) {
+              allErrors.push(emergencyCleanupErr);
+              if (options._simulateEmergencyCleanupError && fs.existsSync(tempDir)) {
+                try {
+                  cleanup("real");
+                } catch (realErr) {
+                  allErrors.push(realErr);
+                }
+              }
+            }
+          }
+        }
+      }
+      const failureDetails = allErrors.slice(1).map(e => e.message).join("; ");
+      throw new AggregateError(
+        allErrors,
+        `Fixture workspace setup failed (${setupErr.message}) and cleanup also failed (${failureDetails})`,
+        { cause: setupErr }
+      );
+    }
     throw setupErr;
   }
 
@@ -558,6 +600,75 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
       } finally {
         ws.cleanup();
       }
+    });
+
+    it("PRESERVES unmodified setup error when fixture workspace partial setup fails but cleanup succeeds", () => {
+      let caught = null;
+      try {
+        createFixtureWorkspace({ _simulateSetupError: "SIMULATED_SETUP_FAILURE" });
+      } catch (err) {
+        caught = err;
+      }
+      assert.ok(caught);
+      assert.strictEqual(caught.message, "SIMULATED_SETUP_FAILURE");
+      assert.strictEqual(caught instanceof AggregateError, false);
+    });
+
+    it("OBSERVES both setup and cleanup errors via AggregateError without mutating original error", () => {
+      let caught = null;
+      try {
+        createFixtureWorkspace({
+          _simulateSetupError: "SIMULATED_SETUP_FAILURE",
+          _simulateCleanupError: "SIMULATED_CLEANUP_FAILURE"
+        });
+      } catch (err) {
+        caught = err;
+      }
+      assert.ok(caught instanceof AggregateError);
+      assert.strictEqual(caught.errors.length, 2);
+      assert.strictEqual(caught.errors[0].message, "SIMULATED_SETUP_FAILURE");
+      assert.strictEqual(caught.errors[1].message, "SIMULATED_CLEANUP_FAILURE");
+      assert.strictEqual(caught.cause, caught.errors[0]);
+    });
+
+    it("OBSERVES setup error, initial cleanup error, and forced cleanup error in AggregateError", () => {
+      let caught = null;
+      try {
+        createFixtureWorkspace({
+          _simulateSetupError: "SIMULATED_SETUP_FAILURE",
+          _simulateCleanupError: "SIMULATED_CLEANUP_FAILURE",
+          _simulateForcedCleanupError: "SIMULATED_FORCED_CLEANUP_FAILURE"
+        });
+      } catch (err) {
+        caught = err;
+      }
+      assert.ok(caught instanceof AggregateError);
+      assert.strictEqual(caught.errors.length, 3);
+      assert.strictEqual(caught.errors[0].message, "SIMULATED_SETUP_FAILURE");
+      assert.strictEqual(caught.errors[1].message, "SIMULATED_CLEANUP_FAILURE");
+      assert.strictEqual(caught.errors[2].message, "SIMULATED_FORCED_CLEANUP_FAILURE");
+      assert.strictEqual(caught.cause, caught.errors[0]);
+    });
+
+    it("OBSERVES all four errors in AggregateError when setup and every cleanup stage fails", () => {
+      let caught = null;
+      try {
+        createFixtureWorkspace({
+          _simulateSetupError: "SIMULATED_SETUP_FAILURE",
+          _simulateCleanupError: "SIMULATED_CLEANUP_FAILURE",
+          _simulateForcedCleanupError: "SIMULATED_FORCED_CLEANUP_FAILURE",
+          _simulateEmergencyCleanupError: "SIMULATED_EMERGENCY_CLEANUP_FAILURE"
+        });
+      } catch (err) {
+        caught = err;
+      }
+      assert.ok(caught instanceof AggregateError);
+      assert.strictEqual(caught.errors.length, 4);
+      assert.strictEqual(caught.errors[0].message, "SIMULATED_SETUP_FAILURE");
+      assert.strictEqual(caught.errors[1].message, "SIMULATED_CLEANUP_FAILURE");
+      assert.strictEqual(caught.errors[2].message, "SIMULATED_FORCED_CLEANUP_FAILURE");
+      assert.strictEqual(caught.errors[3].message, "SIMULATED_EMERGENCY_CLEANUP_FAILURE");
+      assert.strictEqual(caught.cause, caught.errors[0]);
     });
 
     it("REJECTS release if remote origin URL is unauthorized (SEC-04)", () => {
