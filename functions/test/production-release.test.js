@@ -633,6 +633,7 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
           gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
           mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
           mockSync: { ahead: 0, behind: 0 },
+          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           testRunner: () => ({ status: 0 })
         }
@@ -654,6 +655,7 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
           gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
           mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
           mockSync: { ahead: 0, behind: 0 },
+          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           testRunner: () => ({ status: 0 }),
           executor: () => {
@@ -676,6 +678,7 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
           gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
           mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
           mockSync: { ahead: 0, behind: 0 },
+          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           testRunner: () => ({ status: 0 }),
           executor: () => {
@@ -820,6 +823,7 @@ describe("PACKZEN 3.0 — PRODUCTION RELEASE SECURITY & ISOLATION SUITE", () => 
           gitStatus: () => "?? PACKZEN_3_0_STAGING_PLAN.md\n?? firebase.rollback.json\n?? firestore.rules.prod_backup\n?? functions_prod_backup/",
           mockRemoteUrl: "https://github.com/azharahmedm786-sketch/packzen-app.git",
           mockSync: { ahead: 0, behind: 0 },
+          headSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           mockRemoteSha: "25e83c17d090998e3cf8c45ff0647c9be174c717",
           testRunner: () => ({ status: 0 }),
           executor: (args, envContext) => {
