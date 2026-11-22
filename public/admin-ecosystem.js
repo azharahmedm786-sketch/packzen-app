@@ -494,7 +494,6 @@
       </div>
     `;
   }
-  }
 
   /* ── 3. UNIFIED LEAD & PIPELINE MANAGEMENT ───────────────── */
   const PIPELINE_STAGES = [
