@@ -1,0 +1,16 @@
+# Cloud Functions for Firebase Deployment Ignore
+# Strictly excludes non-runtime files, tests, environment secrets, and backups
+.gcloudignore
+.git
+.gitignore
+node_modules/
+test/
+*.log
+.env
+.env.*
+*.local
+serviceAccountKey*.json
+*.backup
+*.prod_backup
+*.pem
+*.key

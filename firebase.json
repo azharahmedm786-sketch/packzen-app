@@ -2,13 +2,19 @@
   "hosting": {
     "public": "public",
     "predeploy": [
-      "node scripts/guard-staging-deploy.js"
+      "node scripts/guard-staging-deploy.js --service hosting"
     ],
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "!**/.well-known/**"
+      "!**/.well-known/**",
+      "**/*.backup",
+      "**/*.bak",
+      "**/*.prod_backup",
+      "**/*.rollback.json",
+      "**/PACKZEN_*.md",
+      "**/.env*"
     ],
     "headers": [
       {
@@ -65,20 +71,20 @@
     "source": "functions",
     "runtime": "nodejs22",
     "predeploy": [
-      "node scripts/guard-staging-deploy.js"
+      "node scripts/guard-staging-deploy.js --service functions"
     ]
   },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json",
     "predeploy": [
-      "node scripts/guard-staging-deploy.js"
+      "node scripts/guard-staging-deploy.js --service firestore"
     ]
   },
   "storage": {
     "rules": "storage.rules",
     "predeploy": [
-      "node scripts/guard-staging-deploy.js"
+      "node scripts/guard-staging-deploy.js --service storage"
     ]
   }
 }
