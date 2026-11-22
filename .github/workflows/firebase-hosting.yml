@@ -1,13 +1,13 @@
 name: Deploy to Firebase Hosting
 
+# In PackZen 3.0, automatic deployment on push to main is disabled to resolve P0 Blocker 1:
+# Production releases to 'packzen-e7539' require Ed25519 release authorization
+# enforced by scripts/guard-staging-deploy.js and orchestrated via scripts/pz-release.js.
+# Pushes to main and PRs are fully verified via .github/workflows/tests.yml.
+# Deliberate releases must be orchestrated via:
+#   node scripts/pz-release.js deploy --only hosting --confirm-production-release=packzen-e7539
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "public/**"
-      - "firebase.json"
-      - ".github/workflows/firebase-hosting.yml"
   workflow_dispatch:
 
 permissions:
