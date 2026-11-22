@@ -15,18 +15,7 @@
 
   var C = window.PackZenCatalog;
   var esc = C.esc;
-  function _resolveCatalogFnBase() {
-    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionsBaseUrl === "function") {
-      var b = window.PackZenEnv.getFunctionsBaseUrl();
-      return b ? (b.endsWith("/") ? b : b + "/") : "";
-    }
-    if (window.ENV && window.ENV.FUNCTIONS_BASE_URL) {
-      var eb = window.ENV.FUNCTIONS_BASE_URL;
-      return eb.endsWith("/") ? eb : eb + "/";
-    }
-    return "";
-  }
-  var FN_BASE = _resolveCatalogFnBase();
+  var FN_BASE = ((window.PackZenEnv && window.PackZenEnv.getFunctionsBaseUrl()) || "https://asia-south1-packzen-e7539.cloudfunctions.net") + "/"; // packzenblr.in production endpoint
   var WHATSAPP = "919945095453";
   var MAX_ONLINE = 100000;
 
@@ -321,24 +310,15 @@
   }
 
   function post(path, token, body) {
-    var base = FN_BASE || _resolveCatalogFnBase();
-    if (!base) return Promise.reject(new Error("Catalog service unavailable in this environment."));
-    return fetch(base + path, {
+    return fetch(FN_BASE + path, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify(body),
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); });
   }
 
   function payOnline(user, details) {
     setBusy(true, "Starting payment…");
-    var validation = window.PackZenEnv && typeof window.PackZenEnv.validateRazorpayCheckout === "function"
-      ? window.PackZenEnv.validateRazorpayCheckout()
-      : { ok: !!(window.ENV && window.ENV.RAZORPAY_KEY), key: window.ENV && window.ENV.RAZORPAY_KEY, error: "Online payment is unavailable right now. Please choose Pay on service." };
-    if (!validation.ok || !validation.key) {
-      setBusy(false);
-      showError(validation.error || "Online payment is unavailable right now. Please choose Pay on service.");
-      return;
-    }
-    var key = validation.key;
+    var key = window.ENV && window.ENV.RAZORPAY_KEY;
+    if (!key) { setBusy(false); showError("Online payment is unavailable right now. Please choose Pay on service."); return; }
 
     Promise.all([user.getIdToken(), loadRazorpay()]).then(function (r) {
       var token = r[0];

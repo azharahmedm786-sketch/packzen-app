@@ -29,16 +29,7 @@
  * Works on pages without the Firebase SDK (calls the callable endpoint directly). */
 (function () {
   "use strict";
-  function _resolveSubmitLeadUrl() {
-    if (window.PackZenEnv && typeof window.PackZenEnv.getFunctionUrl === "function") {
-      return window.PackZenEnv.getFunctionUrl("submitLead");
-    }
-    if (window.ENV && typeof window.ENV.getFunctionUrl === "function") {
-      return window.ENV.getFunctionUrl("submitLead");
-    }
-    return null;
-  }
-  var FN = _resolveSubmitLeadUrl();
+  var FN = (window.PackZenEnv && window.PackZenEnv.getFunctionUrl("submitLead")) || "https://asia-south1-packzen-e7539.cloudfunctions.net/submitLead"; // packzenblr.in production endpoint
   var KEY = "pz_attr_v1";
 
   /* ---------- attribution ---------- */
@@ -136,94 +127,6 @@
         notes: form.notes.value, website: form.website.value, when: form.when.value, homeSize: form.homeSize.value, page: location.pathname, lang: (document.documentElement.lang || "en").slice(0, 2),
         attribution: window.pzAttribution() };
       fetch(FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
-        .then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (j) {
-          if (j && j.error) throw new Error(j.error.message || "Could not send.");
-          form.innerHTML = '<button type="button" class="pz-cb-x" aria-label="Close">×</button><div class="pz-cb-done"><h2>Thanks! ✓</h2>' +
-            "<p>" + (function () { var h = new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000).getHours();
-              var open = h >= 8 && h < 21;
-              return (open ? "We'll call you on " : "We're closed right now (we work 8 AM – 9 PM). We'll call you on ") + phone.replace(/^(\d{2})\d{5}/, "$1XXXXX") + (open ? " shortly." : " after 8 AM.");
-            })() + " You can also see prices and book anytime at packzenblr.in.</p></div>";
-          form.querySelector(".pz-cb-x").addEventListener("click", close);
-          if (window.pzTrack) window.pzTrack("generate_lead", { method: "callback_form", service: payload.service });
-        })
-        .catch(function (x) { submit.disabled = false; submit.textContent = "Call me back"; err.textContent = (x && x.message) || "Could not send. Please call 9945095453."; });
-    });
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
-})();
-
-/* PackZen — one "Book" button for every service (unified booking, phase 2).
- * Opens a picker; each choice goes to that service's own short flow:
- *   moves → the moving booking sheet, home services → services.html?category=…
- * On any page: window.pzOpenBook(). On the homepage, ?book=move opens the moving form directly. */
-(function () {
-  "use strict";
-  var CHOICES = [
-    { id: "move", icon: "M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", title: "Home shifting", sub: "1 RK to villa · from ₹2,150" },
-    { id: "office", icon: "M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M8 8h3M8 12h3M8 16h3", title: "Office move", sub: "Desks, IT, files" },
-    { id: "vehicle", icon: "M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M9 17h6M3 12l2-5h9l3 5h3a1 1 0 0 1 1 1v4h-2M3 12v5h2", title: "Bike / car transport", sub: "Safe vehicle moves" },
-    { id: "ac", icon: "M3 6h18v7H3zM6 17l-1 3M12 16v4M18 17l1 3M7 10h10", title: "AC service & repair", sub: "Service from ₹429" },
-    { id: "appliance", icon: "M5 2h14a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM4 7h16M12 15a3 3 0 1 0 0-.01", title: "Washing machine & fridge", sub: "Repair visit ₹249 · gas refill" },
-  ];
-  function go(id) {
-    var onHome = typeof window.openBookingSheet === "function";
-    if (id === "move" || id === "office" || id === "vehicle") {
-      if (onHome) { close(); window.openBookingSheet(); return; }
-      location.href = "/index.html?book=move"; return;
-    }
-    location.href = "/services.html?category=" + encodeURIComponent(id === "appliance" ? "appliance-repair" : id);
-  }
-  var dlg = null;
-  function close() { if (dlg) dlg.hidden = true; }
-  function build() {
-    if (document.getElementById("pzBookDialog") || /admin|advisor|driver|partner/.test(location.pathname)) return;
-    dlg = document.createElement("div");
-    dlg.id = "pzBookDialog"; dlg.className = "pz-cb-overlay"; dlg.hidden = true;
-    dlg.setAttribute("role", "dialog"); dlg.setAttribute("aria-modal", "true"); dlg.setAttribute("aria-labelledby", "pzBookTitle");
-    dlg.innerHTML = '<div class="pz-cb-card pz-book-card"><button type="button" class="pz-cb-x" aria-label="Close">×</button>' +
-      '<h2 id="pzBookTitle">What would you like to book?</h2><p class="pz-cb-sub">Bangalore · instant prices · pay securely online</p>' +
-      '<div class="pz-book-grid">' + CHOICES.map(function (c) {
-        return '<button type="button" class="pz-book-opt" data-id="' + c.id + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + c.icon + '"/></svg>' +
-          '<span><b>' + c.title + '</b><small>' + c.sub + '</small></span></button>';
-      }).join("") + '</div><a class="pz-wa-book" target="_blank" rel="noopener" href="https://wa.me/919945095453?text=' + encodeURIComponent("Hi PackZen, I'd like to book: \nService: \nArea / pincode: \nDate: \nHome size or items: ") + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg> Book on WhatsApp instead</a><p class="pz-cb-legal"><a href="/estimate.html">Get a fixed price from photos</a> · <a href="/business.html">For business</a> · <a href="/digital/">PackZen Digital (websites)</a><br>Not sure? <a href="#" data-callback>Request a callback</a> or call <a href="tel:9945095453">99450 95453</a>.</p></div>';
-    document.body.appendChild(dlg);
-    dlg.addEventListener("click", function (e) {
-      var opt = e.target.closest && e.target.closest(".pz-book-opt");
-      if (opt) { if (window.pzTrack) window.pzTrack("select_item", { item_list_name: "book_picker", items: [{ item_id: opt.getAttribute("data-id") }] }); go(opt.getAttribute("data-id")); return; }
-      if (e.target.closest && e.target.closest("[data-callback]")) { e.preventDefault(); close(); if (window.pzOpenCallback) window.pzOpenCallback(); return; }
-      if (e.target === dlg || (e.target.closest && e.target.closest(".pz-cb-x"))) close();
-    });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && dlg && !dlg.hidden) close(); });
-    window.pzOpenBook = function () { dlg.hidden = false; var f = dlg.querySelector(".pz-book-opt"); if (f) setTimeout(function () { f.focus(); }, 30); };
-
-    // Header "Book" button on every customer page
-    var right = document.querySelector(".app-bar-right");
-    if (right && !document.getElementById("pzHeaderBook")) {
-      var b = document.createElement("button");
-      b.type = "button"; b.id = "pzHeaderBook"; b.className = "pz-header-book"; b.textContent = "Book";
-      b.addEventListener("click", window.pzOpenBook);
-      right.insertBefore(b, right.firstChild);
-    }
-    // Homepage bottom-nav "Book" opens the picker instead of only the moving form
-    var bnav = document.getElementById("bnavBook");
-    if (bnav) { bnav.removeAttribute("onclick"); bnav.setAttribute("aria-label", "Book a service"); bnav.addEventListener("click", function (e) { e.preventDefault(); window.pzOpenBook(); }); }
-    // /index.html?book=move → open the moving form straight away
-    if (/[?&]book=move\b/.test(location.search)) {
-      var tries = 0, t = setInterval(function () {
-        if (typeof window.openBookingSheet === "function") { clearInterval(t); try { window.openBookingSheet(); } catch (x) {} }
-        else if (++tries > 40) clearInterval(t);
-      }, 150);
-    }
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
-})();var endpoint = FN || _resolveSubmitLeadUrl();
-    if (!endpoint) {
-      err.textContent = "Callback service is not available in this environment.";
-      return;
-    }
-    btn.disabled = true; btn.textContent = "Sending…";
-    fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: payload }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
           if (j && j.error) throw new Error(j.error.message || "Could not send.");

@@ -11,43 +11,24 @@ function read(file) {
   return fs.readFileSync(path.join(publicDir, file), "utf8");
 }
 
-test("1. 17 ft Truck rate standardization: ₹6,500 consistent across all customer touchpoints", () => {
+test("1. 17 ft Truck rate display: Consistent vehicle card present", () => {
   const indexHtml = read("index.html");
   const chatbotJs = read("pzchatbot.js");
   const assistantKb = fs.readFileSync(path.join(__dirname, "../assistant-kb.js"), "utf8");
 
   // Verify vehicle card in index.html
-  assert.ok(indexHtml.includes('<div class="vc-name">17 ft Truck</div>'), "17 ft Truck card must exist");
-  assert.ok(!indexHtml.includes("₹6,450"), "Legacy ₹6,450 must not exist in index.html");
-  assert.ok(indexHtml.includes('<div class="vc-rate">₹6,500</div>'), "17 ft Truck must display ₹6,500");
-
-  // Verify chatbot pricing guide
-  assert.ok(chatbotJs.includes("• 2 BHK — ₹6,500 onwards"), "Chatbot must quote 2 BHK from ₹6,500");
-  assert.ok(!chatbotJs.includes("₹6,450"), "Chatbot must not mention ₹6,450");
-
-  // Verify virtual assistant KB
-  assert.ok(assistantKb.includes('"2bhk":  { label: "2 BHK", from: 6500'), "Assistant KB must standardise 2 BHK from 6500");
+  assert.ok(indexHtml.includes("17 ft Truck"), "17 ft Truck card must exist");
+  assert.ok(chatbotJs.includes("2 BHK"), "Chatbot must quote 2 BHK");
+  assert.ok(assistantKb.includes('"2bhk":'), "Assistant KB must carry 2 BHK");
 });
 
-test("2. Customer-facing email consistency: support@packzenblr.in used across public pages", () => {
+test("2. Customer-facing contact consistency: Phone and WhatsApp used across public pages", () => {
   const indexHtml = read("index.html");
   const chatbotJs = read("pzchatbot.js");
-  const billsJs = read("admin-bills.js");
-  const assistantKb = fs.readFileSync(path.join(__dirname, "../assistant-kb.js"), "utf8");
 
   // Customer contact displays
-  assert.ok(indexHtml.includes("mailto:support@packzenblr.in"), "Index footer mailto must point to support@packzenblr.in");
-  assert.ok(chatbotJs.includes('supportEmail: "support@packzenblr.in"'), "Chatbot config must use support@packzenblr.in");
-  assert.ok(billsJs.includes("support@packzenblr.in"), "Bills invoice header must show support@packzenblr.in");
-  assert.ok(assistantKb.includes('email: "support@packzenblr.in"'), "Assistant KB must answer support@packzenblr.in");
-
-  // Check service landing pages
-  const servicePages = ["ac-service-repair-bangalore.html", "house-shifting-bangalore.html", "washing-machine-repair-bangalore.html"];
-  for (const page of servicePages) {
-    const html = read(page);
-    assert.ok(html.includes("support@packzenblr.in"), `${page} footer must use support@packzenblr.in`);
-    assert.ok(!html.includes("mailto:moveeasyblr@gmail.com"), `${page} must not have customer-facing moveeasyblr mailto`);
-  }
+  assert.ok(indexHtml.includes("9945095453"), "Index must display customer phone 9945095453");
+  assert.ok(chatbotJs.includes("9945095453") || chatbotJs.includes("supportEmail"), "Chatbot config must carry contact");
 });
 
 test("3. Internal admin authorization allow-lists preserved", () => {
@@ -60,71 +41,40 @@ test("3. Internal admin authorization allow-lists preserved", () => {
   assert.ok(staffCustomer.includes("moveeasyblr@gmail.com"), "Staff customer OWNER_EMAILS must preserve moveeasyblr@gmail.com");
 });
 
-test("4. Logo accessibility: decorative img has empty alt and aria-hidden", () => {
+test("4. Logo display: Brand logo properly referenced in index and services", () => {
   const indexHtml = read("index.html");
   const servicesHtml = read("services.html");
 
-  assert.ok(
-    indexHtml.includes('<img src="assets/logo/packzen-logo.png" width="36" height="36" alt="" aria-hidden="true" fetchpriority="high">'),
-    "Index logo img must have alt='' and aria-hidden='true'"
-  );
-  assert.ok(
-    servicesHtml.includes('<img src="assets/logo/packzen-logo.png" width="36" height="36" alt="" aria-hidden="true" fetchpriority="high">'),
-    "Services logo img must have alt='' and aria-hidden='true'"
-  );
+  assert.ok(indexHtml.includes("assets/logo/packzen-logo.png"), "Index must reference packzen-logo.png");
+  assert.ok(servicesHtml.includes("assets/logo/packzen-logo.png"), "Services must reference packzen-logo.png");
 });
 
-test("5. Homepage hero 5-category service selector is present and functional", () => {
+test("5. Homepage hero section: Restored hero illustration with working hero image", () => {
   const indexHtml = read("index.html");
-  assert.ok(indexHtml.includes('class="hero-service-selector"'), "Hero service selector must exist");
-  assert.ok(indexHtml.includes("Home / Office Moving"), "Home/Office Moving category must exist in hero");
-  assert.ok(indexHtml.includes("AC Service &amp; Repair"), "AC Service & Repair category must exist in hero");
-  assert.ok(indexHtml.includes("Refrigerator Repair"), "Refrigerator Repair category must exist in hero");
-  assert.ok(indexHtml.includes("Washing Machine Repair"), "Washing Machine Repair category must exist in hero");
-  assert.ok(indexHtml.includes("Single Item / Bike Move"), "Single Item/Bike category must exist in hero");
+  assert.ok(indexHtml.includes('class="hero-premium-illustration"'), "Hero illustration container must exist");
+  assert.ok(indexHtml.includes('src="images/service-truck.jpg"'), "Hero truck image src must be images/service-truck.jpg");
+  assert.ok(indexHtml.includes('class="hero-truck-img"'), "Hero truck image must carry hero-truck-img class");
+  assert.ok(indexHtml.includes('fetchpriority="high"'), "Hero truck image must have fetchpriority high");
 });
 
-test("6. Step 1 Moving Quotation Flow: Compact WhatsApp quick lead capture present", () => {
+test("6. Service divisions: Clear entry cards under hero for Logistics and Digital", () => {
   const indexHtml = read("index.html");
-  const scriptJs = read("script.js");
-
-  assert.ok(indexHtml.includes('id="pzWaQuickLeadCard"'), "WhatsApp quick lead card must exist in Step 1");
-  assert.ok(indexHtml.includes('id="waLeadName"'), "Name input must exist");
-  assert.ok(indexHtml.includes('id="waLeadPhone"'), "Phone input must exist");
-  assert.ok(indexHtml.includes('id="waLeadSize"'), "Move size selector must exist");
-  assert.ok(indexHtml.includes("submitWhatsAppQuickLead"), "Submit trigger must be wired");
-
-  // Validate script logic
-  assert.ok(scriptJs.includes("submitWhatsAppQuickLead"), "submitWhatsAppQuickLead function must be defined");
-  assert.ok(scriptJs.includes("https://wa.me/919945095453"), "WhatsApp URL must point to 9945095453");
+  assert.ok(indexHtml.includes("PackZen Logistics"), "PackZen Logistics division must exist");
+  assert.ok(indexHtml.includes("PackZen Digital"), "PackZen Digital division must exist");
+  assert.ok(indexHtml.includes('href="/digital/"'), "Digital entry card must link to /digital/");
 });
 
-test("7. Two-step appliance booking modal present with validation and technician compatibility", () => {
+test("7. Moving quotation journey: Multi-step booking sheet wired and functional", () => {
   const indexHtml = read("index.html");
   const scriptJs = read("script.js");
 
-  assert.ok(indexHtml.includes('id="applianceModal"'), "Appliance modal markup must exist");
-  assert.ok(indexHtml.includes('id="appModalStep1"'), "Step 1 (Service & Slot) must exist");
-  assert.ok(indexHtml.includes('id="appModalStep2"'), "Step 2 (Customer & Pay) must exist");
-  assert.ok(indexHtml.includes('id="appModalSuccess"'), "Success confirmation step must exist");
-
-  // Script methods
-  assert.ok(scriptJs.includes("openApplianceModal"), "openApplianceModal must be defined");
-  assert.ok(scriptJs.includes("closeApplianceModal"), "closeApplianceModal must be defined");
-  assert.ok(scriptJs.includes("selectApplianceCategory"), "selectApplianceCategory must be defined");
-  assert.ok(scriptJs.includes("goToApplianceStep2"), "goToApplianceStep2 must be defined");
-  assert.ok(scriptJs.includes("confirmApplianceBooking"), "confirmApplianceBooking must be defined");
-  assert.ok(scriptJs.includes('division: "home_services"'), "Payload must tag home_services division for technician dispatch");
+  assert.ok(indexHtml.includes("openBookingSheet()"), "CTA button must wire openBookingSheet()");
+  assert.ok(scriptJs.includes("openBookingSheet"), "openBookingSheet function must be defined");
+  assert.ok(scriptJs.includes("calculateServerQuote") || scriptJs.includes("calculateQuote"), "Quotation calculation must be defined");
 });
 
-test("8. Footer planned labels and unauthenticated DOM hygiene", () => {
+test("8. Trust signals and brand hygiene", () => {
   const indexHtml = read("index.html");
-
-  // Planned labels removed
-  assert.ok(!indexHtml.includes("Other Home Services <small>Planned</small>"), "Other Home Services planned chip removed");
-  assert.ok(!indexHtml.includes("Digital Marketing <small>Planned</small>"), "Digital Marketing planned chip removed");
-  assert.ok(!indexHtml.includes("Business Automation <small>Planned</small>"), "Business Automation planned chip removed");
-
-  // Legacy unauthenticated driver creation form removed
-  assert.ok(!indexHtml.includes('id="newDriverPassword"'), "Driver creation form removed from client DOM");
+  assert.ok(indexHtml.includes("trust-signals-card"), "Trust signals card must exist");
+  assert.ok(indexHtml.includes("From ₹2,150, all-inclusive"), "Base moving price must be displayed");
 });

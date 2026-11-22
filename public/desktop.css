@@ -27,11 +27,6 @@
     background: #f0f4f9;
   }
 
-  /* Hide mobile sticky CTA on tablet and desktop across all service pages */
-  .svc-sticky-cta {
-    display: none !important;
-  }
-
   /* ── 2. TOP NAVBAR ───────────────────────────────────────────── */
   .app-bar {
     position: fixed;
@@ -374,64 +369,22 @@ margin: 0 auto 10px;
   }
 
   /* ── 12. FAQ ─────────────────────────────────────────────────── */
-  #faq,
-  .home-section#faq,
-  .faq-section {
-    max-width: 960px;
-    margin: 0 auto;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  #faq .section-label,
-  .home-section#faq .section-label,
-  .faq-section .section-label {
-    text-align: left;
-    margin-bottom: 1.25rem;
-  }
-
-  .faq-app-list,
-  .faq-list {
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
+  .faq-app-list {
     border-radius: 20px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  }
-
-  .faq-item {
-    margin-bottom: 12px;
-    border-radius: 14px;
-    overflow: hidden;
   }
 
   .faq-q {
     padding: 1.1rem 1.5rem;
     font-size: 0.92rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    text-align: left;
-    box-sizing: border-box;
-  }
-
-  .faq-arrow {
-    flex-shrink: 0;
-    margin-left: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .faq-a {
     padding: 0 1.5rem;
     font-size: 0.86rem;
-    box-sizing: border-box;
   }
 
   .faq-item.open .faq-a {
-    max-height: 800px;
     padding: 6px 1.5rem 1.1rem;
   }
 
@@ -460,21 +413,11 @@ margin: 0 auto 10px;
   }
 
   .app-footer-inner-desktop {
-    max-width: 1360px;
+    max-width: 1400px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr 1fr 1.2fr;
-    gap: 2.5rem;
-  }
-
-  @media (max-width: 1023px) {
-    .app-footer-inner-desktop {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 2rem;
-    }
-    .app-footer-col-brand {
-      grid-column: 1 / -1;
-    }
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 3rem;
   }
 
 .app-footer-logo-wrap {
@@ -980,41 +923,9 @@ margin: 0 auto 10px;
 }
 
 @media (min-width: 1024px) {
-  /* Default: single-column content pages (service, locality, appliance pages) centered without empty right columns */
-  .hero-premium-section {
-    display: block;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 3.5rem 1.5rem 2rem;
-  }
-  .hero-premium-section .hero-premium-title {
-    max-width: 28ch !important;
-    font-size: 3.25rem;
-    margin-bottom: 1.25rem;
-  }
-  .hero-premium-section .hero-premium-desc {
-    max-width: 65ch !important;
-    font-size: 1.1rem;
-    font-weight: 500;
-  }
-
-  /* Two-column layout ONLY when illustration is present (homepage) */
-  .hero-premium-section:has(.hero-premium-illustration),
-  .home-screen .hero-premium-section {
-    display: grid;
-    grid-template-columns: 0.85fr 1.15fr;
-    gap: 3rem;
-    align-items: start;
-    padding: 4rem 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  .hero-premium-section:has(.hero-premium-illustration) .hero-premium-title,
-  .home-screen .hero-premium-section .hero-premium-title {
-    font-size: 4rem;
-    margin-bottom: 1.5rem;
-    max-width: 14ch !important;
-  }
+.hero-premium-section { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 3rem; align-items: start; padding: 4rem 2rem; max-width: 1400px; margin: 0 auto; }
+   .hero-premium-title { font-size: 4rem; margin-bottom: 1.5rem; }
+  .hero-premium-desc { font-size: 1.1rem; font-weight: 500; }
   .hero-premium-actions { flex-direction: row; gap: 1.5rem; }
   .hero-premium-illustration { margin-top: 0; }
 .floating-track-card { margin: 2rem auto 0; max-width: 600px; width: 100%; }
